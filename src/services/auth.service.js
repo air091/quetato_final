@@ -55,3 +55,37 @@ export const register = async (payload) => {
 
   return { refresh, access };
 };
+
+export const login = async (payload) => {
+  if (!payload.email || !payload.password)
+    throw new AppError("All fields are required", 401);
+
+  payload.email = payload.email.trim().toLowerCase();
+
+  const user = await prisma.user.findUnique({
+    where: { email: payload.email },
+  });
+  if (!user) throw new AppError("Email not found", 404);
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) throw new AppError("Email or password is incorrect", 400);
+
+  const jti = randomUUID();
+  const refresh = signRefresh({ jti, sub: user.id });
+  const hashedRefresh = await bcrypt.hash(refresh, 10);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+
+  await prisma.refreshToken.create({
+    data: {
+      jti,
+      userId: user.id,
+      hashedToken: hashedRefresh,
+      ipAddress: address,
+      userAgent: agent,
+      expiresAt,
+    },
+  });
+
+  const access = signAccess({ sub: user.id });
+  return { refresh, access };
+};
