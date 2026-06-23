@@ -1,12 +1,12 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
-const getAllCommunities = async () => {
+export const getAllCommunities = async () => {
   const communities = await prisma.community.findMany({});
   return communities;
 };
 
-const getCommunity = async (communityId) => {
+export const getCommunityById = async (communityId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   const community = await prisma.community.findUnique({
     where: { id: communityId },
@@ -16,7 +16,7 @@ const getCommunity = async (communityId) => {
   return community;
 };
 
-const createCommunity = async (name, description, ownerId) => {
+export const createCommunity = async (name, description, ownerId) => {
   const community = await prisma.community.create({
     data: {
       name,
@@ -28,7 +28,7 @@ const createCommunity = async (name, description, ownerId) => {
   return community;
 };
 
-const updateCommunityByOwner = async (
+export const updateCommunityByOwner = async (
   communityId,
   name,
   description,
@@ -54,7 +54,7 @@ const updateCommunityByOwner = async (
   return updatedCommunity;
 };
 
-const deleteCommunity = async (communityId, ownerId) => {
+export const deleteCommunity = async (communityId, ownerId) => {
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: { id: true, ownerId: true },
