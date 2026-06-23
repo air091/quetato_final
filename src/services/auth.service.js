@@ -1,8 +1,8 @@
-import { prisma } from "../libs/prisma";
+import { prisma } from "../libs/prisma.js";
 import bcrypt from "bcrypt";
-import { signAccess, signRefresh, verifyAccess } from "../libs/jwt";
+import { signAccess, signRefresh, verifyAccess } from "../libs/jwt.js";
 import { randomUUID } from "crypto";
-import { AppError } from "../libs/errorHandle";
+import { AppError } from "../libs/errorHandle.js";
 
 export const register = async (payload) => {
   if (!payload.username || !payload.email || !payload.password)

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import jwt, { SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN;

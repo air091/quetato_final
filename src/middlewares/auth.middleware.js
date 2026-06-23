@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { verifyAccess } from "jwt";
+import { verifyAccess } from "../libs/jwt.js";
 
 export const authMiddleware = async (request, response, next) => {
   try {
