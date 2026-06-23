@@ -115,7 +115,7 @@ export const refreshController = async (request, response) => {
 
     const tokens = await refresh({ token, ipAddress, agent });
 
-    return NextResponse.json({ success: true, tokens }, { status: 201 });
+    return response.status(201).json({ success: true, tokens });
   } catch (error) {
     console.error("Refresh failed", error);
     let errorMessage = "Internal server error";

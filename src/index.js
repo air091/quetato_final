@@ -21,5 +21,4 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
 await startServer();
