@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { verifyAccess } from "jwt";
 
-const authMiddleware = async (request, response, next) => {
+export const authMiddleware = async (request, response, next) => {
   try {
     // 1. Get the Authorization header
     const authHeader = request.headers["authorization"];

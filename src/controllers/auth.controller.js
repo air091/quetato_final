@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { request, response } from "express";
 
-const registerController = async (request, response) => {
+export const registerController = async (request, response) => {
   try {
     const { username, email, password } = request.body;
     const agent = request.headers["user-agent"] || "Unknown Device";
@@ -41,7 +41,7 @@ const registerController = async (request, response) => {
   }
 };
 
-const loginController = async (request, response) => {
+export const loginController = async (request, response) => {
   try {
     const { email, password } = request.body;
     const agent = request.headers["user-agent"] || "Unknown Device";
@@ -78,7 +78,7 @@ const loginController = async (request, response) => {
   }
 };
 
-const profileController = async (request, response) => {
+export const profileController = async (request, response) => {
   try {
     // request.user was populated right above in the authMiddleware!
     const userId = request.user.sub;
@@ -103,7 +103,7 @@ const profileController = async (request, response) => {
   }
 };
 
-const refreshController = async (request, response) => {
+export const refreshController = async (request, response) => {
   try {
     const token = request.cookies ? request.cookies["session"] : null;
     const agent = request.headers["user-agent"] || "Unknown Device";
@@ -128,7 +128,7 @@ const refreshController = async (request, response) => {
   }
 };
 
-const logoutController = async (request, response) => {
+export const logoutController = async (request, response) => {
   try {
     const token = request.cookies ? request.cookies["session"] : null;
     if (token) {
