@@ -17,10 +17,12 @@ export const getCommunityById = async (communityId) => {
 };
 
 export const createCommunity = async (name, description, ownerId) => {
+  if (name.trim().length === 0) throw new AppError("Name is required", 400);
+
   const community = await prisma.community.create({
     data: {
-      name,
-      description,
+      name: name.trim(),
+      description: description?.trim() || null,
       ownerId,
     },
   });
@@ -34,9 +36,15 @@ export const updateCommunityByOwner = async (
   description,
   ownerId,
 ) => {
+  if (name !== undefined) {
+    name = name.trim();
+    if (!name) throw new AppError("Name is required", 400);
+  }
+  if (description !== undefined) description = description.trim();
+
   const community = await prisma.community.findUnique({
     where: { id: communityId },
-    select: { id: true, ownerId },
+    select: { id: true, ownerId: true },
   });
 
   if (!community) throw new AppError("Community not found", 404);
@@ -44,7 +52,7 @@ export const updateCommunityByOwner = async (
   if (community.ownerId !== ownerId) throw new AppError("Forbidden", 403);
 
   const updatedCommunity = await prisma.community.update({
-    where: { id: communityId },
+    where: { id: community.id },
     data: {
       name,
       description,
