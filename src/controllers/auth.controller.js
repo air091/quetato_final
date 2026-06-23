@@ -74,3 +74,28 @@ const loginController = async (request, response) => {
       .json({ success: false, message: errMessage });
   }
 };
+
+const profileController = async (request, response) => {
+  try {
+    // request.user was populated right above in the authMiddleware!
+    const userId = request.user.sub;
+
+    const user = await profile(userId);
+
+    return response.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("Profile failed", error);
+
+    let errMessage = "Server internal error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
