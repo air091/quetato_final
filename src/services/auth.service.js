@@ -1,18 +1,25 @@
 import { prisma } from "../libs/prisma.js";
 import bcrypt from "bcrypt";
-import { signAccess, signRefresh, verifyAccess } from "../libs/jwt.js";
+import {
+  signAccess,
+  signRefresh,
+  verifyAccess,
+  verifyRefresh,
+} from "../libs/jwt.js";
 import { randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle.js";
 
 export const register = async (payload) => {
-  if (!payload.username || !payload.email || !payload.password)
+  let { username, email, password, ipAddress, agent } = payload;
+
+  if (!username || !email || !password)
     throw new AppError("All fields are required", 400);
 
-  payload.username = username.trim();
-  payload.email = email.trim().toLowerCase();
+  username = username.trim();
+  email = email.trim().toLowerCase();
 
   const emailExist = await prisma.user.findUnique({
-    where: { email: payload.email },
+    where: { email },
     select: { id: true },
   });
 
@@ -43,8 +50,8 @@ export const register = async (payload) => {
       jti,
       userId: user.id,
       hashedToken: hashedRefresh,
-      ipAddress: payload.ipAddress,
-      userAgent: payload.agent,
+      ipAddress: ipAddress,
+      userAgent: agent,
       expiresAt,
     },
     select: { jti: true },
@@ -57,6 +64,8 @@ export const register = async (payload) => {
 };
 
 export const login = async (payload) => {
+  let { email, password } = payload;
+
   if (!payload.email || !payload.password)
     throw new AppError("All fields are required", 401);
 

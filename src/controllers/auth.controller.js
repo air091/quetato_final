@@ -1,6 +1,12 @@
 import "dotenv/config";
 import { request, response } from "express";
-import { login, register } from "../services/auth.service.js";
+import {
+  login,
+  logout,
+  profile,
+  refresh,
+  register,
+} from "../services/auth.service.js";
 import { AppError } from "../libs/errorHandle.js";
 
 export const registerController = async (request, response) => {
@@ -39,7 +45,7 @@ export const registerController = async (request, response) => {
 
     return response
       .status(statusCode)
-      .json({ success: false, error: errorMessage });
+      .json({ success: false, message: errorMessage });
   }
 };
 

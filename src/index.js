@@ -13,7 +13,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 
-const startServer = () => {
+const startServer = async () => {
   try {
     app.listen(PORT, () => console.log("Server running in port:", PORT));
   } catch (error) {
@@ -22,4 +22,4 @@ const startServer = () => {
   }
 };
 
-startServer();
+await startServer();
