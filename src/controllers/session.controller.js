@@ -76,55 +76,55 @@ export const createSessionController = async (request, response) => {
       .status(statusCode)
       .json({ success: false, message: errMessage });
   }
+};
 
-  export const updateSessionController = async (request, response) => {
-    try {
-      const { communityId, sessionId } = request.params;
-      const { name, location } = request.body;
-      const session = await updateSession(
-        communityId,
-        sessionId,
-        name,
-        location,
-        request.user.sub,
-      );
-      return response.status(200).json({ success: true, session });
-    } catch (error) {
-      console.error("Update session failed", error);
-      let errMessage = "Internal server error";
-      let statusCode = 500;
+export const updateSessionController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+    const { name, location } = request.body;
+    const session = await updateSession(
+      communityId,
+      sessionId,
+      name,
+      location,
+      request.user.sub,
+    );
+    return response.status(200).json({ success: true, session });
+  } catch (error) {
+    console.error("Update session failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
 
-      if (error instanceof AppError) {
-        errMessage = error.message;
-        statusCode = error.statusCode;
-      }
-
-      return response
-        .status(statusCode)
-        .json({ success: false, message: errMessage });
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
     }
-  };
 
-  export const deleteSessionController = async (request, response) => {
-    try {
-      const { communityId, sessionId } = request.params;
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
 
-      await deleteSession(communityId, sessionId, request.user.sub);
+export const deleteSessionController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
 
-      return response.status(200).json({ success: true });
-    } catch (error) {
-      console.error("Delete session failed", error);
-      let errMessage = "Internal server error";
-      let statusCode = 500;
+    await deleteSession(communityId, sessionId, request.user.sub);
 
-      if (error instanceof AppError) {
-        errMessage = error.message;
-        statusCode = error.statusCode;
-      }
+    return response.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Delete session failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
 
-      return response
-        .status(statusCode)
-        .json({ success: false, message: errMessage });
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
     }
-  };
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
 };
