@@ -99,3 +99,28 @@ const profileController = async (request, response) => {
       .json({ success: false, message: errMessage });
   }
 };
+
+const refreshController = async (request, response) => {
+  try {
+    const token = request.cookies ? request.cookies["session"] : null;
+    const agent = request.headers["user-agent"] || "Unknown Device";
+    const ipAddress = request.ip || "127.0.0.1";
+
+    const tokens = await refresh({ token, ipAddress, agent });
+
+    return NextResponse.json({ success: true, tokens }, { status: 201 });
+  } catch (error) {
+    console.error("Refresh failed", error);
+    let errorMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errorMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errorMessage });
+  }
+};

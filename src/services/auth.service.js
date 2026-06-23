@@ -90,11 +90,10 @@ export const login = async (payload) => {
   return { refresh, access };
 };
 
-export const profile = async (token) => {
-  if (!token) throw new AppError("Unauthorized", 401);
-  const payload = verifyAccess(token);
+export const profile = async (userId) => {
+  if (!userId) throw new AppError("User ID is required", 401);
   const user = await prisma.user.findUnique({
-    where: { id: payload.sub },
+    where: { id: userId },
     select: {
       id: true,
       username: true,
