@@ -1,3 +1,6 @@
+import "dotenv/config";
+import { request, response } from "express";
+
 const registerController = async (request, response) => {
   try {
     const { username, email, password } = request.body;
@@ -122,5 +125,37 @@ const refreshController = async (request, response) => {
     return response
       .status(statusCode)
       .json({ success: false, message: errorMessage });
+  }
+};
+
+const logoutController = async (request, response) => {
+  try {
+    const token = request.cookies ? request.cookies["token"] : null;
+    if (token) {
+      await logout(token);
+    }
+
+    response.cookie("token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      expires: new Date(0),
+      path: "/",
+    });
+
+    return response.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Logout failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
   }
 };
