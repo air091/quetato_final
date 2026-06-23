@@ -45,3 +45,16 @@ model Community {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model Session {
+  id              String @id @default(cuid())
+  communityId     String
+  name            String
+  location        String?
+  startAt         DateTime?
+  endAt           DateTime?
+  createdBy       String
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
