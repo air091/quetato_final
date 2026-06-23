@@ -152,3 +152,19 @@ export const refresh = async (payload) => {
   const accessToken = signAccess({ sub: refreshPayload.sub });
   return { newRefresh, accessToken };
 };
+
+export const logout = async (token) => {
+  if (!token) throw new AppError("Unauthorized", 401);
+  const payload = verifyRefresh(token);
+  if (!payload) throw new AppError("Unauthorized", 401);
+
+  const revokeToken = await prisma.refreshToken.updateMany({
+    where: {
+      userId: payload.sub,
+    },
+    data: { isRevoked: true },
+  });
+  if (!revokeToken) throw new AppError("Token not found", 404);
+
+  return true;
+};
