@@ -1,6 +1,6 @@
 import { prisma } from "../libs/prisma";
 import bcrypt from "bcrypt";
-import { signAccess, signRefresh } from "../libs/jwt";
+import { signAccess, signRefresh, verifyAccess } from "../libs/jwt";
 import { randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle";
 
@@ -88,4 +88,20 @@ export const login = async (payload) => {
 
   const access = signAccess({ sub: user.id });
   return { refresh, access };
+};
+
+export const profile = async (token) => {
+  if (!token) throw new AppError("Unauthorized", 401);
+  const payload = verifyAccess(token);
+  const user = await prisma.user.findUnique({
+    where: { id: payload.sub },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+    },
+  });
+
+  if (!user) throw new AppError("No user found", 404);
+  return user;
 };
