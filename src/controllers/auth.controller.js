@@ -130,12 +130,12 @@ const refreshController = async (request, response) => {
 
 const logoutController = async (request, response) => {
   try {
-    const token = request.cookies ? request.cookies["token"] : null;
+    const token = request.cookies ? request.cookies["session"] : null;
     if (token) {
       await logout(token);
     }
 
-    response.cookie("token", "", {
+    response.cookie("session", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
