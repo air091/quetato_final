@@ -21,6 +21,8 @@ model User {
   updatedAt       DateTime @updatedAt
 
   refreshTokens   RefreshToken[]
+  createdSessions Session[] @relation("creator")
+  updatedSessions Session[] @relation("updater")
 }
 
 model RefreshToken {
@@ -44,6 +46,8 @@ model Community {
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  sessions      Session[]
 }
 
 model Session {
@@ -53,8 +57,14 @@ model Session {
   location        String?
   startAt         DateTime?
   endAt           DateTime?
-  createdBy       String
+  createdBy       String?
   updatedBy       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  community       Community @relation(fields: [communityId], references: [id], onDelete:  Cascade, onUpdate: Cascade)
+  creator         User? @relation("creator", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updater         User? @relation("updater", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([communityId])
+  @@index([createdBy])
 }
