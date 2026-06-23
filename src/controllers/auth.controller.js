@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { request, response } from "express";
 import { login, register } from "../services/auth.service.js";
+import { AppError } from "../libs/errorHandle.js";
 
 export const registerController = async (request, response) => {
   try {
@@ -65,8 +66,8 @@ export const loginController = async (request, response) => {
     let errMessage = "Server Internal Error";
     let statusCode = 500;
 
-    if (error instanceof Error) {
-      errMessage = error.errMessage;
+    if (error instanceof AppError) {
+      errMessage = error.message;
       statusCode = error.statusCode;
     }
     return response
