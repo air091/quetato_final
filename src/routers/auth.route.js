@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-router.get("/", authMiddleware, profileController);
+router.get("/profile", authMiddleware, profileController);
 
 router.post("/login", loginController);
 router.post("/register", registerController);

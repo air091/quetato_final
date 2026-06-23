@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { request, response } from "express";
+import { login, register } from "../services/auth.service.js";
 
 export const registerController = async (request, response) => {
   try {
@@ -47,11 +48,7 @@ export const loginController = async (request, response) => {
     const agent = request.headers["user-agent"] || "Unknown Device";
     const ipAddress = request.ip || "127.0.0.1";
 
-    const tokens = await login(email, password, agent, ipAddress);
-    const response = NextResponse.json(
-      { success: true, tokens },
-      { status: 200 },
-    );
+    const tokens = await login({ email, password, agent, ipAddress });
 
     response.cookie("session", tokens.refresh, {
       httpOnly: true,
