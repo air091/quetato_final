@@ -2,6 +2,28 @@ import { Sports } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
+export const getAllPublicSessions = async () => {
+  const sessions = await prisma.session.findMany({
+    select: {
+      id: true,
+      community: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      name: true,
+      sport: true,
+      description: true,
+      location: true,
+      startAt: true,
+      endAt: true,
+      creator: { select: { id: true, username: true } },
+    },
+  });
+  return sessions;
+};
+
 export const getAllSessions = async (communityId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   const community = await prisma.community.findUnique({
@@ -65,6 +87,7 @@ export const updateSession = async (
   communityId,
   sessionId,
   name,
+  description,
   location,
   userId,
 ) => {
@@ -74,6 +97,7 @@ export const updateSession = async (
     name = name.trim();
     if (!name) throw new AppError("Name is required", 400);
   }
+  if (description !== undefined) description = description.trim();
   if (location !== undefined) location = location.trim();
 
   const community = await prisma.community.findUnique({
@@ -88,6 +112,7 @@ export const updateSession = async (
     where: { id: sessionId },
     data: {
       name,
+      description,
       location,
       updatedBy: userId,
     },

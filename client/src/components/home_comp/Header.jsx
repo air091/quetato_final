@@ -9,7 +9,7 @@ const Header = () => {
     <header className="flex items-center justify-between px-4 py-2 border">
       <div className="flex items-center gap-x-4">
         <div>
-          <button className="cursor-pointer">
+          <button className="block cursor-pointer">
             <Menu size={20} />
           </button>
         </div>

@@ -65,6 +65,7 @@ model Session {
   communityId     String
   name            String
   sport           Sports
+  description     String?
   location        String?
   startAt         DateTime?
   endAt           DateTime?

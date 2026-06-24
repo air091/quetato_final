@@ -4,11 +4,32 @@ import {
   createSession,
   deleteSession,
   endSession,
+  getAllPublicSessions,
   getAllSessions,
   getSessionById,
   startSession,
   updateSession,
 } from "../services/session.service.js";
+
+export const getAllPublicSessionsController = async (request, response) => {
+  try {
+    const sessions = await getAllPublicSessions();
+    return response.status(200).json({ success: true, sessions });
+  } catch (error) {
+    console.error("Get all public sessions failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
 
 export const getAllSessionsController = async (request, response) => {
   try {
@@ -84,11 +105,12 @@ export const createSessionController = async (request, response) => {
 export const updateSessionController = async (request, response) => {
   try {
     const { communityId, sessionId } = request.params;
-    const { name, location } = request.body;
+    const { name, description, location } = request.body;
     const session = await updateSession(
       communityId,
       sessionId,
       name,
+      description,
       location,
       request.user.sub,
     );

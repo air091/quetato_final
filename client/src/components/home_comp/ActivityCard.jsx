@@ -1,0 +1,137 @@
+import React from "react";
+import { useAuth } from "../../hooks/useAuth";
+// Assuming you have access to a User icon library like 'lucide-react'
+// import { User } from 'lucide-react';
+
+// For this example, I will use a simple SVG placeholder for the user icon.
+const UserIconPlaceholder = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="text-gray-900"
+  >
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+const ActivityCard = ({ session }) => {
+  const { user } = useAuth();
+  // Enhanced date formatter matching "Friday Q June 19, 2026"
+  const formatDate = (date) => {
+    if (!date) return null;
+    const rawDate = new Date(date);
+    const year = rawDate.getFullYear();
+    const month = String(rawDate.getMonth() + 1).padStart(2, "0");
+    const day = String(rawDate.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  return (
+    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 font-sans max-w-[1920px] mx-auto w-full">
+      {/* 1. Header Area: Avatar, Title, Host, Status */}
+      <header className="flex items-start justify-between gap-x-4">
+        <div className="flex items-start gap-x-4">
+          {/* Community Avatar/Logo placeholder */}
+          <div className="w-16 h-16 rounded-full border border-gray-200 flex items-center justify-center bg-gray-50 flex-shrink-0 mt-1 overflow-hidden">
+            {session.community.avatarUrl ? (
+              <img
+                src={session.community.avatarUrl}
+                alt={session.community.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              // Basic placeholder if no URL present
+              <span className="font-bold text-gray-400 text-2xl">?</span>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center gap-x-3 mt-1">
+              <h3 className="font-bold text-[22px] tracking-tight text-gray-950 leading-tight">
+                {session.community.name}
+              </h3>
+              {/* Sport Category Badge */}
+              <span className="bg-orange-50 text-orange-600 px-3 py-0.5 rounded-full text-sm font-semibold capitalize tracking-wide">
+                {session.sport}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-x-2 mt-2 leading-tight">
+              <span className="text-gray-500 text-[18px]">Hosted by</span>
+              {/* Creator/Host Avatar Placeholder */}
+              <div className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center bg-gray-100 flex-shrink-0 overflow-hidden">
+                {session.creator.avatarUrl ? (
+                  <img
+                    src={session.creator.avatarUrl}
+                    alt={session.creator.username}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="font-bold text-gray-300 text-xs">H</span>
+                )}
+              </div>
+              <span className="font-semibold text-[18px] text-gray-900">
+                {session.creator.displayName || session.creator.username}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p>
+            owner: {user.id}
+            what: {session.ownerId}
+          </p>
+          {user.id !== session.ownerId && (
+            <button className="bg-gray-100 cursor-pointer text-gray-700 font-bold text-[18px] px-8 py-2 rounded-xl hover:bg-gray-200 transition">
+              Host
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* 2. Main Area: Session Name, Description, Details */}
+      <main className="mt-8">
+        <div>
+          {/* Main Title formatted to match the Friday Q pattern */}
+          <h4 className="font-bold text-[32px] tracking-tight text-gray-950 leading-tight">
+            {session.name}
+          </h4>
+          <p className="mt-2 text-gray-600 text-[18px]">
+            {session.description ||
+              "Join the queue and start playing with nearby players."}
+          </p>
+
+          {/* session badges */}
+          <div className="flex items-center gap-2 mt-6 flex-wrap">
+            <span className="rounded-full px-4 py-2 text-[15px] font-semibold bg-gray-100 text-gray-700">
+              {session.location}
+            </span>
+
+            {session.startAt && (
+              <span className="rounded-full px-4 py-2 text-[15px] font-semibold bg-gray-100 text-gray-700">
+                Starts {formatDate(session.startAt)}
+              </span>
+            )}
+            {session.endAt && (
+              <span className="rounded-full px-4 py-2 text-[15px] font-semibold bg-gray-100 text-gray-700">
+                Ends {formatDate(session.endAt)}
+              </span>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default ActivityCard;

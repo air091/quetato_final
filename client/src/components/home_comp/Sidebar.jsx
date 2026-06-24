@@ -4,12 +4,15 @@ import { NavLink } from "react-router-dom";
 
 const Sidebar = () => {
   return (
-    <nav className="w-full max-w-[260px] border px-2 h-full">
+    <nav className="w-full max-w-[260px] border p-2 h-full">
       <ul>
         <li>
           <NavLink
             to="/"
-            className="flex items-center gap-x-4 hover:bg-gray-200 p-2 rounded"
+            end
+            className={({ isActive }) =>
+              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
+            }
           >
             <House size={20} /> Home
           </NavLink>
@@ -17,7 +20,9 @@ const Sidebar = () => {
         <li>
           <NavLink
             to="/find-friends"
-            className="flex items-center gap-x-4 hover:bg-gray-200 p-2 rounded"
+            className={({ isActive }) =>
+              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
+            }
           >
             <Handshake size={20} /> Find Friends
           </NavLink>
@@ -25,7 +30,9 @@ const Sidebar = () => {
         <li>
           <NavLink
             to="/find-community"
-            className="flex items-center gap-x-4 hover:bg-gray-200 p-2 rounded"
+            className={({ isActive }) =>
+              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
+            }
           >
             <UsersRound size={20} /> Find Community
           </NavLink>
