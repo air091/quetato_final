@@ -3,8 +3,10 @@ import { AppError } from "../libs/errorHandle.js";
 import {
   createSession,
   deleteSession,
+  endSession,
   getAllSessions,
   getSessionById,
+  startSession,
   updateSession,
 } from "../services/session.service.js";
 
@@ -54,10 +56,11 @@ export const getSessionByIdController = async (request, response) => {
 export const createSessionController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    const { name, location } = request.body;
+    const { name, sport, location } = request.body;
     const session = await createSession(
       communityId,
       name,
+      sport,
       location,
       request.user.sub,
     );
@@ -92,6 +95,56 @@ export const updateSessionController = async (request, response) => {
     return response.status(200).json({ success: true, session });
   } catch (error) {
     console.error("Update session failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const startSessionController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+
+    const session = await startSession(
+      communityId,
+      sessionId,
+      request.user.sub,
+    );
+
+    return response.status(200).json({ success: true, session });
+  } catch (error) {
+    console.error("Start session failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const endSessionController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+
+    const session = await endSession(communityId, sessionId, request.user.sub);
+
+    return response.status(200).json({ success: true, session });
+  } catch (error) {
+    console.error("End session failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 

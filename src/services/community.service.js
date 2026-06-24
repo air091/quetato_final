@@ -6,6 +6,15 @@ export const getAllCommunities = async () => {
   return communities;
 };
 
+export const getMyCommunities = async (userId) => {
+  if (!userId) throw new AppError("User ID is required");
+  const communities = await prisma.community.findMany({
+    where: { ownerId: userId },
+  });
+
+  return communities;
+};
+
 export const getCommunityById = async (communityId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   const community = await prisma.community.findUnique({

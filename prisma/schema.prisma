@@ -50,10 +50,15 @@ model Community {
   sessions      Session[]
 }
 
+enum Sports {
+  badminton
+}
+
 model Session {
   id              String @id @default(cuid())
   communityId     String
   name            String
+  sport           Sports
   location        String?
   startAt         DateTime?
   endAt           DateTime?

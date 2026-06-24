@@ -4,6 +4,7 @@ import {
   deleteCommunity,
   getAllCommunities,
   getCommunityById,
+  getMyCommunities,
   updateCommunityByOwner,
 } from "../services/community.service.js";
 import { AppError } from "../libs/errorHandle.js";
@@ -14,6 +15,26 @@ export const getAllCommunitiesController = async (request, response) => {
     return response.status(200).json({ success: true, communities });
   } catch (error) {
     console.error("Get all communities failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const getAllMyCommunitiesController = async (request, response) => {
+  try {
+    const myCommunities = await getMyCommunities(request.user.sub);
+    return response.status(200).json({ success: true, myCommunities });
+  } catch (error) {
+    console.error("Get my communities failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
