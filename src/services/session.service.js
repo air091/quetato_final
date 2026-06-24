@@ -58,29 +58,75 @@ export const createSession = async (
   name,
   sport,
   location,
-  creatorId,
+  authorizedId,
 ) => {
-  if (!communityId) throw new AppError("Community ID is required");
-  if (name.trim().length === 0) throw new AppError("Name is required", 400);
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!name || name.trim().length === 0)
+    throw new AppError("Name is required", 400);
 
+  // 1. Check if community exists first
   const community = await prisma.community.findUnique({
     where: { id: communityId },
-    select: { id: true, ownerId: true },
+    select: { id: true },
   });
 
-  if (community.ownerId !== creatorId) throw new AppError("Forbidden", 403);
+  if (!community) throw new AppError("Community not found", 404);
 
-  const session = await prisma.session.create({
-    data: {
-      communityId: community.id,
-      name: name.trim(),
-      sport: sport,
-      location: location?.trim() || null,
-      createdBy: creatorId,
-    },
+  return await prisma.$transaction(async (tx) => {
+    // 2. Fetch and verify the authorized actor
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // Adjust "host" vs "owner" depending on your finalized enum
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 3. Create the session
+    const session = await tx.session.create({
+      data: {
+        communityId: community.id,
+        name: name.trim(),
+        sport: sport,
+        location: location?.trim() || null,
+        createdBy: authorizedId, // References User ID
+      },
+    });
+
+    // 4. Fetch all admins/hosts in this specific community to auto-add them
+    const adminsToAutoAdd = await tx.communityPlayer.findMany({
+      where: {
+        communityId: community.id,
+        role: { in: ["admin", "owner"] }, // Correct Prisma multi-value syntax
+      },
+    });
+
+    // 5. Bulk create session player entries using map + Promise.all
+    await Promise.all(
+      adminsToAutoAdd.map((admin) =>
+        tx.sessionPlayer.create({
+          data: {
+            sessionId: session.id,
+            playerId: admin.id, // CommunityPlayer ID
+            acceptedAt: new Date(),
+          },
+        }),
+      ),
+    );
+
+    return session;
   });
-
-  return session;
 };
 
 export const updateSession = async (

@@ -1,6 +1,8 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
+export const getAlSessionPlayers = async () => {}; // DO THIS
+
 export const acceptPlayer = async (
   communityId,
   sessionId,
@@ -15,15 +17,32 @@ export const acceptPlayer = async (
 
   const community = await prisma.community.findUnique({
     where: { id: communityId },
-    select: { id: true, ownerId: true },
+    select: { id: true },
   });
 
   if (!community) throw new AppError("Community not found", 404);
 
-  if (community.ownerId !== authorizedId) throw new AppError("Forbidden", 403);
-
   return await prisma.$transaction(async (tx) => {
-    // Check if the player exists in the community and pull their user details (static vs user)
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    if (
+      authorizedPlayer.role !== "admin" &&
+      authorizedPlayer.role !== "owner"
+    ) {
+      throw new AppError("Forbidden", 403);
+    }
+
     const validPlayer = await tx.communityPlayer.findUnique({
       where: {
         communityId_userId: { communityId: community.id, userId },
@@ -32,8 +51,8 @@ export const acceptPlayer = async (
         player: {
           select: {
             id: true,
+            username: true,
             type: true, // "static" or "user"
-            email: true,
           },
         },
       },

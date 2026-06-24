@@ -122,9 +122,9 @@ model SessionPlayer {
   id                String @id @default(cuid())
   sessionId         String
   playerId          String
-  role              PlayerRoles @default(player)
   status            ApplicationStatus @default(accepted)
-  requestedAt       DateTime @default(now())
+  requestedAt       DateTime?
+  acceptedAt        DateTime?
   acceptedBy        String?
   updatedAt         DateTime @updatedAt
   updatedBy         String?
