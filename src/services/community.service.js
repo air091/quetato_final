@@ -35,15 +35,25 @@ export const getCommunityById = async (communityId) => {
 export const createCommunity = async (name, description, ownerId) => {
   if (name.trim().length === 0) throw new AppError("Name is required", 400);
 
-  const community = await prisma.community.create({
-    data: {
-      name: name.trim(),
-      description: description?.trim() || null,
-      ownerId,
-    },
-  });
+  return await prisma.$transaction(async (tx) => {
+    const community = await tx.community.create({
+      data: {
+        name: name.trim(),
+        description: description?.trim() || null,
+        ownerId,
+      },
+    });
 
-  return community;
+    await tx.communityPlayer.create({
+      data: {
+        communityId: community.id,
+        userId: ownerId,
+        role: "owner",
+      },
+    });
+
+    return community;
+  });
 };
 
 export const updateCommunityByOwner = async (

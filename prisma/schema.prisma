@@ -93,6 +93,7 @@ enum PlayerRoles {
   player
   admin
   host
+  owner
 }
 
 model CommunityPlayer {

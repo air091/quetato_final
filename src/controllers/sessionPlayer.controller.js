@@ -1,5 +1,6 @@
 import { request, response } from "express";
 import { acceptPlayer } from "../services/sessionPlayer.service.js";
+import { AppError } from "../libs/errorHandle.js";
 
 export const acceptPlayerController = async (request, response) => {
   try {
