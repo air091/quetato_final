@@ -4,6 +4,6 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 router.use(authMiddleware);
 
-router.put("/players/:playerId/static", updateStaticPlayerController);
+router.put("/:playerId/static", updateStaticPlayerController);
 
 export default router;
