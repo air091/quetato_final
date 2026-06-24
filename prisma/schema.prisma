@@ -77,6 +77,8 @@ model Session {
   creator         User? @relation("creator", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
   updater         User? @relation("updater", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
+  players         SessionPlayer[]
+
   @@index([communityId])
   @@index([createdBy])
 }
@@ -84,6 +86,7 @@ model Session {
 enum PlayerRoles {
   player
   admin
+  host
 }
 
 model CommunityPlayer {
@@ -95,6 +98,34 @@ model CommunityPlayer {
   community       Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
   player          User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  sessionPlayers  SessionPlayer[] @relation("Player")
+  adminAccept     SessionPlayer[] @relation("AdminAccept")
+  adminUpdate     SessionPlayer[] @relation("AdminUpdate")
+
   @@unique([communityId, userId])
   @@index([userId])
+}
+
+enum ApplicationStatus {
+  accepted
+  rejected
+}
+
+model SessionPlayer {
+  id                String @id @default(cuid())
+  sessionId         String
+  playerId          String
+  role              PlayerRoles @default(player)
+  status            ApplicationStatus @default(accepted)
+  requestedAt       DateTime @default(now())
+  acceptedBy        String?
+  updatedAt         DateTime @updatedAt
+  updatedBy         String?
+  session           Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player            CommunityPlayer @relation("Player", fields: [playerId], references: [id], onDelete: Cascade)
+  adminAccept       CommunityPlayer? @relation("AdminAccept", fields: [acceptedBy], references: [id], onDelete: SetNull)
+  adminUpdate       CommunityPlayer? @relation("AdminUpdate", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, playerId])
+  @@index([playerId])
 }
