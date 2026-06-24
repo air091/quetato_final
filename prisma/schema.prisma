@@ -21,8 +21,10 @@ model User {
   updatedAt       DateTime @updatedAt
 
   refreshTokens   RefreshToken[]
+  communities     Community[]
   createdSessions Session[] @relation("creator")
   updatedSessions Session[] @relation("updater")
+  players         CommunityPlayer[]
 }
 
 model RefreshToken {
@@ -46,8 +48,12 @@ model Community {
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  owner         User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   sessions      Session[]
+  players       CommunityPlayer[]
+
+  @@index([ownerId])
 }
 
 enum Sports {
@@ -85,4 +91,9 @@ model CommunityPlayer {
   userId          String
   role            PlayerRoles @default(player)
   createdAt       DateTime @default(now())
+  community       Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  player          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId])
 }
