@@ -1,0 +1,22 @@
+import React from "react";
+import { createBrowserRouter } from "react-router-dom";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import NotFound from "./pages/NotFound";
+
+const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/register",
+    element: <Register />,
+  },
+  {
+    path: "*",
+    element: <NotFound />,
+  },
+]);
+
+export default router;
