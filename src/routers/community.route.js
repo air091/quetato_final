@@ -17,6 +17,13 @@ import {
   startSessionController,
   updateSessionController,
 } from "../controllers/session.controller.js";
+import {
+  createStaticPlayersController,
+  deleteStaticPlayerController,
+  getAllPlayersController,
+  getPlayerByIdController,
+  updateStaticPlayerController,
+} from "../controllers/player.controller.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -31,6 +38,19 @@ router.post("/", createCommunityController);
 router.patch("/:communityId", updateCommunityByOwnerController);
 
 router.delete("/:communityId", deleteCommunityController);
+
+// PLAYERS
+
+// Community-scoped player actions
+router.get("/:communityId/players", getAllPlayersController);
+router.get("/:communityId/players/:playerId", getPlayerByIdController);
+
+router.post("/:communityId/players/static", createStaticPlayersController);
+
+router.delete(
+  "/:communityId/players/:playerId/static",
+  deleteStaticPlayerController,
+);
 
 // SESSIONS
 

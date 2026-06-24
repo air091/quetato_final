@@ -57,10 +57,10 @@ export const createStaticPlayers = async (communityId, usernames) => {
     return prisma.user.create({
       data: {
         username: trimmedName,
-        email: `${trimmedName}-${randomUUID()}@quetato.com`,
-        password: `${trimmedName}-${randomUUID()}@static-quetato.com`,
+        email: `${trimmedName}-${randomUUID()}@static-quetato.com`,
+        password: `${trimmedName}-${randomUUID()}`,
         // Nested relation write: Creates the community player automatically!
-        communityPlayers: {
+        players: {
           create: {
             communityId: community.id,
           },

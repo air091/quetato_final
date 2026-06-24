@@ -1,10 +1,11 @@
+import { AppError } from "../libs/errorHandle.js";
 import {
   createStaticPlayers,
   deleteStaticPlayer,
   getAllPlayers,
   getPlayerById,
   updateStaticPlayer,
-} from "../services/player.service";
+} from "../services/player.service.js";
 
 export const getAllPlayersController = async (request, response) => {
   try {
@@ -22,7 +23,7 @@ export const getAllPlayersController = async (request, response) => {
       message = error.message;
     }
 
-    return res.status(statusCode).json({ success: false, message });
+    return response.status(statusCode).json({ success: false, message });
   }
 };
 
@@ -42,7 +43,7 @@ export const getPlayerByIdController = async (request, response) => {
       message = error.message;
     }
 
-    return res.status(statusCode).json({ success: false, message });
+    return response.status(statusCode).json({ success: false, message });
   }
 };
 
@@ -63,7 +64,7 @@ export const createStaticPlayersController = async (request, response) => {
       message = error.message;
     }
 
-    return res.status(statusCode).json({ success: false, message });
+    return response.status(statusCode).json({ success: false, message });
   }
 };
 
@@ -84,7 +85,7 @@ export const updateStaticPlayerController = async (request, response) => {
       message = error.message;
     }
 
-    return res.status(statusCode).json({ success: false, message });
+    return response.status(statusCode).json({ success: false, message });
   }
 };
 
@@ -105,6 +106,6 @@ export const deleteStaticPlayerController = async (request, response) => {
       message = error.message;
     }
 
-    return res.status(statusCode).json({ success: false, message });
+    return response.status(statusCode).json({ success: false, message });
   }
 };
