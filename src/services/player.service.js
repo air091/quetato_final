@@ -2,7 +2,7 @@ import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import { randomUUID } from "crypto";
 
-export const getAllPlayers = async (communityId) => {
+export const getAllPlayers = async (communityId, type = "all") => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   const community = await prisma.community.findUnique({
     where: { id: communityId },
@@ -11,7 +11,39 @@ export const getAllPlayers = async (communityId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const players = await prisma.communityPlayer.findMany({});
+  let userFilter = {};
+  if (type === "static") {
+    userFilter = {
+      player: {
+        type: "static",
+      },
+    };
+  } else if (type === "user") {
+    userFilter = {
+      player: {
+        NOT: {
+          type: "static",
+        },
+      },
+    };
+  }
+
+  const players = await prisma.communityPlayer.findMany({
+    where: {
+      communityId: communityId,
+      ...userFilter,
+    },
+    include: {
+      player: {
+        select: {
+          id: true,
+          username: true,
+          type: true,
+        },
+      },
+    },
+  });
+
   return players;
 };
 
@@ -59,6 +91,7 @@ export const createStaticPlayers = async (communityId, usernames) => {
         username: trimmedName,
         email: `${trimmedName}-${randomUUID()}@static-quetato.com`,
         password: `${trimmedName}-${randomUUID()}`,
+        type: "static",
         // Nested relation write: Creates the community player automatically!
         players: {
           create: {
