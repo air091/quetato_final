@@ -4,17 +4,21 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api/auth";
+  import.meta.env.VITE_API_URL || "http://localhost:8000/api/auth";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Guard flag to prevent React Strict Mode / Re-renders from double-firing the initialization logic
+  const isInitialMount = useRef(true);
 
   // Helper for making authenticated requests
   const fetchWithAuth = useCallback(
@@ -35,14 +39,22 @@ export const AuthProvider = ({ children }) => {
         "Content-Type": "application/json",
       };
 
-      let response = await fetch(url, { ...options, headers });
+      let response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
 
       // Handle Access Token Expiration mid-session
       if (response.status === 401) {
         try {
           const newToken = await refreshSession();
           headers["Authorization"] = `Bearer ${newToken}`;
-          response = await fetch(url, { ...options, headers }); // Retry
+          response = await fetch(url, {
+            ...options,
+            headers,
+            credentials: "include",
+          }); // Retry
         } catch (refreshError) {
           logout();
           throw refreshError;
@@ -57,21 +69,16 @@ export const AuthProvider = ({ children }) => {
   // 1. Refresh Session (Handles Token Rotation Payload)
   const refreshSession = async () => {
     try {
-      // Must include credentials for httpOnly session cookie
       const response = await fetch(`${API_URL}/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
 
       const data = await response.json();
       if (!response.ok || !data.success)
         throw new Error(data.message || "Refresh failed");
 
-      /* CRITICAL FIX: 
-        Your refresh service maps access token to `data.tokens.accessToken`.
-        Your login/register services map it to `data.tokens.access`.
-        We check for both to stay safe.
-      */
       const nextAccessToken = data.tokens.accessToken || data.tokens.access;
 
       setAccessToken(nextAccessToken);
@@ -100,6 +107,12 @@ export const AuthProvider = ({ children }) => {
 
   // 3. Initialize Auth App State
   useEffect(() => {
+    // FIX: If this is NOT the absolute first time the app is loading up (e.g. following a manual login sequence), do not auto-refresh!
+    if (!isInitialMount.current) {
+      return;
+    }
+    isInitialMount.current = false;
+
     const initializeAuth = async () => {
       try {
         await refreshSession();
@@ -116,18 +129,34 @@ export const AuthProvider = ({ children }) => {
   // 4. Register Action
   const register = async (username, email, password) => {
     setLoading(true);
+    // Explicitly bypass initialization hook when changing auth state dynamically
+    isInitialMount.current = false;
     try {
       const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ username, email, password }),
       });
 
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message);
 
-      setAccessToken(data.tokens.access);
-      await fetchProfile();
+      const nextToken = data.tokens.access;
+      setAccessToken(nextToken);
+
+      const profileResponse = await fetch(`${API_URL}/profile`, {
+        headers: {
+          Authorization: `Bearer ${nextToken}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      const profileData = await profileResponse.json();
+      if (profileResponse.ok && profileData.success) {
+        setUser(profileData.user);
+      }
+
       return data;
     } finally {
       setLoading(false);
@@ -137,18 +166,34 @@ export const AuthProvider = ({ children }) => {
   // 5. Login Action
   const login = async (email, password) => {
     setLoading(true);
+    // Explicitly bypass initialization hook when changing auth state dynamically
+    isInitialMount.current = false;
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message);
 
-      setAccessToken(data.tokens.access);
-      await fetchProfile();
+      const nextToken = data.tokens.access;
+      setAccessToken(nextToken);
+
+      const profileResponse = await fetch(`${API_URL}/profile`, {
+        headers: {
+          Authorization: `Bearer ${nextToken}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+      const profileData = await profileResponse.json();
+      if (profileResponse.ok && profileData.success) {
+        setUser(profileData.user);
+      }
+
       return data;
     } finally {
       setLoading(false);
@@ -157,8 +202,12 @@ export const AuthProvider = ({ children }) => {
 
   // 6. Logout Action
   const logout = async () => {
+    isInitialMount.current = false;
     try {
-      await fetch(`${API_URL}/logout`, { method: "POST" });
+      await fetch(`${API_URL}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (error) {
       console.error("Logout error on server:", error);
     } finally {
