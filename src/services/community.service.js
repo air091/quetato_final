@@ -19,6 +19,13 @@ export const getCommunityById = async (communityId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   const community = await prisma.community.findUnique({
     where: { id: communityId },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      owner: { select: { id: true, username: true } },
+      _count: true,
+    },
   });
 
   if (!community) throw new AppError("Community not found", 404);
