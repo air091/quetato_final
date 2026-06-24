@@ -7,6 +7,7 @@ import {
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import HomeLayout from "./layouts/HomeLayout";
 import Home from "./pages/client/Home";
 
 const router = createBrowserRouter([
@@ -27,8 +28,13 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        path: "/",
-        element: <Home />,
+        element: <HomeLayout />,
+        children: [
+          {
+            path: "/",
+            element: <Home />,
+          },
+        ],
       },
     ],
   },
