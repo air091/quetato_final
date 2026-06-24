@@ -73,3 +73,16 @@ model Session {
   @@index([communityId])
   @@index([createdBy])
 }
+
+enum PlayerRoles {
+  player
+  admin
+}
+
+model CommunityPlayer {
+  id              String @id @default(cuid())
+  communityId     String
+  userId          String
+  role            PlayerRoles @default(player)
+  createdAt       DateTime @default(now())
+}
