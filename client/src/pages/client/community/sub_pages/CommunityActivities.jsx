@@ -12,11 +12,21 @@ import {
   Search,
   X,
 } from "lucide-react";
+import Modal from "../../../../components/createPortal";
 
 const CommunityActivities = () => {
   const { accessToken } = useAuth();
   const { communityId } = useParams();
   const [sessions, setSessions] = useState([]);
+  const [session, setSession] = useState({
+    name: "",
+    sport: "badminton",
+    location: "",
+    startAt: "",
+    endAt: "",
+    description: "",
+  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 1. Filter and Sorting States (Default to sorting by Name A-Z)
   const [status, setStatus] = useState("");
@@ -139,13 +149,199 @@ const CommunityActivities = () => {
     }
   };
 
+  const createSession = useCallback(async () => {
+    if (!accessToken) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/communities/${communityId}/sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: "include",
+          body: JSON.stringify(session), // Cleaned up: sends the entire object directly
+        },
+      );
+
+      if (!response.ok) throw new Error("HTTP failed: " + response.status);
+
+      const data = await response.json();
+      if (!data.success)
+        throw new Error(data?.message || "Internal server error");
+
+      await getAllSessions();
+      // Reset the form state back to default values
+      setSession({
+        name: "",
+        sport: "badminton",
+        location: "",
+        startAt: "",
+        endAt: "",
+        description: "",
+      });
+
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error creating session:", error);
+    }
+    // ✅ FIX: Added necessary dependencies
+  }, [accessToken, communityId, session]);
+
+  const handleOnChange = (event) => {
+    const { name, value } = event.target;
+    setSession((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleOnSubmit = async (event) => {
+    event.preventDefault();
+    await createSession();
+  };
+
   return (
     <div>
       <main>
         <div className="flex items-center py-1 px-2 gap-x-4">
-          <button className="block cursor-pointer bg-gray-800 text-white px-2 py-1 rounded-md">
-            Add session
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="block cursor-pointer bg-gray-800 text-white px-2 py-1 rounded-md"
+          >
+            Create session
           </button>
+
+          {/* MODAL */}
+          <Modal isOpen={isModalOpen}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div className="bg-white p-6 rounded-md shadow-lg max-w-[520px] w-full z-999">
+                <header className="flex items-center justify-between py-2">
+                  <h3 className="font-medium">Create new session</h3>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full p-1"
+                  >
+                    <X size={20} />
+                  </button>
+                </header>
+
+                <form
+                  onSubmit={handleOnSubmit}
+                  className="flex flex-col gap-y-2"
+                >
+                  {/* NAME AND SPORT */}
+                  <div className="flex items-center gap-x-2">
+                    <div className="w-full">
+                      <label htmlFor="name" className="text-[14px]">
+                        Name
+                      </label>
+                      <input
+                        id="name"
+                        type="text"
+                        name="name"
+                        value={session.name}
+                        onChange={handleOnChange}
+                        placeholder="Smash today"
+                        className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="sport" className="text-[14px]">
+                        Sport
+                      </label>
+                      <select
+                        name="sport"
+                        id="sport"
+                        value={session.sport}
+                        onChange={handleOnChange}
+                        className="block px-2 py-1 min-w-[140px] border cursor-pointer rounded-sm mt-0.5"
+                      >
+                        <option value="badminton">Badminton</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* LOCATION */}
+                  <div>
+                    <label htmlFor="location" className="text-[14px]">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      id="location"
+                      name="location"
+                      value={session.location}
+                      onChange={handleOnChange}
+                      className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                    />
+                  </div>
+
+                  {/* START AND END SCHEDULE */}
+                  <div className="flex items-center gap-x-2">
+                    <div className="w-full">
+                      <label htmlFor="startAt" className="text-[14px]">
+                        Starts at
+                      </label>
+                      <input
+                        id="startAt"
+                        type="datetime-local"
+                        name="startAt" // ✅ FIX: Added missing name attribute
+                        value={session.startAt}
+                        onChange={handleOnChange}
+                        className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                      />
+                    </div>
+                    <div className="w-full">
+                      <label htmlFor="endAt" className="text-[14px]">
+                        Ends at
+                      </label>
+                      <input
+                        id="endAt"
+                        type="datetime-local"
+                        name="endAt" // ✅ FIX: Added missing name attribute
+                        value={session.endAt}
+                        onChange={handleOnChange}
+                        className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                      />
+                    </div>
+                  </div>
+
+                  {/* DESCRIPTION */}
+                  <div>
+                    <label htmlFor="description" className="text-[14px]">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      id="description"
+                      rows={3}
+                      value={session.description}
+                      onChange={handleOnChange}
+                      placeholder="Join the queue and start playing with nearby players."
+                      className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                    ></textarea>
+                  </div>
+
+                  {/* ACTIONS */}
+                  <div className="flex items-center justify-end gap-x-3 mt-2">
+                    <button
+                      type="button" // ✅ FIX: Explicitly mark as type="button" so it doesn't trigger a form submit
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-1 bg-gray-200 hover:bg-gray-300 cursor-pointer rounded-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1 bg-blue-400 hover:bg-blue-500 hover:text-white cursor-pointer rounded-sm"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </Modal>
 
           {/* Status Filter Dropdown */}
           <select
@@ -281,9 +477,9 @@ const CommunityActivities = () => {
 
                   {/* HOSTS */}
                   <td className="text-start p-2">
-                    {hosts && hosts.length > 0 ? (
+                    {hosts && hosts?.length > 0 ? (
                       <span className="block truncate w-full">
-                        {hosts.join(", ")}
+                        {hosts?.join(", ")}
                       </span>
                     ) : (
                       <span className="text-gray-400 italic">No host yet</span>
@@ -341,7 +537,7 @@ const CommunityActivities = () => {
                         <SquarePen size={20} />
                       </button>
                       <button
-                        onClick={() => deleteSession(session.id)}
+                        onClick={() => deleteSession(session?.id)}
                         className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-red-500 rounded-md"
                       >
                         <Trash size={20} />

@@ -151,8 +151,8 @@ export const createSession = async (
   communityId,
   name,
   sport,
-  description = "Join the queue and start playing with nearby players.",
-  location = "TBA",
+  description,
+  location,
   startAt,
   endAt,
   authorizedId,
@@ -160,6 +160,19 @@ export const createSession = async (
   if (!communityId) throw new AppError("Community ID is required", 400);
   if (!name || name.trim().length === 0)
     throw new AppError("Name is required", 400);
+
+  if (!description || description.trim().length === 0) {
+    description = "Join the queue and start playing with nearby players.";
+  } else {
+    description = description.trim();
+  }
+
+  // ✅ FIX: Clean and apply fallback if string is empty, null, or undefined
+  if (!location || location.trim().length === 0) {
+    location = "TBA";
+  } else {
+    location = location.trim();
+  }
 
   // 1. Check if community exists first
   const community = await prisma.community.findUnique({
