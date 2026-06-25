@@ -24,17 +24,17 @@ const Sidebar = () => {
               `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
             }
           >
-            <Handshake size={20} /> Find Friends
+            <Handshake size={20} /> Friends
           </NavLink>
         </li>
         <li>
           <NavLink
-            to="/find-community"
+            to="/community/activities"
             className={({ isActive }) =>
               `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
             }
           >
-            <UsersRound size={20} /> Find Community
+            <UsersRound size={20} /> Community
           </NavLink>
         </li>
       </ul>
