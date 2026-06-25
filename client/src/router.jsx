@@ -12,6 +12,7 @@ import Home from "./pages/client/Home";
 import CommunityLayout from "./layouts/CommunityLayout";
 import CommunityFind from "./pages/client/community/CommunityFind";
 import CommunityActivity from "./pages/client/community/CommunityActivity";
+import Community from "./pages/client/community/Community";
 
 const router = createBrowserRouter([
   {
@@ -55,6 +56,10 @@ const router = createBrowserRouter([
           {
             path: "find",
             element: <CommunityFind />,
+          },
+          {
+            path: ":communityId",
+            element: <Community />,
           },
         ],
       },

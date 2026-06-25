@@ -1,4 +1,4 @@
-import { Handshake, LayersPlus, UsersRound } from "lucide-react";
+import { Compass, Handshake, LayersPlus } from "lucide-react";
 import React from "react";
 import { NavLink } from "react-router-dom";
 
@@ -16,7 +16,7 @@ const HomeHeader = () => {
               className="flex flex-col justify-center items-center border p-4 gap-y-2 font-medium rounded-lg hover:bg-gray-300"
             >
               <span>
-                <UsersRound size={34} />
+                <Compass size={34} />
               </span>
               Find Community
             </NavLink>

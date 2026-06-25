@@ -5,7 +5,7 @@ import Sidebar from "../components/home_comp/Sidebar";
 
 const HomeLayout = () => {
   return (
-    <div className="grid grid-rows-[auto_1fr] h-screen overflow-hidden">
+    <div className="grid grid-rows-[auto_1fr] w-full max-w-[1920px] mx-auto h-screen overflow-hidden">
       <Header />
       <main className="flex min-h-0">
         <Sidebar />

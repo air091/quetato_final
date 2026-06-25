@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 const Sidebar = () => {
   return (
     <nav className="w-full max-w-[260px] p-2">
-      <ul>
+      <ul className="flex flex-col gap-y-1">
         <li>
           <NavLink
             to="/"
