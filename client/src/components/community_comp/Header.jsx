@@ -41,13 +41,13 @@ const Header = ({ communityId, accessToken }) => {
       <div>
         <h3 className="font-medium text-[20px] leading-5">{community?.name}</h3>
         <div>
-          <span className="text-[14px] mr-2 font-medium">
+          <span className="text-[16px] mr-2 font-medium">
             {community?.owner.username}
           </span>
-          <span className="text-[12px] mr-2">
+          <span className="text-[14px] mr-2">
             Players: {community?._count.players}
           </span>
-          <span className="text-[12px] mr-2">
+          <span className="text-[14px] mr-2">
             Sessions: {community?._count.sessions}
           </span>
         </div>
