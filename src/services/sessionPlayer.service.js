@@ -45,12 +45,12 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
 export const acceptPlayer = async (
   communityId,
   sessionId,
-  userId,
+  communityPlayerId, // This is the unique primary key ID of CommunityPlayer
   authorizedId,
 ) => {
-  if (!communityId || !userId)
+  if (!communityId || !sessionId || !communityPlayerId)
     throw new AppError(
-      "Community ID, session ID and player ID is required",
+      "Community ID, session ID and player ID are required",
       400,
     );
 
@@ -62,6 +62,7 @@ export const acceptPlayer = async (
   if (!community) throw new AppError("Community not found", 404);
 
   return await prisma.$transaction(async (tx) => {
+    // 1. Get the admin's CommunityPlayer record
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
         communityId_userId: {
@@ -75,64 +76,54 @@ export const acceptPlayer = async (
       throw new AppError("Forbidden", 403);
     }
 
-    if (
-      authorizedPlayer.role !== "admin" &&
-      authorizedPlayer.role !== "owner"
-    ) {
+    // Adjusting role tracking to match your valid schema choices
+    const allowedRoles = ["admin", "host", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
       throw new AppError("Forbidden", 403);
     }
 
+    // 2. Fetch the target player using their unique CommunityPlayer ID directly
     const validPlayer = await tx.communityPlayer.findUnique({
       where: {
-        communityId_userId: { communityId: community.id, userId },
-      },
-      include: {
-        player: {
-          select: {
-            id: true,
-            username: true,
-            type: true, // "static" or "user"
-          },
-        },
+        id: communityPlayerId, // ✅ FIX: Look up by the primary key passed from params
       },
     });
 
-    if (!validPlayer)
-      throw new AppError("Player not found in the community", 404);
+    // Security check: Make sure this community player profile actually belongs to this community
+    if (!validPlayer || validPlayer.communityId !== community.id)
+      throw new AppError("Player not found in this community", 404);
 
-    // Fetch session details, counting active participants to prevent overbooking
+    // Fetch session details
     const session = await tx.session.findUnique({
       where: { id: sessionId },
       include: {
         _count: {
-          select: { players: true }, // Assuming the relation in Session model is named 'players'
+          select: { players: true },
         },
       },
     });
 
     if (!session) throw new AppError("Session not found", 404);
 
-    // Optional Safety Guard: Check if player is already inside this session
+    // 3. Safety Guard: Check if player is already inside this session
     const alreadyInSession = await tx.sessionPlayer.findFirst({
       where: {
         sessionId: session.id,
-        playerId: validPlayer.userId,
+        playerId: validPlayer.id, // ✅ FIX: Match using CommunityPlayer ID
       },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
     if (alreadyInSession) {
       throw new AppError("Player is already accepted into this session", 400);
     }
 
-    // 3. Insert the player into the active session
+    // 4. Create the session player record mapping all Foreign Keys properly
     return await tx.sessionPlayer.create({
       data: {
         sessionId: session.id,
-        playerId: validPlayer.id,
-        acceptedBy: authorizedId,
+        playerId: validPlayer.id, // ✅ CommunityPlayer ID of target player
+        acceptedBy: authorizedPlayer.id, // ✅ CommunityPlayer ID of admin actor
       },
     });
   });

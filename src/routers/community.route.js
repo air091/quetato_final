@@ -79,7 +79,7 @@ router.get(
 );
 
 router.post(
-  "/:communityId/sessions/:sessionId/:playerId/accept",
+  "/:communityId/sessions/:sessionId/:communityPlayerId/accept",
   acceptPlayerController,
 );
 

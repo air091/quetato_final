@@ -29,12 +29,12 @@ export const getAllSessionPlayersController = async (request, response) => {
 
 export const acceptPlayerController = async (request, response) => {
   try {
-    const { communityId, sessionId, playerId } = request.params;
+    const { communityId, sessionId, communityPlayerId } = request.params;
 
     const player = await acceptPlayer(
       communityId,
       sessionId,
-      playerId,
+      communityPlayerId,
       request.user.sub,
     );
 
