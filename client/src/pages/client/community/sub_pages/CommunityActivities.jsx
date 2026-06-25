@@ -77,6 +77,51 @@ const CommunityActivities = () => {
     // CHANGED: Added debouncedSearch to dependencies, removed searchQuery
   }, [accessToken, communityId, sortBy, order, status, debouncedSearch]);
 
+  const deleteSession = useCallback(
+    async (sessionId) => {
+      if (!accessToken) return;
+
+      // 1. Save a backup of the current sessions in case we need to roll back
+      let backupSessions;
+
+      setSessions((prevSessions) => {
+        backupSessions = prevSessions; // Store the original state
+        return prevSessions.filter((session) => session.id !== sessionId);
+      });
+
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            credentials: "include",
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to delete the session");
+        }
+
+        // If successful, do nothing! The UI is already updated.
+      } catch (error) {
+        console.error("Error deleting session, rolling back:", error);
+
+        // 2. 🚨 ERROR HANDLED: Put the data back if the API failed
+        if (backupSessions) {
+          setSessions(backupSessions);
+        }
+
+        // Optional: Alert the user so they know why it came back
+        alert("Could not delete session. Please try again.");
+      }
+    },
+    [accessToken, communityId],
+  );
+
   // 3. Re-run fetch whenever dependencies change
   useEffect(() => {
     if (communityId && accessToken) {
@@ -227,12 +272,14 @@ const CommunityActivities = () => {
                   key={session.id}
                   className="odd:bg-stone-100 cursor-pointer hover:bg-gray-200"
                 >
+                  {/* NAME */}
                   <td className="text-start p-2">
                     <span className="block w-full truncate">
                       {session?.name}
                     </span>
                   </td>
 
+                  {/* HOSTS */}
                   <td className="text-start p-2">
                     {hosts && hosts.length > 0 ? (
                       <span className="block truncate w-full">
@@ -243,17 +290,24 @@ const CommunityActivities = () => {
                     )}
                   </td>
 
+                  {/* SPORT */}
                   <td className="text-center p-2">
                     <span className="text-[12px] rounded-full bg-gray-200 px-2 py-0.5">
                       {session?.sport}
                     </span>
                   </td>
+
+                  {/* PLAYERS */}
                   <td className="text-center p-2">
                     {session?._count.players || 0}
                   </td>
+
+                  {/* LOCATION */}
                   <td className="text-start p-2">
                     {session?.location || "N/A"}
                   </td>
+
+                  {/* SCHEDULE */}
                   <td className="text-start p-2">
                     <div className="flex flex-col justify-center">
                       <span className="block">
@@ -270,6 +324,8 @@ const CommunityActivities = () => {
                       </span>
                     </div>
                   </td>
+
+                  {/* STATUS */}
                   <td className="text-center p-2">
                     <span
                       className={`text-[12px] px-2 py-0.5 rounded-full ${session?.isAvailable ? "text-white bg-green-600" : "text-red-600"}`}
@@ -277,12 +333,17 @@ const CommunityActivities = () => {
                       {session?.isAvailable ? "Available" : "Unavailable"}
                     </span>
                   </td>
+
+                  {/* ACTIONS */}
                   <td className="text-start p-2">
                     <div className="flex items-center justify-center gap-x-2">
                       <button className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-blue-500 rounded-md">
                         <SquarePen size={20} />
                       </button>
-                      <button className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-red-500 rounded-md">
+                      <button
+                        onClick={() => deleteSession(session.id)}
+                        className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-red-500 rounded-md"
+                      >
                         <Trash size={20} />
                       </button>
                     </div>
