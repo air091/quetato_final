@@ -34,13 +34,14 @@ export const getAllPublicSessionsController = async (request, response) => {
 export const getAllSessionsController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    // Extract query filters
-    const { status, sortBy, order } = request.query;
+    // Extract search along with your existing filters
+    const { status, sortBy, order, search } = request.query;
 
     const sessions = await getAllSessions(communityId, {
       status,
       sortBy,
       order,
+      search,
     });
 
     return response.status(200).json({ success: true, sessions });

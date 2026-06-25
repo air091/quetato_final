@@ -57,7 +57,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const { status, sortBy, order = "asc" } = filters;
+  const { status, sortBy, order = "asc", search } = filters;
   const sortOrder = order.toLowerCase() === "desc" ? "desc" : "asc";
 
   // 1. Build the dynamic WHERE clause
@@ -65,9 +65,17 @@ export const getAllSessions = async (communityId, filters = {}) => {
     communityId: communityId,
   };
 
-  // If status is provided (e.g., "available" or "unavailable"), map it to your boolean
+  // If status is provided, map it to your boolean
   if (status) {
     whereClause.isAvailable = status === "available";
+  }
+
+  // CRITICAL ADDITION: If search query is provided, look up names containing the string case-insensitively
+  if (search && search.trim() !== "") {
+    whereClause.name = {
+      contains: search.trim(),
+      mode: "insensitive", // Makes 'Tennis', 'tennis', and 'TENNIS' match the same query
+    };
   }
 
   // 2. Build the dynamic ORDER BY array
@@ -78,18 +86,15 @@ export const getAllSessions = async (communityId, filters = {}) => {
       orderByClause.push({ createdAt: sortOrder });
       break;
     case "schedule":
-      // Primary sort by startAt, secondary by isAvailable
       orderByClause.push({ startAt: sortOrder });
       orderByClause.push({ isAvailable: sortOrder });
       break;
     case "name":
-      // Primary sort by name (A-Z or Z-A), secondary by isAvailable
       orderByClause.push({ name: sortOrder });
       orderByClause.push({ isAvailable: sortOrder });
       break;
     default:
-      // Default fallback sorting if no sortBy is specified
-      orderByClause.push({ startAt: "asc" });
+      orderByClause.push({ name: "asc" }); // Matches frontend default sorting (A-Z)
       break;
   }
 
