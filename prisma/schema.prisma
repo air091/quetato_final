@@ -98,17 +98,17 @@ enum PlayerRoles {
 }
 
 model CommunityPlayer {
-  id              String @id @default(cuid())
-  communityId     String
-  userId          String
-  role            PlayerRoles @default(player)
-  createdAt       DateTime @default(now())
-  community       Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  player          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String @id @default(cuid())
+  communityId       String
+  userId            String
+  role              PlayerRoles @default(player)
+  createdAt         DateTime @default(now())
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  communityPlayer   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  sessionPlayers  SessionPlayer[] @relation("Player")
-  adminAccept     SessionPlayer[] @relation("AdminAccept")
-  adminUpdate     SessionPlayer[] @relation("AdminUpdate")
+  sessionPlayers    SessionPlayer[] @relation("Player")
+  adminAccept       SessionPlayer[] @relation("AdminAccept")
+  adminUpdate       SessionPlayer[] @relation("AdminUpdate")
 
   @@unique([communityId, userId])
   @@index([userId])
@@ -130,7 +130,7 @@ model SessionPlayer {
   updatedAt         DateTime @updatedAt
   updatedBy         String?
   session           Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  player            CommunityPlayer @relation("Player", fields: [playerId], references: [id], onDelete: Cascade)
+  sessionPlayer     CommunityPlayer @relation("Player", fields: [playerId], references: [id], onDelete: Cascade)
   adminAccept       CommunityPlayer? @relation("AdminAccept", fields: [acceptedBy], references: [id], onDelete: SetNull)
   adminUpdate       CommunityPlayer? @relation("AdminUpdate", fields: [updatedBy], references: [id], onDelete: SetNull)
 

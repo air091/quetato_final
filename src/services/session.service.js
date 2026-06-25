@@ -6,19 +6,42 @@ export const getAllPublicSessions = async () => {
   const sessions = await prisma.session.findMany({
     select: {
       id: true,
-      community: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
       name: true,
       sport: true,
       description: true,
       location: true,
       startAt: true,
       endAt: true,
-      creator: { select: { id: true, username: true } },
+      isAvailable: true,
+      createdBy: true,
+      createdAt: true,
+      // Move your relations inside the select block:
+      community: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      creator: {
+        select: {
+          id: true,
+          username: true,
+        },
+      },
+      players: {
+        select: {
+          id: true,
+          player: {
+            select: {
+              id: true,
+              player: {
+                select: { id: true, username: true },
+              },
+            },
+          },
+        },
+      },
+      _count: true,
     },
   });
   return sessions;
