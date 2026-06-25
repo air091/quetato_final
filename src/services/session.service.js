@@ -186,7 +186,7 @@ export const startSession = async (communityId, sessionId, userId) => {
 
   const session = await prisma.session.update({
     where: { id: sessionId },
-    data: { startAt: new Date() },
+    data: { isAvailable: true },
   });
 
   return session;
@@ -207,7 +207,7 @@ export const endSession = async (communityId, sessionId, userId) => {
 
   const session = await prisma.session.update({
     where: { id: sessionId },
-    data: { endAt: new Date() },
+    data: { isAvailable: false },
   });
 
   return session;

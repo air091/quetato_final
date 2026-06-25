@@ -6,7 +6,7 @@ const HomeHeader = () => {
   return (
     <div>
       <header>
-        <h1 className="text-[18] font-medium my-4">Home</h1>
+        <h1 className="text-[18] font-medium my-2">Home</h1>
       </header>
       <nav className="mt-2">
         <ul className="flex items-center justify-center gap-x-16 py-8 border rounded-xl">

@@ -75,6 +75,7 @@ model Session {
   location        String?
   startAt         DateTime?
   endAt           DateTime?
+  isAvailable     Boolean @default(true)
   createdBy       String?
   updatedBy       String?
   createdAt       DateTime @default(now())
