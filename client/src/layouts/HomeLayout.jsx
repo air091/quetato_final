@@ -5,11 +5,11 @@ import Sidebar from "../components/home_comp/Sidebar";
 
 const HomeLayout = () => {
   return (
-    <div className="flex flex-col w-full max-w-[1920px] border-2 border-red-500 mx-auto h-screen">
+    <div className="grid grid-rows-[auto_1fr] h-screen overflow-hidden">
       <Header />
-      <main className="border-2 border-blue-500 h-full flex">
+      <main className="flex min-h-0">
         <Sidebar />
-        <div className="px-4 py-2 border w-full">
+        <div className="flex-1 w-full px-4 overflow-y-auto">
           <Outlet />
         </div>
       </main>

@@ -42,7 +42,7 @@ const HomeActivities = () => {
   // 4. RENDERING SAFETY LAYER
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">HomeActivities</h2>
+      <h2 className="text-[18] font-medium my-4">Activities</h2>
 
       {/* Optional: Add a subtle placeholder while Auth is validating in the background */}
       {loading && (

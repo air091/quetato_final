@@ -5,10 +5,10 @@ import HomeActivities from "../../components/home_comp/HomeActivities";
 
 const Home = () => {
   return (
-    <div className="">
+    <>
       <HomeHeader />
       <HomeActivities />
-    </div>
+    </>
   );
 };
 
