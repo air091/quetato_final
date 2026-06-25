@@ -57,8 +57,28 @@ export const getAllSessions = async (communityId) => {
   if (!community) throw new AppError("Community not found", 404);
 
   const sessions = await prisma.session.findMany({
-    include: {
-      _count: true,
+    select: {
+      id: true,
+      name: true,
+      sport: true,
+      location: true,
+      startAt: true,
+      endAt: true,
+      isAvailable: true,
+      players: {
+        select: {
+          id: true,
+          sessionPlayer: {
+            select: {
+              id: true,
+              role: true,
+              communityPlayer: {
+                select: { id: true, username: true, type: true },
+              },
+            },
+          },
+        },
+      },
     },
   });
   return sessions;
