@@ -77,12 +77,14 @@ export const getSessionByIdController = async (request, response) => {
 export const createSessionController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    const { name, sport, location } = request.body;
+    const { name, sport, location, startAt, endAt } = request.body;
     const session = await createSession(
       communityId,
       name,
       sport,
       location,
+      startAt,
+      endAt,
       request.user.sub,
     );
     return response.status(200).json({ success: true, session });
@@ -105,13 +107,15 @@ export const createSessionController = async (request, response) => {
 export const updateSessionController = async (request, response) => {
   try {
     const { communityId, sessionId } = request.params;
-    const { name, description, location } = request.body;
+    const { name, description, location, startAt, endAt } = request.body;
     const session = await updateSession(
       communityId,
       sessionId,
       name,
       description,
       location,
+      startAt,
+      endAt,
       request.user.sub,
     );
     return response.status(200).json({ success: true, session });

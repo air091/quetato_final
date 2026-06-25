@@ -61,7 +61,9 @@ export const createSession = async (
   communityId,
   name,
   sport,
-  location,
+  location = "TBA",
+  startAt,
+  endAt,
   authorizedId,
 ) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
@@ -139,6 +141,8 @@ export const updateSession = async (
   name,
   description,
   location,
+  startAt,
+  endAt,
   userId,
 ) => {
   if (!communityId) throw new AppError("Community ID is required");
