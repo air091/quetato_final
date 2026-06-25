@@ -47,8 +47,9 @@ export const getAllPublicSessions = async () => {
   return sessions;
 };
 
-export const getAllSessions = async (communityId) => {
+export const getAllSessions = async (communityId, filters = {}) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
+
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: { id: true },
@@ -56,7 +57,46 @@ export const getAllSessions = async (communityId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
+  const { status, sortBy, order = "asc" } = filters;
+  const sortOrder = order.toLowerCase() === "desc" ? "desc" : "asc";
+
+  // 1. Build the dynamic WHERE clause
+  const whereClause = {
+    communityId: communityId,
+  };
+
+  // If status is provided (e.g., "available" or "unavailable"), map it to your boolean
+  if (status) {
+    whereClause.isAvailable = status === "available";
+  }
+
+  // 2. Build the dynamic ORDER BY array
+  const orderByClause = [];
+
+  switch (sortBy) {
+    case "createdAt":
+      orderByClause.push({ createdAt: sortOrder });
+      break;
+    case "schedule":
+      // Primary sort by startAt, secondary by isAvailable
+      orderByClause.push({ startAt: sortOrder });
+      orderByClause.push({ isAvailable: sortOrder });
+      break;
+    case "name":
+      // Primary sort by name (A-Z or Z-A), secondary by isAvailable
+      orderByClause.push({ name: sortOrder });
+      orderByClause.push({ isAvailable: sortOrder });
+      break;
+    default:
+      // Default fallback sorting if no sortBy is specified
+      orderByClause.push({ startAt: "asc" });
+      break;
+  }
+
+  // 3. Fetch data from Prisma
   const sessions = await prisma.session.findMany({
+    where: whereClause,
+    orderBy: orderByClause,
     select: {
       id: true,
       name: true,
@@ -79,8 +119,10 @@ export const getAllSessions = async (communityId) => {
           },
         },
       },
+      _count: true,
     },
   });
+
   return sessions;
 };
 
