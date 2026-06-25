@@ -33,7 +33,11 @@ export const getAllSessions = async (communityId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const sessions = await prisma.session.findMany({});
+  const sessions = await prisma.session.findMany({
+    include: {
+      _count: true,
+    },
+  });
   return sessions;
 };
 

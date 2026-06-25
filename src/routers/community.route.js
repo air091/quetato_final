@@ -25,7 +25,10 @@ import {
   getPlayerByIdController,
   updateStaticPlayerController,
 } from "../controllers/player.controller.js";
-import { acceptPlayerController } from "../controllers/sessionPlayer.controller.js";
+import {
+  acceptPlayerController,
+  getAllSessionPlayersController,
+} from "../controllers/sessionPlayer.controller.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -69,6 +72,11 @@ router.put("/:communityId/sessions/:sessionId/end", endSessionController);
 router.delete("/:communityId/sessions/:sessionId", deleteSessionController);
 
 // SESSION PLAYERS
+
+router.get(
+  "/:communityId/sessions/:sessionId/players",
+  getAllSessionPlayersController,
+);
 
 router.post(
   "/:communityId/sessions/:sessionId/:playerId/accept",

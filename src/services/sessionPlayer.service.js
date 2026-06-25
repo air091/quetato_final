@@ -1,7 +1,46 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
-export const getAlSessionPlayers = async () => {}; // DO THIS
+export const getAllSessionPlayers = async (communityId, sessionId) => {
+  if (!communityId || !sessionId)
+    throw new AppError("Community ID and session ID are required", 400);
+
+  // 1. Fetch the specific session and verify it belongs to this community
+  const session = await prisma.session.findUnique({
+    where: {
+      id: sessionId,
+    },
+    select: {
+      id: true,
+      communityId: true,
+    },
+  });
+
+  // 2. Safeguard checks
+  if (!session || session.communityId !== communityId) {
+    throw new AppError("Session not found in this community", 404);
+  }
+
+  // 3. Fetch the players for the correct session
+  const sessionPlayers = await prisma.sessionPlayer.findMany({
+    where: { sessionId: session.id },
+    select: {
+      player: {
+        include: {
+          player: {
+            select: {
+              id: true,
+              username: true,
+              type: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return sessionPlayers;
+};
 
 export const acceptPlayer = async (
   communityId,
