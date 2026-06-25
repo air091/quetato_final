@@ -4,7 +4,7 @@ import SubHeader from "./SubHeader";
 
 const MainContent = () => {
   return (
-    <div className="border-2 border-red-500 px-4 flex flex-col gap-y-2 py-2 overflow-hidden">
+    <div className="px-4 flex flex-col gap-y-2 py-2 overflow-hidden">
       {/* sub header */}
       <SubHeader />
 

@@ -9,7 +9,7 @@ const CommunityLayout = () => {
       <Header />
       <main className="flex min-h-0">
         <Sidebar />
-        <div className="flex-1 w-full overflow-y-auto border">
+        <div className="flex-1 w-full overflow-y-auto">
           <Outlet />
         </div>
       </main>

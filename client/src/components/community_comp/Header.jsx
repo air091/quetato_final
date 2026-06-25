@@ -37,7 +37,7 @@ const Header = ({ communityId, accessToken }) => {
   }, []);
 
   return (
-    <header className="flex items-center justify-between border px-4 py-2">
+    <header className="flex items-center justify-between px-4 py-2">
       <div>
         <h3 className="font-medium text-[20px] leading-5">{community?.name}</h3>
         <div>

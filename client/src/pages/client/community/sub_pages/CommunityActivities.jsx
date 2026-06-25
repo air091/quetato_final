@@ -95,7 +95,7 @@ const CommunityActivities = () => {
   };
 
   return (
-    <div className="border">
+    <div>
       <main>
         <div className="flex items-center py-1 px-2 gap-x-4">
           <button className="block cursor-pointer bg-gray-800 text-white px-2 py-1 rounded-md">
@@ -137,12 +137,12 @@ const CommunityActivities = () => {
           </div>
         </div>
 
-        <table className="w-full">
+        <table className="w-full mt-2">
           <thead>
-            <tr className="border-b bg-stone-50 text-stone-600 text-sm font-semibold">
+            <tr className="bg-stone-50 text-stone-600">
               {/* Clickable Header: Name */}
               <th
-                className="group p-3 text-start cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none"
+                className="group py-2 pl-2 pr-4 text-start cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
                 onClick={() => handleSort("name")}
               >
                 <div className="flex items-center justify-between gap-x-2">
@@ -165,13 +165,22 @@ const CommunityActivities = () => {
               </th>
 
               {/* Non-clickable Header */}
-              <th className="p-3 text-start select-none">Hosts</th>
-              <th className="p-3 text-center w-[98px] select-none">Sport</th>
-              <th className="p-3 text-start select-none">Location</th>
+              <th className=" py-2 text-start select-none text-[14px] font-medium">
+                Hosts
+              </th>
+              <th className="py-2 text-center w-[98px] select-none text-[14px] font-medium">
+                Sport
+              </th>
+              <th className="py-2 text-center w-[92px] select-none text-[14px] font-medium">
+                Players
+              </th>
+              <th className=" py-2 pl-2 pr-4 text-start select-none text-[14px] font-medium">
+                Location
+              </th>
 
               {/* Clickable Header: Schedule */}
               <th
-                className="group p-3 text-start w-[240px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none"
+                className="group  py-2 pl-2 pr-4 text-start w-[240px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
                 onClick={() => handleSort("schedule")}
               >
                 <div className="flex items-center justify-between gap-x-2">
@@ -194,30 +203,13 @@ const CommunityActivities = () => {
               </th>
 
               {/* Clickable Header: Status / Created At */}
-              <th
-                className="group p-3 text-center w-[140px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none"
-                onClick={() => handleSort("createdAt")}
-              >
-                <div className="flex items-center justify-between gap-x-2">
-                  <span className="w-full text-center pl-4">Created At</span>
-                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors flex-shrink-0">
-                    {sortBy === "createdAt" ? (
-                      order === "asc" ? (
-                        <ArrowUp size={14} className="text-stone-900" />
-                      ) : (
-                        <ArrowDown size={14} className="text-stone-900" />
-                      )
-                    ) : (
-                      <ArrowUpDown
-                        size={14}
-                        className="opacity-40 group-hover:opacity-100"
-                      />
-                    )}
-                  </span>
-                </div>
+              <th className="group  py-2 pl-2 pr-4 text-center w-[140px]  transition-colors duration-150 ease-in-out select-none text-[14px] font-medium">
+                Status
               </th>
 
-              <th className="p-3 text-center w-[98px] select-none">Actions</th>
+              <th className=" py-2 pl-2 pr-4 text-center w-[98px] select-none text-[14px] font-medium">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -255,6 +247,9 @@ const CommunityActivities = () => {
                     <span className="text-[12px] rounded-full bg-gray-200 px-2 py-0.5">
                       {session?.sport}
                     </span>
+                  </td>
+                  <td className="text-center p-2">
+                    {session?._count.players || 0}
                   </td>
                   <td className="text-start p-2">
                     {session?.location || "N/A"}
