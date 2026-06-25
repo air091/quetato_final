@@ -33,7 +33,7 @@ const ActivityCard = ({ session }) => {
   };
 
   return (
-    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mx-auto w-full max-w-[720px]">
+    <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mx-auto w-full max-w-[720px] cursor-pointer">
       {/* 1. Header Area: Avatar, Title, Host, Status */}
       <header className="flex items-start justify-between gap-x-4">
         <div className="flex items-start gap-x-4">
@@ -81,14 +81,6 @@ const ActivityCard = ({ session }) => {
             </div>
           </div>
         </div>
-
-        <div>
-          {user.id !== session.ownerId && (
-            <button className="bg-gray-100 cursor-pointer text-gray-700 font-bold text-[16px] px-8 py-2 rounded-xl hover:bg-gray-200 transition">
-              Request
-            </button>
-          )}
-        </div>
       </header>
 
       {/* 2. Main Area: Session Name, Description, Details */}
@@ -99,26 +91,35 @@ const ActivityCard = ({ session }) => {
             {session.name}
           </h4>
           <p className="mt-2 text-gray-600 text-[14px]">
-            {session.description ||
+            {session.description ??
               "Join the queue and start playing with nearby players."}
           </p>
 
           {/* session badges */}
           <div className="flex items-center gap-2 mt-6 flex-wrap">
-            <span className="rounded-full px-4 py-2 text-[15px] font-semibold bg-gray-100 text-gray-700">
-              {session.location}
+            {/* Player count Badge */}
+            <span className="rounded-full px-3 py-1 text-[12px] font-medium bg-gray-100 text-gray-700">
+              Players: {session._count.players ?? 0}
             </span>
 
-            {session.startAt && (
-              <span className="rounded-full px-4 py-2 text-[15px] font-semibold bg-gray-100 text-gray-700">
-                Starts {formatDate(session.startAt)}
-              </span>
-            )}
-            {session.endAt && (
-              <span className="rounded-full px-4 py-2 text-[15px] font-semibold bg-gray-100 text-gray-700">
-                Ends {formatDate(session.endAt)}
-              </span>
-            )}
+            {/* Location Badge */}
+            <span className="rounded-full px-3 py-1 text-[12px] font-medium bg-gray-100 text-gray-700">
+              {session.location ?? "TBA"}
+            </span>
+
+            {/* Start Date Badge */}
+            <span className="rounded-full px-3 py-1 text-[12px] font-medium bg-gray-100 text-gray-700">
+              {session.startAt
+                ? `Starts: ${formatDate(session.startAt)}`
+                : "Starts any time"}
+            </span>
+
+            {/* End Date Badge */}
+            <span className="rounded-full px-3 py-1 text-[12px] font-medium bg-gray-100 text-gray-700">
+              {session.endAt
+                ? `Ends: ${formatDate(session.endAt)}`
+                : "Ends any time"}
+            </span>
           </div>
         </div>
       </main>

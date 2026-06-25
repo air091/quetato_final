@@ -41,9 +41,7 @@ const HomeActivities = () => {
 
   // 4. RENDERING SAFETY LAYER
   return (
-    <div>
-      <h2 className="text-[18] font-medium my-4">Activities</h2>
-
+    <div className="w-full max-w-[720px] mx-auto my-4">
       {/* Optional: Add a subtle placeholder while Auth is validating in the background */}
       {loading && (
         <p className="text-sm text-gray-500">Checking credentials...</p>
@@ -56,7 +54,7 @@ const HomeActivities = () => {
 
       {/* Optional chaining (?.) ensures that even if sessions somehow shifts to undefined, it won't crash */}
       {sessions?.map((session) => (
-        <div key={session.id} className="p-2 border-b">
+        <div key={session.id} className="mt-4">
           <ActivityCard session={session} />
         </div>
       ))}

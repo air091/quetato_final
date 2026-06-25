@@ -31,10 +31,10 @@ export const getAllPublicSessions = async () => {
       players: {
         select: {
           id: true,
-          player: {
+          sessionPlayer: {
             select: {
               id: true,
-              player: {
+              communityPlayer: {
                 select: { id: true, username: true },
               },
             },
@@ -84,6 +84,7 @@ export const createSession = async (
   communityId,
   name,
   sport,
+  description = "Join the queue and start playing with nearby players.",
   location = "TBA",
   startAt,
   endAt,

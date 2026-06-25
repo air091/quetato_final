@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 
 const HomeHeader = () => {
   return (
-    <div>
+    <div className="w-full max-w-[720px] mx-auto">
       <header>
         <h1 className="text-[18] font-medium my-2">Home</h1>
       </header>

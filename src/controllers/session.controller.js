@@ -77,11 +77,12 @@ export const getSessionByIdController = async (request, response) => {
 export const createSessionController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    const { name, sport, location, startAt, endAt } = request.body;
+    const { name, sport, description, location, startAt, endAt } = request.body;
     const session = await createSession(
       communityId,
       name,
       sport,
+      description,
       location,
       startAt,
       endAt,
