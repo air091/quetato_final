@@ -22,6 +22,8 @@ import SessionLayout from "./layouts/SessionLayout";
 import Players from "./pages/client/session/Players";
 import Game from "./pages/client/session/Game";
 import Payment from "./pages/client/session/Payment";
+import AllPlayers from "./pages/client/session/sub_pages/AllPlayers";
+import RequestPlayers from "./pages/client/session/sub_pages/RequestPlayers";
 
 const router = createBrowserRouter([
   {
@@ -121,6 +123,20 @@ const router = createBrowserRouter([
           {
             path: "players",
             element: <Players />,
+            children: [
+              {
+                index: true,
+                element: <Navigate to="all" replace />,
+              },
+              {
+                path: "all",
+                element: <AllPlayers />,
+              },
+              {
+                path: "requests",
+                element: <RequestPlayers />,
+              },
+            ],
           },
           {
             path: "game",

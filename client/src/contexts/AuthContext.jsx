@@ -204,9 +204,8 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     isInitialMount.current = false;
     try {
-      await fetch(`${API_URL}/logout`, {
+      await fetchWithAuth(`${API_URL}/logout`, {
         method: "POST",
-        credentials: "include",
       });
     } catch (error) {
       console.error("Logout error on server:", error);

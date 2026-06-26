@@ -25,24 +25,34 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
   const sessionPlayers = await prisma.sessionPlayer.findMany({
     where: { sessionId: session.id },
     select: {
+      id: true,
+      status: true,
+      requestedAt: true,
+      acceptedAt: true,
+
+      // The target player's profile information
       sessionPlayer: {
-        include: {
-          communityPlayer: {
-            select: {
-              id: true,
-              username: true,
-              type: true,
-            },
-          },
-        },
-      },
-      adminAccept: {
-        include: {
+        select: {
+          id: true,
+          role: true,
           communityPlayer: { select: { id: true, username: true, type: true } },
         },
       },
-      updatedBy: {
-        include: {
+
+      // The administrator who accepted the player
+      adminAccept: {
+        select: {
+          id: true,
+          role: true,
+          communityPlayer: { select: { id: true, username: true, type: true } },
+        },
+      },
+
+      // 🌟 FIXED: Changed from 'updatedBy' scalar to 'adminUpdate' relation
+      adminUpdate: {
+        select: {
+          id: true,
+          role: true,
           communityPlayer: { select: { id: true, username: true, type: true } },
         },
       },
