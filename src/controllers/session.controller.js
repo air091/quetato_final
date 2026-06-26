@@ -15,6 +15,7 @@ import {
   createMatchCourt,
   createQueueCourt,
   getAllCourts,
+  updateMatchCourtName,
 } from "../services/game.service.js";
 
 export const getAllPublicSessionsController = async (request, response) => {
@@ -285,6 +286,36 @@ export const createMatchCourtController = async (request, response) => {
     return response.status(201).json({ success: true, court });
   } catch (error) {
     console.error("Create match court failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const updateMatchCourtNameController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+    const { name } = request.body;
+
+    const court = await updateMatchCourtName(
+      communityId,
+      sessionId,
+      courtId,
+      name,
+      request.user.sub,
+    );
+
+    return response.status(201).json({ success: true, court });
+  } catch (error) {
+    console.error("Update match court name failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
