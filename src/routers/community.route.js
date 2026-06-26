@@ -13,11 +13,13 @@ import {
   createSessionController,
   deleteSessionController,
   endSessionController,
+  getAllCourtsController,
   getAllPublicSessionsController,
   getAllSessionsController,
   getSessionByIdController,
   sessionDashboardController,
   startSessionController,
+  updateCourtTypeController,
   updateSessionController,
 } from "../controllers/session.controller.js";
 import {
@@ -91,6 +93,11 @@ router.post(
 
 // SESSION GAMES
 
+router.get("/:communityId/sessions/:sessionId/courts", getAllCourtsController);
 router.post("/:communityId/sessions/:sessionId/games", createGameController);
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/type",
+  updateCourtTypeController,
+);
 
 export default router;

@@ -1,21 +1,55 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
-export const createGame = async (
+export const getAllCourts = async (sessionId) => {
+  if (!sessionId) {
+    throw new AppError("Session ID is required", 400);
+  }
+
+  // Fetch all courts under the given session in one simple findMany query
+  return await prisma.court.findMany({
+    where: {
+      sessionId: sessionId,
+    },
+    include: {
+      // Safely join up the relations to get the User profile of who created it
+      creator: {
+        select: {
+          id: true,
+          sessionPlayer: {
+            select: {
+              communityPlayer: {
+                select: {
+                  username: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    // Keep it organized chronologically for your frontend UI grid
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+};
+
+export const createMatchCourt = async (
   communityId,
   sessionId,
   name,
-  type,
   authorizedId,
 ) => {
   if (!communityId || !sessionId) {
     throw new AppError("Community ID and Session ID are required", 400);
   }
 
-  const cleanName = name?.trim() || "Court";
+  // Base fallback name if none is explicitly provided by the user
+  const cleanName = name?.trim() || "Match Court";
 
   return await prisma.$transaction(async (tx) => {
-    // 1. Concurrent check: Fetch attendee context and existing court count
+    // 1. Concurrent Check: Verify player credentials and get current court count
     const [authorizingAttendee, courtCount] = await Promise.all([
       tx.sessionPlayer.findFirst({
         where: {
@@ -26,9 +60,9 @@ export const createGame = async (
           },
         },
         select: {
-          id: true, // Needed for Court's 'createdBy' field
+          id: true, // Needed for Court 'createdBy' fields
           sessionPlayer: {
-            select: { role: true }, // Fetch their community role
+            select: { role: true },
           },
         },
       }),
@@ -37,7 +71,7 @@ export const createGame = async (
       }),
     ]);
 
-    // 2. Security Guardrails
+    // 2. Auth Guards
     if (!authorizingAttendee) {
       throw new AppError(
         "Forbidden: You are not part of this session's roster",
@@ -45,100 +79,31 @@ export const createGame = async (
       );
     }
 
-    // Restrict access explicitly to privileged roles
     const allowedRoles = ["admin", "owner", "host"];
     if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
       throw new AppError(
-        "Forbidden: Only admins, owners, or hosts can manage courts",
+        "Forbidden: Only admins, owners, or hosts can create a match court",
         403,
       );
     }
 
-    // 3. Dynamic Sequential Naming Fallback (e.g., "Court 1")
+    // 3. Dynamic Sequential Naming (e.g., "Match Court 1")
     const finalName = name?.trim()
       ? cleanName
       : `${cleanName} ${courtCount + 1}`;
 
-    // 4. Create and return the Court
+    // 4. Create and return the Court with hardcoded 'match' type
     return await tx.court.create({
       data: {
         sessionId: sessionId,
         name: finalName,
-        type: type,
+        type: "match", // Hardcoded directly to enforce the court layout rule
         createdBy: authorizingAttendee.id,
       },
     });
   });
 };
 
-export const updateCourtType = async (
-  communityId,
-  sessionId,
-  courtId,
-  newType, // "queue" or "match" (values from your CourtType enum)
-  authorizedId, // User ID of the person making the request
-) => {
-  if (!communityId || !sessionId || !courtId || !newType) {
-    throw new AppError(
-      "Community ID, Session ID, Court ID, and Type are required",
-      400,
-    );
-  }
+export const createQueueCourt = async () => {};
 
-  return await prisma.$transaction(async (tx) => {
-    // 1. Fetch the user's session attendee record to check their role
-    const authorizingAttendee = await tx.sessionPlayer.findFirst({
-      where: {
-        sessionId: sessionId,
-        member: {
-          communityId: communityId,
-          userId: authorizedId,
-        },
-      },
-      select: {
-        id: true, // Needed to mark who updated the court
-        sessionPlayer: {
-          select: { role: true },
-        },
-      },
-    });
-
-    // 2. Auth Guardrails
-    if (!authorizingAttendee) {
-      throw new AppError(
-        "Forbidden: You are not checked into this session",
-        403,
-      );
-    }
-
-    const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
-      throw new AppError(
-        "Forbidden: Only admins, owners, or hosts can modify court types",
-        403,
-      );
-    }
-
-    // 3. Update the court type and track who did it
-    const updatedCourt = await tx.court.updateMany({
-      where: {
-        id: courtId,
-        sessionId: sessionId, // Ensures the court actually belongs to this specific session context
-      },
-      data: {
-        type: newType,
-        updatedBy: authorizingAttendee.id, // Maps to your schema's 'updater' relation
-      },
-    });
-
-    // If no row was affected, it means the courtId doesn't exist under this sessionId
-    if (updatedCourt.count === 0) {
-      throw new AppError("Court not found in this session", 404);
-    }
-
-    // Fetch and return the freshly updated court item
-    return await tx.court.findUnique({
-      where: { id: courtId },
-    });
-  });
-};
+export const updateQueueCourtToMatch = async () => {};
