@@ -9,6 +9,7 @@ import {
   updateCommunityByOwnerController,
 } from "../controllers/community.controller.js";
 import {
+  createGameController,
   createSessionController,
   deleteSessionController,
   endSessionController,
@@ -87,5 +88,9 @@ router.post(
   "/:communityId/sessions/:sessionId/:communityPlayerId/accept",
   acceptPlayerController,
 );
+
+// SESSION GAMES
+
+router.post("/:communityId/sessions/:sessionId/games", createGameController);
 
 export default router;
