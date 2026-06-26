@@ -135,8 +135,9 @@ model SessionPlayer {
   adminAccept       CommunityPlayer? @relation("AdminAccept", fields: [acceptedBy], references: [id], onDelete: SetNull)
   adminUpdate       CommunityPlayer? @relation("AdminUpdate", fields: [updatedBy], references: [id], onDelete: SetNull)
 
-  createdCourts            Court[] @relation("CourtCreator")
+  createdCourts      Court[] @relation("CourtCreator")
   updatedCourts      Court[] @relation("CourtUpdater")
+  courtSlot          CourtSlot[]
 
   @@unique([sessionId, playerId])
   @@index([playerId])
@@ -159,9 +160,29 @@ model Court {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   session             Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  creator   SessionPlayer @relation("CourtCreator", fields: [createdBy], references: [id])
-  updater   SessionPlayer? @relation("CourtUpdater", fields: [updatedBy], references: [id])
+  creator             SessionPlayer @relation("CourtCreator", fields: [createdBy], references: [id])
+  updater             SessionPlayer? @relation("CourtUpdater", fields: [updatedBy], references: [id])
+
+  slots               CourtSlot[]
 
   @@index([sessionId])
 }
 
+enum Team {
+  a
+  b
+}
+
+model CourtSlot {
+  id                  String @id @default(cuid())
+  courtId             String
+  sessionPlayerId     String
+  position            Int
+  team                Team
+  isWin               Boolean?
+  court               Court @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  sessionPlayer       SessionPlayer @relation(fields: [sessionPlayerId], references: [id], onDelete: Cascade)
+
+  @@index([courtId])
+  @@index([sessionPlayerId])
+}

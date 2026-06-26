@@ -12,6 +12,7 @@ import {
   updateSession,
 } from "../services/session.service.js";
 import {
+  assignPlayerToSlot,
   createMatchCourt,
   createQueueCourt,
   deleteMatchCourt,
@@ -19,6 +20,7 @@ import {
   getAllCourts,
   updateMatchCourtName,
   updateQueueCourtName,
+  updateQueueCourtToMatch,
 } from "../services/game.service.js";
 
 export const getAllPublicSessionsController = async (request, response) => {
@@ -452,7 +454,7 @@ export const updateQueueCourtToMatchController = async (request, response) => {
   try {
     const { communityId, sessionId, courtId } = request.params;
 
-    const court = await createQueueCourt(
+    const court = await updateQueueCourtToMatch(
       communityId,
       sessionId,
       courtId,
@@ -462,6 +464,38 @@ export const updateQueueCourtToMatchController = async (request, response) => {
     return response.status(200).json({ success: true, court });
   } catch (error) {
     console.error("Update queue to match court failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const assignPlayerToSlotController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+    const { sessionPlayerId, position } = request.body;
+    const authorizedId = request.user.id;
+
+    const updatedSlotsState = await assignPlayerToSlot(
+      communityId,
+      sessionId,
+      courtId,
+      sessionPlayerId,
+      Number(position),
+      request.user.sub,
+    );
+
+    return response.status(201).json({ success: true, updatedSlotsState });
+  } catch (error) {
+    console.error("Assign player to slot failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 

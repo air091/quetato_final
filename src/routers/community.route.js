@@ -9,6 +9,7 @@ import {
   updateCommunityByOwnerController,
 } from "../controllers/community.controller.js";
 import {
+  assignPlayerToSlotController,
   createMatchCourtController,
   createQueueCourtController,
   createSessionController,
@@ -132,6 +133,11 @@ router.delete(
 router.patch(
   "/:communityId/sessions/:sessionId/courts/:courtId/convert-to-match",
   createQueueCourtController,
+);
+
+router.post(
+  "/:communityId/sessions/:sessionId/courts/:courtId/slots/assign",
+  assignPlayerToSlotController,
 );
 
 export default router;

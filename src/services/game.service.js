@@ -28,6 +28,7 @@ export const getAllCourts = async (sessionId, type) => {
               },
             },
           },
+          slots: true,
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -556,6 +557,176 @@ export const updateQueueCourtToMatch = async (
         type: "match",
         updatedBy: authorizingAttendee.id,
       },
+    });
+  });
+};
+
+export const assignPlayerToSlot = async (
+  communityId,
+  sessionId,
+  targetCourtId,
+  sessionPlayerId,
+  targetPosition, // Expects 0, 1, 2, or 3
+  authorizedId,
+) => {
+  if (![0, 1, 2, 3].includes(targetPosition)) {
+    throw new AppError("Invalid slot position. Must be between 0 and 3.", 400);
+  }
+
+  const targetTeam = targetPosition <= 1 ? "a" : "b";
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch entire context concurrently (Authorization, Courts Status, All Active Slots, and Player Validation)
+    const [
+      authorizingAttendee,
+      allSessionCourts,
+      allActiveSlots,
+      playerExistsInSession,
+    ] = await Promise.all([
+      tx.sessionPlayer.findFirst({
+        where: {
+          sessionId,
+          sessionPlayer: { communityId, userId: authorizedId },
+        },
+        select: { sessionPlayer: { select: { role: true } } },
+      }),
+      tx.court.findMany({
+        where: { sessionId },
+        select: { id: true, startedAt: true },
+      }),
+      tx.courtSlot.findMany({
+        where: { court: { sessionId } },
+      }),
+      tx.sessionPlayer.findFirst({
+        where: {
+          id: sessionPlayerId,
+          sessionId: sessionId,
+          status: "accepted",
+        },
+      }),
+    ]);
+
+    // 2. Core Security & Authorization Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not checked into this session",
+        403,
+      );
+    }
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only administrators or hosts can adjust lineups",
+        403,
+      );
+    }
+
+    // 3. Find our specific targets in memory
+    const targetCourt = allSessionCourts.find((c) => c.id === targetCourtId);
+    if (!targetCourt) {
+      throw new AppError("Target court not found in this session", 404);
+    }
+
+    // Integrity Guard: Verify the incoming player actually exists in this session
+    if (!playerExistsInSession) {
+      throw new AppError(
+        `Invalid Player: The provided sessionPlayerId (${sessionPlayerId}) does not exist or is not accepted in this session.`,
+        400,
+      );
+    }
+
+    // Locate where the incoming player currently sits (if anywhere)
+    const sourceSlot = allActiveSlots.find(
+      (s) => s.sessionPlayerId === sessionPlayerId,
+    );
+
+    // 🌟 FIXED: Defined 'occupiedSlot' cleanly back into scope here
+    const occupiedSlot = allActiveSlots.find(
+      (s) => s.courtId === targetCourtId && s.position === targetPosition,
+    );
+
+    // 4. Live Match Rule Guards
+    // Prevent actions if the target court is already live
+    if (targetCourt.startedAt !== null) {
+      throw new AppError(
+        "Forbidden: Cannot alter lineups on a live match court",
+        400,
+      );
+    }
+    // Prevent actions if the player's current court is already live
+    if (sourceSlot) {
+      const sourceCourt = allSessionCourts.find(
+        (c) => c.id === sourceSlot.courtId,
+      );
+      if (sourceCourt?.startedAt !== null) {
+        throw new AppError(
+          "Forbidden: Cannot move a player out of an active live match",
+          400,
+        );
+      }
+    }
+
+    // 5. Execute the Intelligent Assignment Matrix
+
+    // Case 1: SWAP — Incoming player is on a court, and the target slot is occupied
+    if (sourceSlot && occupiedSlot) {
+      await Promise.all([
+        tx.courtSlot.update({
+          where: { id: sourceSlot.id },
+          data: { sessionPlayerId: occupiedSlot.sessionPlayerId },
+        }),
+        tx.courtSlot.update({
+          where: { id: occupiedSlot.id },
+          data: { sessionPlayerId: sourceSlot.sessionPlayerId },
+        }),
+      ]);
+    }
+
+    // Case 2: MOVE — Incoming player is on a court, but the target slot is completely empty
+    else if (sourceSlot && !occupiedSlot) {
+      await Promise.all([
+        tx.courtSlot.delete({ where: { id: sourceSlot.id } }),
+        tx.courtSlot.create({
+          data: {
+            courtId: targetCourtId,
+            sessionPlayerId: sourceSlot.sessionPlayerId,
+            position: targetPosition,
+            team: targetTeam,
+          },
+        }),
+      ]);
+    }
+
+    // Case 3: KICK/REPLACE — Player is from the lobby pool, but targets an occupied slot
+    else if (!sourceSlot && occupiedSlot) {
+      await Promise.all([
+        tx.courtSlot.delete({ where: { id: occupiedSlot.id } }),
+        tx.courtSlot.create({
+          data: {
+            courtId: targetCourtId,
+            sessionPlayerId: sessionPlayerId,
+            position: targetPosition,
+            team: targetTeam,
+          },
+        }),
+      ]);
+    }
+
+    // Case 4: FRESH ASSIGNMENT — Player is from the lobby pool, moving into an empty slot
+    else {
+      await tx.courtSlot.create({
+        data: {
+          courtId: targetCourtId,
+          sessionPlayerId: sessionPlayerId,
+          position: targetPosition,
+          team: targetTeam,
+        },
+      });
+    }
+
+    // Return the updated states of the entire court collection for easy frontend re-rendering
+    return await tx.courtSlot.findMany({
+      where: { court: { sessionId } },
     });
   });
 };
