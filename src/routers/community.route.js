@@ -12,6 +12,8 @@ import {
   createMatchCourtController,
   createQueueCourtController,
   createSessionController,
+  deleteMatchCourtController,
+  deleteQueueCourtController,
   deleteSessionController,
   endSessionController,
   getAllCourtsController,
@@ -20,6 +22,8 @@ import {
   getSessionByIdController,
   sessionDashboardController,
   startSessionController,
+  updateMatchCourtNameController,
+  updateQueueCourtNameController,
   updateSessionController,
 } from "../controllers/session.controller.js";
 import {
@@ -100,9 +104,29 @@ router.post(
   createMatchCourtController,
 );
 
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/match-name",
+  updateMatchCourtNameController,
+);
+
+router.delete(
+  "/:communityId/sessions/:sessionId/courts/:courtId/match",
+  deleteMatchCourtController,
+);
+
 router.post(
   "/:communityId/sessions/:sessionId/courts/queue",
   createQueueCourtController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/queue-name",
+  updateQueueCourtNameController,
+);
+
+router.delete(
+  "/:communityId/sessions/:sessionId/courts/:courtId/queue",
+  deleteQueueCourtController,
 );
 
 router.patch(
