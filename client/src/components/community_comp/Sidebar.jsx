@@ -56,13 +56,13 @@ const Sidebar = () => {
         </li>
         <li>
           <NavLink
-            to="/community/activities"
+            to="/community/sessions"
             end
             className={({ isActive }) =>
               `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
             }
           >
-            <Newspaper size={20} /> Activities
+            <Newspaper size={20} /> Sessions
           </NavLink>
         </li>
         <li>

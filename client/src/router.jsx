@@ -18,6 +18,10 @@ import CommunityPlayers from "./pages/client/community/sub_pages/CommunityPlayer
 import CommunityDetails from "./pages/client/community/sub_pages/CommunityDetails";
 import All from "./pages/client/community/sub_pages/players_pages/All";
 import Dashboard from "./pages/client/community/sub_pages/players_pages/Dashboard";
+import SessionLayout from "./layouts/SessionLayout";
+import Players from "./pages/client/session/Players";
+import Game from "./pages/client/session/Game";
+import Payment from "./pages/client/session/Payment";
 
 const router = createBrowserRouter([
   {
@@ -52,10 +56,10 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/community/activities" replace />,
+            element: <Navigate to="/community/sessions" replace />,
           },
           {
-            path: "activities",
+            path: "sessions",
             element: <CommunityActivity />,
           },
           {
@@ -68,10 +72,10 @@ const router = createBrowserRouter([
             children: [
               {
                 index: true,
-                element: <Navigate to="activities" replace />,
+                element: <Navigate to="sessions" replace />,
               },
               {
-                path: "activities",
+                path: "sessions",
                 element: <CommunityActivities />,
               },
               {
@@ -97,6 +101,34 @@ const router = createBrowserRouter([
                 element: <CommunityDetails />,
               },
             ],
+          },
+        ],
+      },
+
+      // SESSION
+      {
+        path: "/community/:communityId/sessions/:sessionId",
+        element: <SessionLayout />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="dashboard" replace />,
+          },
+          {
+            path: "dashboard",
+            element: <Dashboard />,
+          },
+          {
+            path: "players",
+            element: <Players />,
+          },
+          {
+            path: "game",
+            element: <Game />,
+          },
+          {
+            path: "payment",
+            element: <Payment />,
           },
         ],
       },

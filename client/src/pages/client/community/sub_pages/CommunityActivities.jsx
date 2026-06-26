@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../../hooks/useAuth";
 import {
   SquarePen,
@@ -30,6 +30,7 @@ const CommunityActivities = () => {
   const [sortBy, setSortBy] = useState("name");
   const [order, setOrder] = useState("asc");
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   // ==================== ADDED DEBOUNCE LOGIC HERE ====================
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -306,6 +307,9 @@ const CommunityActivities = () => {
               return (
                 <tr
                   key={session.id}
+                  onClick={() =>
+                    navigate(`/community/${communityId}/sessions/${session.id}`)
+                  }
                   className="odd:bg-stone-100 cursor-pointer hover:bg-gray-200"
                 >
                   {/* NAME */}

@@ -6,13 +6,13 @@ const SubHeader = () => {
     <header>
       <div className="flex items-center gap-x-4 py-1">
         <NavLink
-          to="activities"
+          to="sessions"
           end
           className={({ isActive }) =>
             `flex items-center gap-x-4 hover:border-b-2 hover:border-gray-400 px-3 py-1 ${isActive ? "border-b-2 border-gray-500" : null}`
           }
         >
-          Activities
+          Sessions
         </NavLink>
         <NavLink
           to="players"
