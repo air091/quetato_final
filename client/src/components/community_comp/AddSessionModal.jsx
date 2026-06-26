@@ -21,6 +21,12 @@ const AddSessionModal = ({
   const createSession = useCallback(async () => {
     if (!accessToken) return;
 
+    const formattedPayload = {
+      ...session,
+      startAt: session.startAt ? new Date(session.startAt).toISOString() : null,
+      endAt: session.endAt ? new Date(session.endAt).toISOString() : null,
+    };
+
     try {
       const response = await fetch(
         `http://localhost:8000/api/communities/${communityId}/sessions`,
@@ -31,7 +37,7 @@ const AddSessionModal = ({
             Authorization: `Bearer ${accessToken}`,
           },
           credentials: "include",
-          body: JSON.stringify(session), // Cleaned up: sends the entire object directly
+          body: JSON.stringify(formattedPayload), // Cleaned up: sends the entire object directly
         },
       );
 

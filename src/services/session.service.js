@@ -168,7 +168,6 @@ export const createSession = async (
     description = description.trim();
   }
 
-  // ✅ FIX: Clean and apply fallback if string is empty, null, or undefined
   if (!location || location.trim().length === 0) {
     location = "TBA";
   } else {
@@ -198,7 +197,6 @@ export const createSession = async (
       throw new AppError("Forbidden", 403);
     }
 
-    // Adjust "host" vs "owner" depending on your finalized enum
     const allowedRoles = ["admin", "owner"];
     if (!allowedRoles.includes(authorizedPlayer.role)) {
       throw new AppError("Forbidden", 403);
@@ -212,7 +210,10 @@ export const createSession = async (
         sport: sport,
         description,
         location,
-        createdBy: authorizedId, // References User ID
+        // ✅ FIX: Ensure Prisma gets actual Date objects or null, not raw ISO strings
+        startAt: startAt ? new Date(startAt) : null,
+        endAt: endAt ? new Date(endAt) : null,
+        createdBy: authorizedId,
       },
     });
 
@@ -220,22 +221,21 @@ export const createSession = async (
     const adminsToAutoAdd = await tx.communityPlayer.findMany({
       where: {
         communityId: community.id,
-        role: { in: ["admin", "owner"] }, // Correct Prisma multi-value syntax
+        role: { in: ["admin", "owner"] },
       },
     });
 
-    // 5. Bulk create session player entries using map + Promise.all
-    await Promise.all(
-      adminsToAutoAdd.map((admin) =>
-        tx.sessionPlayer.create({
-          data: {
-            sessionId: session.id,
-            playerId: admin.id, // CommunityPlayer ID
-            acceptedAt: new Date(),
-          },
-        }),
-      ),
-    );
+    // 5. Bulk create session player entries
+    // Performance Pro-Tip: You can use `createMany` here instead of loop-mapping Promise.all for speed.
+    if (adminsToAutoAdd.length > 0) {
+      await tx.sessionPlayer.createMany({
+        data: adminsToAutoAdd.map((admin) => ({
+          sessionId: session.id,
+          playerId: admin.id,
+          acceptedAt: new Date(),
+        })),
+      });
+    }
 
     return session;
   });

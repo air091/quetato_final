@@ -146,6 +146,23 @@ const CommunityActivities = () => {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+
+    // Check if the date string parsed successfully
+    if (isNaN(date.getTime())) return "";
+
+    // Extract month, day, and year
+    // padStart(2, "0") ensures single digits get a leading zero (e.g., 6 becomes 06)
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+
+    return `${month}-${day}-${year}`;
+  };
+
   return (
     <div>
       <main>
@@ -229,7 +246,7 @@ const CommunityActivities = () => {
               </th>
 
               {/* Non-clickable Header */}
-              <th className=" py-2 text-start select-none text-[14px] font-medium">
+              <th className=" py-2 pl-2 text-start select-none text-[14px] font-medium">
                 Hosts
               </th>
               <th className="py-2 text-center w-[98px] select-none text-[14px] font-medium">
@@ -238,13 +255,13 @@ const CommunityActivities = () => {
               <th className="py-2 text-center w-[92px] select-none text-[14px] font-medium">
                 Players
               </th>
-              <th className=" py-2 pl-2 pr-4 text-start select-none text-[14px] font-medium">
+              <th className=" py-2 pl-2 pr-4 text-start select-none text-[14px] w-[180px] font-medium">
                 Location
               </th>
 
               {/* Clickable Header: Schedule */}
               <th
-                className="group  py-2 pl-2 pr-4 text-start w-[240px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
+                className="group  py-2 pl-2 pr-4 text-start w-[210px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
                 onClick={() => handleSort("schedule")}
               >
                 <div className="flex items-center justify-between gap-x-2">
@@ -293,7 +310,7 @@ const CommunityActivities = () => {
                 >
                   {/* NAME */}
                   <td className="text-start p-2">
-                    <span className="block w-full truncate">
+                    <span className="block w-full max-w-[280px] border truncate">
                       {session?.name}
                     </span>
                   </td>
@@ -323,7 +340,9 @@ const CommunityActivities = () => {
 
                   {/* LOCATION */}
                   <td className="text-start p-2">
-                    {session?.location || "N/A"}
+                    <span className="block w-full max-w-[180px] border truncate">
+                      {session?.location || "N/A"}
+                    </span>
                   </td>
 
                   {/* SCHEDULE */}
@@ -332,13 +351,13 @@ const CommunityActivities = () => {
                       <span className="block">
                         Starts at:{" "}
                         <span className="font-medium">
-                          {session?.startAt ?? "Anytime"}
+                          {formatDate(session?.startAt) || "Anytime"}
                         </span>
                       </span>
                       <span className="block text-[12px] text-gray-700">
                         Ends at:{" "}
                         <span className="font-medium">
-                          {session?.endAt ?? "Anytime"}
+                          {formatDate(session?.endAt) || "Anytime"}
                         </span>
                       </span>
                     </div>
