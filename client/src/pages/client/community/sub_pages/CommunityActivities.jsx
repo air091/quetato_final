@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Modal from "../../../../components/createPortal";
 import AddSessionModal from "../../../../components/community_comp/AddSessionModal";
+import EditSessionModal from "../../../../components/community_comp/EditSessionModal";
 
 const CommunityActivities = () => {
   const { accessToken } = useAuth();
@@ -21,7 +22,8 @@ const CommunityActivities = () => {
   const [sessions, setSessions] = useState([]);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
     useState(false);
-  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+  const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
 
   // 1. Filter and Sorting States (Default to sorting by Name A-Z)
   const [status, setStatus] = useState("");
@@ -354,7 +356,13 @@ const CommunityActivities = () => {
                   {/* ACTIONS */}
                   <td className="text-start p-2">
                     <div className="flex items-center justify-center gap-x-2">
-                      <button className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-blue-500 rounded-md">
+                      <button
+                        onClick={() => {
+                          setSelectedSession(session);
+                          setIsEditSessionModalOpen(true);
+                        }}
+                        className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-blue-500 rounded-md"
+                      >
                         <SquarePen size={20} />
                       </button>
                       <button
@@ -370,14 +378,15 @@ const CommunityActivities = () => {
             })}
           </tbody>
         </table>
-        <Modal>
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white p-6 rounded-md shadow-lg max-w-[520px] w-full z-999">
-              <header></header>
-              <main></main>
-            </div>
-          </div>
-        </Modal>
+
+        {/* EDIT SESSION MODAL */}
+        <EditSessionModal
+          accessToken={accessToken}
+          communityId={communityId}
+          isEditSessionModalOpen={isEditSessionModalOpen}
+          setIsEditSessionModalOpen={setIsEditSessionModalOpen}
+          session={selectedSession}
+        />
       </main>
     </div>
   );

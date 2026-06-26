@@ -106,6 +106,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
       id: true,
       name: true,
       sport: true,
+      description: true,
       location: true,
       startAt: true,
       endAt: true,
@@ -209,7 +210,8 @@ export const createSession = async (
         communityId: community.id,
         name: name.trim(),
         sport: sport,
-        location: location?.trim() || null,
+        description,
+        location,
         createdBy: authorizedId, // References User ID
       },
     });
