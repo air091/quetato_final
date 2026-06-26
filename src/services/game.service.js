@@ -131,7 +131,79 @@ export const createMatchCourt = async (
   });
 };
 
-export const updateMatchCourtName = async () => {};
+export const updateMatchCourtName = async (
+  communityId,
+  sessionId,
+  courtId,
+  newName,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !courtId || !newName?.trim()) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, and a valid Name are required",
+      400,
+    );
+  }
+
+  const cleanName = newName.trim();
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Verify player credentials and roles
+    const authorizingAttendee = await tx.sessionPlayer.findFirst({
+      where: {
+        sessionId: sessionId,
+        sessionPlayer: {
+          communityId: communityId,
+          userId: authorizedId,
+        },
+      },
+      select: {
+        id: true,
+        sessionPlayer: { select: { role: true } },
+      },
+    });
+
+    // 2. Security Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can rename courts",
+        403,
+      );
+    }
+
+    // 3. Update the court name safely
+    // Adding type: "match" in the where clause guarantees you aren't accidentally renaming a queue court here
+    const updatedCourt = await tx.court.updateMany({
+      where: {
+        id: courtId,
+        sessionId: sessionId,
+        type: "match",
+      },
+      data: {
+        name: cleanName,
+        updatedBy: authorizingAttendee.id,
+      },
+    });
+
+    // 4. Verification Check
+    if (updatedCourt.count === 0) {
+      throw new AppError("Match court not found in this session", 404);
+    }
+
+    // Return the fresh court details
+    return await tx.court.findUnique({
+      where: { id: courtId },
+    });
+  });
+};
 
 export const deleteMatchCourt = async () => {};
 
