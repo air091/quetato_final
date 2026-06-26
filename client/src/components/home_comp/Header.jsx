@@ -1,6 +1,7 @@
 import React from "react";
 import { Menu } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+import { NavLink } from "react-router-dom";
 
 const Header = () => {
   const { user } = useAuth();
@@ -13,12 +14,12 @@ const Header = () => {
             <Menu size={20} />
           </button>
         </div>
-        <h1 className="relative font-bold w-fit">
+        <NavLink to="/" className="flex items-center gap-x-2 font-bold w-fit">
           QuetatoSport
-          <span className="absolute bg-red-500 text-white text-[8px] -right-10 font-medium px-2 py-0.5 rounded-full bottom-1">
+          <span className="bg-red-500 text-white text-[8px] -right-10 font-medium px-2 py-0.5 rounded-full bottom-1">
             Beta
           </span>
-        </h1>
+        </NavLink>
       </div>
       <div>
         <span className="cursor-pointer">{user.username}</span>
