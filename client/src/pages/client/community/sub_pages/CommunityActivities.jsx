@@ -310,7 +310,7 @@ const CommunityActivities = () => {
                 >
                   {/* NAME */}
                   <td className="text-start p-2">
-                    <span className="block w-full max-w-[280px] border truncate">
+                    <span className="block w-full max-w-[280px] truncate">
                       {session?.name}
                     </span>
                   </td>
@@ -340,7 +340,7 @@ const CommunityActivities = () => {
 
                   {/* LOCATION */}
                   <td className="text-start p-2">
-                    <span className="block w-full max-w-[180px] border truncate">
+                    <span className="block w-full max-w-[180px] truncate">
                       {session?.location || "N/A"}
                     </span>
                   </td>

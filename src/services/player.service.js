@@ -34,7 +34,7 @@ export const getAllPlayers = async (communityId, type = "all") => {
       ...userFilter,
     },
     include: {
-      player: {
+      communityPlayer: {
         select: {
           id: true,
           username: true,
