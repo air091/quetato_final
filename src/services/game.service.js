@@ -205,7 +205,69 @@ export const updateMatchCourtName = async (
   });
 };
 
-export const deleteMatchCourt = async () => {};
+export const deleteMatchCourt = async (
+  communityId,
+  sessionId,
+  courtId,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !courtId) {
+    throw new AppError(
+      "Community ID, Session ID, and Court ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Verify player credentials and roles
+    const authorizingAttendee = await tx.sessionPlayer.findFirst({
+      where: {
+        sessionId: sessionId,
+        sessionPlayer: {
+          communityId: communityId,
+          userId: authorizedId,
+        },
+      },
+      select: {
+        id: true,
+        sessionPlayer: { select: { role: true } },
+      },
+    });
+
+    // 2. Security Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can delete courts",
+        403,
+      );
+    }
+
+    // 3. Delete the match court
+    // Explicitly filtering by type: "match" ensures a user cannot misuse this endpoint to drop a queue court
+    const deletedCourt = await tx.court.deleteMany({
+      where: {
+        id: courtId,
+        sessionId: sessionId,
+        type: "match",
+      },
+    });
+
+    // 4. Verification Check
+    if (deletedCourt.count === 0) {
+      throw new AppError("Match court not found in this session", 404);
+    }
+
+    return { id: courtId, message: "Match court successfully deleted" };
+  });
+};
 
 export const createQueueCourt = async (
   communityId,
