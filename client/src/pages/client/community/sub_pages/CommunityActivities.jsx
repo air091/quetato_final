@@ -13,8 +13,8 @@ import {
   X,
 } from "lucide-react";
 import Modal from "../../../../components/createPortal";
-import AddSessionModal from "../../../../components/community_comp/AddSessionModal";
-import EditSessionModal from "../../../../components/community_comp/EditSessionModal";
+import AddSessionModal from "../../../../components/community_comp/activities/AddSessionModal";
+import EditSessionModal from "../../../../components/community_comp/activities/EditSessionModal";
 
 const CommunityActivities = () => {
   const { accessToken } = useAuth();
@@ -164,7 +164,7 @@ const CommunityActivities = () => {
   };
 
   return (
-    <div>
+    <>
       <main>
         <div className="flex items-center py-1 px-2 gap-x-4">
           <button
@@ -407,7 +407,7 @@ const CommunityActivities = () => {
           session={selectedSession}
         />
       </main>
-    </div>
+    </>
   );
 };
 

@@ -1,15 +1,69 @@
-import React, { useState } from "react";
-import Modal from "../createPortal";
 import { X } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import Modal from "../../createPortal";
 
-const EditSessionModal = ({
+const AddSessionModal = ({
   accessToken,
   communityId,
   getAllSessions,
-  isEditSessionModalOpen,
-  setIsEditSessionModalOpen,
-  session,
+  isCreateSessionModalOpen,
+  setIsCreateSessionModalOpen,
 }) => {
+  const [session, setSession] = useState({
+    name: "",
+    sport: "badminton",
+    location: "",
+    startAt: "",
+    endAt: "",
+    description: "",
+  });
+
+  const createSession = useCallback(async () => {
+    if (!accessToken) return;
+
+    const formattedPayload = {
+      ...session,
+      startAt: session.startAt ? new Date(session.startAt).toISOString() : null,
+      endAt: session.endAt ? new Date(session.endAt).toISOString() : null,
+    };
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/communities/${communityId}/sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: "include",
+          body: JSON.stringify(formattedPayload), // Cleaned up: sends the entire object directly
+        },
+      );
+
+      if (!response.ok) throw new Error("HTTP failed: " + response.status);
+
+      const data = await response.json();
+      if (!data.success)
+        throw new Error(data?.message || "Internal server error");
+
+      await getAllSessions();
+      // Reset the form state back to default values
+      setSession({
+        name: "",
+        sport: "badminton",
+        location: "",
+        startAt: "",
+        endAt: "",
+        description: "",
+      });
+      setIsCreateSessionModalOpen(false);
+    } catch (error) {
+      console.error("Error creating session:", error);
+    }
+    // ✅ FIX: Added necessary dependencies
+  }, [accessToken, communityId, session]);
+
   const handleOnChange = (event) => {
     const { name, value } = event.target;
     setSession((prev) => ({ ...prev, [name]: value }));
@@ -20,10 +74,16 @@ const EditSessionModal = ({
     await createSession();
   };
 
+  useEffect(() => {
+    if (communityId && accessToken) {
+      getAllSessions();
+    }
+  }, [getAllSessions, communityId, accessToken]);
+
   return (
-    <Modal isOpen={isEditSessionModalOpen}>
+    <Modal isOpen={isCreateSessionModalOpen}>
       <div
-        onClick={() => setIsEditSessionModalOpen(false)}
+        onClick={() => setIsCreateSessionModalOpen(false)}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       >
         <div
@@ -33,14 +93,14 @@ const EditSessionModal = ({
           <header className="flex items-center justify-between py-2">
             <h3 className="font-medium">Create new session</h3>
             <button
-              onClick={() => setIsEditSessionModalOpen(false)}
+              onClick={() => setIsCreateSessionModalOpen(false)}
               className="cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full p-1"
             >
               <X size={20} />
             </button>
           </header>
 
-          <form>
+          <form onSubmit={handleOnSubmit} className="flex flex-col gap-y-2">
             {/* NAME AND SPORT */}
             <div className="flex items-center gap-x-2">
               <div className="w-full">
@@ -51,7 +111,7 @@ const EditSessionModal = ({
                   id="name"
                   type="text"
                   name="name"
-                  value={session?.name}
+                  value={session.name}
                   onChange={handleOnChange}
                   placeholder="Smash today"
                   className="block px-2 py-1 border w-full rounded-sm mt-0.5"
@@ -64,7 +124,7 @@ const EditSessionModal = ({
                 <select
                   name="sport"
                   id="sport"
-                  value={session?.sport}
+                  value={session.sport}
                   onChange={handleOnChange}
                   className="block px-2 py-1 min-w-[140px] border cursor-pointer rounded-sm mt-0.5"
                 >
@@ -82,7 +142,7 @@ const EditSessionModal = ({
                 type="text"
                 id="location"
                 name="location"
-                value={session?.location}
+                value={session.location}
                 onChange={handleOnChange}
                 className="block px-2 py-1 border w-full rounded-sm mt-0.5"
               />
@@ -98,7 +158,7 @@ const EditSessionModal = ({
                   id="startAt"
                   type="datetime-local"
                   name="startAt" // ✅ FIX: Added missing name attribute
-                  value={session?.startAt}
+                  value={session.startAt}
                   onChange={handleOnChange}
                   className="block px-2 py-1 border w-full rounded-sm mt-0.5"
                 />
@@ -111,7 +171,7 @@ const EditSessionModal = ({
                   id="endAt"
                   type="datetime-local"
                   name="endAt" // ✅ FIX: Added missing name attribute
-                  value={session?.endAt}
+                  value={session.endAt}
                   onChange={handleOnChange}
                   className="block px-2 py-1 border w-full rounded-sm mt-0.5"
                 />
@@ -127,7 +187,7 @@ const EditSessionModal = ({
                 name="description"
                 id="description"
                 rows={3}
-                value={session?.description}
+                value={session.description}
                 onChange={handleOnChange}
                 placeholder="Join the queue and start playing with nearby players."
                 className="block px-2 py-1 border w-full rounded-sm mt-0.5"
@@ -138,7 +198,7 @@ const EditSessionModal = ({
             <div className="flex items-center justify-end gap-x-3 mt-2">
               <button
                 type="button" // ✅ FIX: Explicitly mark as type="button" so it doesn't trigger a form submit
-                onClick={() => setIsEditSessionModalOpen(false)}
+                onClick={() => setIsCreateSessionModalOpen(false)}
                 className="px-4 py-1 bg-gray-200 hover:bg-gray-300 cursor-pointer rounded-sm"
               >
                 Cancel
@@ -147,7 +207,7 @@ const EditSessionModal = ({
                 type="submit"
                 className="px-4 py-1 bg-blue-400 hover:bg-blue-500 hover:text-white cursor-pointer rounded-sm"
               >
-                Save
+                Add
               </button>
             </div>
           </form>
@@ -157,4 +217,4 @@ const EditSessionModal = ({
   );
 };
 
-export default EditSessionModal;
+export default AddSessionModal;

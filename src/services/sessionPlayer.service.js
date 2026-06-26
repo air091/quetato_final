@@ -25,15 +25,25 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
   const sessionPlayers = await prisma.sessionPlayer.findMany({
     where: { sessionId: session.id },
     select: {
-      player: {
+      sessionPlayer: {
         include: {
-          player: {
+          communityPlayer: {
             select: {
               id: true,
               username: true,
               type: true,
             },
           },
+        },
+      },
+      adminAccept: {
+        include: {
+          communityPlayer: { select: { id: true, username: true, type: true } },
+        },
+      },
+      updatedBy: {
+        include: {
+          communityPlayer: { select: { id: true, username: true, type: true } },
         },
       },
     },
