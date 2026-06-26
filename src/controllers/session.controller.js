@@ -15,6 +15,7 @@ import {
   createMatchCourt,
   createQueueCourt,
   deleteMatchCourt,
+  deleteQueueCourt,
   getAllCourts,
   updateMatchCourtName,
   updateQueueCourtName,
@@ -405,6 +406,34 @@ export const updateQueueCourtNameController = async (request, response) => {
     return response.status(200).json({ success: true, court });
   } catch (error) {
     console.error("Update queue court name failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const deleteQueueCourtController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+
+    const court = await deleteQueueCourt(
+      communityId,
+      sessionId,
+      courtId,
+      request.user.sub,
+    );
+
+    return response.status(204).json({ success: true });
+  } catch (error) {
+    console.error("Delete queue court failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
