@@ -9,7 +9,8 @@ import {
   updateCommunityByOwnerController,
 } from "../controllers/community.controller.js";
 import {
-  createGameController,
+  createMatchCourtController,
+  createQueueCourtController,
   createSessionController,
   deleteSessionController,
   endSessionController,
@@ -19,7 +20,6 @@ import {
   getSessionByIdController,
   sessionDashboardController,
   startSessionController,
-  updateCourtTypeController,
   updateSessionController,
 } from "../controllers/session.controller.js";
 import {
@@ -94,10 +94,20 @@ router.post(
 // SESSION GAMES
 
 router.get("/:communityId/sessions/:sessionId/courts", getAllCourtsController);
-router.post("/:communityId/sessions/:sessionId/games", createGameController);
+
+router.post(
+  "/:communityId/sessions/:sessionId/courts/match",
+  createMatchCourtController,
+);
+
+router.post(
+  "/:communityId/sessions/:sessionId/courts/queue",
+  createQueueCourtController,
+);
+
 router.patch(
-  "/:communityId/sessions/:sessionId/courts/:courtId/type",
-  updateCourtTypeController,
+  "/:communityId/sessions/:sessionId/courts/:courtId/convert-to-match",
+  createQueueCourtController,
 );
 
 export default router;

@@ -12,9 +12,9 @@ import {
   updateSession,
 } from "../services/session.service.js";
 import {
-  createGame,
+  createMatchCourt,
+  createQueueCourt,
   getAllCourts,
-  updateCourtType,
 } from "../services/game.service.js";
 
 export const getAllPublicSessionsController = async (request, response) => {
@@ -250,12 +250,12 @@ export const sessionDashboardController = async (request, response) => {
 export const getAllCourtsController = async (request, response) => {
   try {
     const { sessionId } = request.params;
-
-    const courts = await getAllCourts(sessionId);
+    const { type } = request.query;
+    const courts = await getAllCourts(sessionId, type);
 
     return response.status(200).json({ success: true, courts });
   } catch (error) {
-    console.error("Session dashboard failed", error);
+    console.error("Get all courts failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
@@ -270,52 +270,78 @@ export const getAllCourtsController = async (request, response) => {
   }
 };
 
-export const createGameController = async (request, response) => {
+export const createMatchCourtController = async (request, response) => {
   try {
     const { communityId, sessionId } = request.params;
-    const { name, type } = request.body;
+    const { name } = request.body;
 
-    const newCourt = await createGame(
+    const court = await createMatchCourt(
       communityId,
       sessionId,
       name,
-      type,
-      request.user.sub,
-    );
-
-    return response.status(201).json({ success: true, newCourt });
-  } catch (error) {
-    console.error("Create court failed", error);
-    let errMessage = "Internal server error";
-    let statusCode = 500;
-
-    if (error instanceof AppError) {
-      errMessage = error.message;
-      statusCode = error.statusCode;
-    }
-
-    return response
-      .status(statusCode)
-      .json({ success: false, message: errMessage });
-  }
-};
-
-export const updateCourtTypeToMatchController = async (request, response) => {
-  try {
-    const { communityId, sessionId, courtId } = request.params;
-    const { type } = request.body;
-
-    const court = await updateCourtType(
-      communityId,
-      sessionId,
-      courtId,
-      type,
       request.user.sub,
     );
 
     return response.status(201).json({ success: true, court });
   } catch (error) {
-    console.error("Update court type failed", error);
+    console.error("Create match court failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const createQueueCourtController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+    const { name } = request.body;
+
+    const court = await createQueueCourt(
+      communityId,
+      sessionId,
+      name,
+      request.user.sub,
+    );
+
+    return response.status(201).json({ success: true, court });
+  } catch (error) {
+    console.error("Queue match court failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const updateQueueCourtToMatchController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+
+    const court = await createQueueCourt(
+      communityId,
+      sessionId,
+      courtId,
+      request.user.sub,
+    );
+
+    return response.status(200).json({ success: true, court });
+  } catch (error) {
+    console.error("Update queue to match court failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
