@@ -14,6 +14,7 @@ import {
 import {
   createMatchCourt,
   createQueueCourt,
+  deleteMatchCourt,
   getAllCourts,
   updateMatchCourtName,
 } from "../services/game.service.js";
@@ -316,6 +317,34 @@ export const updateMatchCourtNameController = async (request, response) => {
     return response.status(201).json({ success: true, court });
   } catch (error) {
     console.error("Update match court name failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const deleteMatchCourtController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+
+    const court = await deleteMatchCourt(
+      communityId,
+      sessionId,
+      courtId,
+      request.user.sub,
+    );
+
+    return response.status(204).json({ success: true });
+  } catch (error) {
+    console.error("Delete match court failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
