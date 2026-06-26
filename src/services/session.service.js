@@ -159,74 +159,66 @@ export const createSession = async (
   authorizedId,
 ) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
-  if (!name || name.trim().length === 0)
-    throw new AppError("Name is required", 400);
 
-  if (!description || description.trim().length === 0) {
-    description = "Join the queue and start playing with nearby players.";
-  } else {
-    description = description.trim();
-  }
-
-  if (!location || location.trim().length === 0) {
-    location = "TBA";
-  } else {
-    location = location.trim();
-  }
-
-  // 1. Check if community exists first
-  const community = await prisma.community.findUnique({
-    where: { id: communityId },
-    select: { id: true },
-  });
-
-  if (!community) throw new AppError("Community not found", 404);
+  // Fallback defaults for description and location
+  const cleanDescription =
+    description?.trim() ||
+    "Join the queue and start playing with nearby players.";
+  const cleanLocation = location?.trim() || "TBA";
 
   return await prisma.$transaction(async (tx) => {
-    // 2. Fetch and verify the authorized actor
-    const authorizedPlayer = await tx.communityPlayer.findUnique({
-      where: {
-        communityId_userId: {
-          communityId: community.id,
-          userId: authorizedId,
-        },
-      },
-    });
+    // 1. Run the member fetch and a count query concurrently within the transaction
+    const [communityMembers, sessionCount] = await Promise.all([
+      tx.communityPlayer.findMany({
+        where: { communityId: communityId },
+        select: { id: true, userId: true, role: true },
+      }),
+      tx.session.count({
+        where: { communityId: communityId },
+      }),
+    ]);
 
+    // 2. Validate Community Existence
+    if (communityMembers.length === 0) {
+      throw new AppError("Community not found", 404);
+    }
+
+    // 3. Verify Authorization
+    const authorizedPlayer = communityMembers.find(
+      (m) => m.userId === authorizedId,
+    );
     if (!authorizedPlayer) {
-      throw new AppError("Forbidden", 403);
+      throw new AppError("Forbidden: Not a member of this community", 403);
     }
 
     const allowedRoles = ["admin", "owner"];
     if (!allowedRoles.includes(authorizedPlayer.role)) {
-      throw new AppError("Forbidden", 403);
+      throw new AppError("Forbidden: Insufficient permissions", 403);
     }
 
-    // 3. Create the session
+    // 4. Determine Dynamic Session Name
+    // If name is missing or blank, count + 1 gives us the upcoming session number
+    const cleanName = name?.trim() || `Session ${sessionCount + 1}`;
+
+    const adminsToAutoAdd = communityMembers.filter((m) =>
+      allowedRoles.includes(m.role),
+    );
+
+    // 5. Create the session
     const session = await tx.session.create({
       data: {
-        communityId: community.id,
-        name: name.trim(),
-        sport: sport,
-        description,
-        location,
-        // ✅ FIX: Ensure Prisma gets actual Date objects or null, not raw ISO strings
+        communityId,
+        name: cleanName,
+        sport,
+        description: cleanDescription,
+        location: cleanLocation,
         startAt: startAt ? new Date(startAt) : null,
         endAt: endAt ? new Date(endAt) : null,
         createdBy: authorizedId,
       },
     });
 
-    // 4. Fetch all admins/hosts in this specific community to auto-add them
-    const adminsToAutoAdd = await tx.communityPlayer.findMany({
-      where: {
-        communityId: community.id,
-        role: { in: ["admin", "owner"] },
-      },
-    });
-
-    // 5. Bulk create session player entries
-    // Performance Pro-Tip: You can use `createMany` here instead of loop-mapping Promise.all for speed.
+    // 6. Bulk add admins to the session roster
     if (adminsToAutoAdd.length > 0) {
       await tx.sessionPlayer.createMany({
         data: adminsToAutoAdd.map((admin) => ({
