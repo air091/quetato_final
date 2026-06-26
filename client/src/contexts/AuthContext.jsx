@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok || !data.success)
         throw new Error(data.message || "Refresh failed");
 
-      const nextAccessToken = data.tokens.accessToken || data.tokens.access;
+      const nextAccessToken = data.tokens.accessToken;
 
       setAccessToken(nextAccessToken);
       return nextAccessToken;

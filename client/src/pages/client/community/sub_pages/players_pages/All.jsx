@@ -3,23 +3,17 @@ import { useAuth } from "../../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
 
 const All = () => {
-  const { accessToken } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { communityId } = useParams();
   const [players, setPlayers] = useState([]);
 
   const getAllSession = useCallback(async () => {
-    if (!accessToken || !communityId) return;
+    if (!communityId) return;
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `http://localhost:8000/api/communities/${communityId}/players`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
+        { method: "GET" },
       );
 
       if (!response.ok) {
@@ -36,7 +30,7 @@ const All = () => {
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
     }
-  }, [accessToken, communityId]);
+  }, [fetchWithAuth, communityId]);
 
   useEffect(() => {
     getAllSession();
