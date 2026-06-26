@@ -249,7 +249,7 @@ export const updateSession = async (
   location,
   startAt,
   endAt,
-  userId,
+  authorizedId,
 ) => {
   if (!communityId) throw new AppError("Community ID is required");
   if (!communityId) throw new AppError("Session ID is required");
@@ -266,19 +266,38 @@ export const updateSession = async (
   });
 
   if (!community) throw new AppError("Community not found");
-  if (community.ownerId !== userId) throw new AppError("Forbidden", 403);
 
-  const session = await prisma.session.update({
-    where: { id: sessionId },
-    data: {
-      name,
-      description,
-      location,
-      updatedBy: userId,
-    },
+  return await prisma.$transaction(async (tx) => {
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const session = await prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        name,
+        description,
+        location,
+        updatedBy: authorizedId,
+      },
+    });
+
+    return session;
   });
-
-  return session;
 };
 
 export const startSession = async (communityId, sessionId, userId) => {
@@ -337,3 +356,25 @@ export const deleteSession = async (communityId, sessionId, userId) => {
 
   await prisma.session.delete({ where: { id: sessionId } });
 };
+
+// DASHBOARD, GAMES, PAYMENTS
+
+export const getSessionDashboard = async (communityId, sessionId) => {
+  if (!communityId || !sessionId)
+    throw new AppError("Community ID and session ID is required");
+
+  const community = await prisma.community.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!community) throw new AppError("Community not found", 404);
+
+  const session = await prisma.session.findFirst({
+    where: { id: true, communityId: true },
+  });
+
+  return session;
+};
+
+// TODO: FIX AUTHORITY IN SESSION AND DELETE SESSION

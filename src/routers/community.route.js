@@ -15,6 +15,7 @@ import {
   getAllPublicSessionsController,
   getAllSessionsController,
   getSessionByIdController,
+  sessionDashboardController,
   startSessionController,
   updateSessionController,
 } from "../controllers/session.controller.js";
@@ -62,6 +63,10 @@ router.delete(
 router.get("/:communityId/sessions", getAllSessionsController);
 router.get("/sessions/public", getAllPublicSessionsController);
 router.get("/:communityId/sessions/:sessionId", getSessionByIdController);
+router.get(
+  "/:communityId/sessions/:sessionId/dashboard",
+  sessionDashboardController,
+);
 
 router.post("/:communityId/sessions", createSessionController);
 

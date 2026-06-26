@@ -7,6 +7,7 @@ import {
   getAllPublicSessions,
   getAllSessions,
   getSessionById,
+  getSessionDashboard,
   startSession,
   updateSession,
 } from "../services/session.service.js";
@@ -202,6 +203,27 @@ export const deleteSessionController = async (request, response) => {
     await deleteSession(communityId, sessionId, request.user.sub);
 
     return response.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Delete session failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const sessionDashboardController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+    const dashboard = await getSessionDashboard(communityId, sessionId);
+    return response.status(200).json({ success: true, dashboard });
   } catch (error) {
     console.error("Delete session failed", error);
     let errMessage = "Internal server error";
