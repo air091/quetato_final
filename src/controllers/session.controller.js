@@ -225,7 +225,7 @@ export const sessionDashboardController = async (request, response) => {
     const dashboard = await getSessionDashboard(communityId, sessionId);
     return response.status(200).json({ success: true, dashboard });
   } catch (error) {
-    console.error("Delete session failed", error);
+    console.error("Session dashboard failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 

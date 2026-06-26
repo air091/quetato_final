@@ -85,6 +85,7 @@ model Session {
   updater         User? @relation("updater", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   players         SessionPlayer[]
+  courts          Court[]
 
   @@index([communityId])
   @@index([createdBy])
@@ -134,6 +135,33 @@ model SessionPlayer {
   adminAccept       CommunityPlayer? @relation("AdminAccept", fields: [acceptedBy], references: [id], onDelete: SetNull)
   adminUpdate       CommunityPlayer? @relation("AdminUpdate", fields: [updatedBy], references: [id], onDelete: SetNull)
 
+  createdCourts            Court[] @relation("CourtCreator")
+  updatedCourts      Court[] @relation("CourtUpdater")
+
   @@unique([sessionId, playerId])
   @@index([playerId])
 }
+
+enum CourtType {
+  match
+  queue
+}
+
+model Court {
+  id                  String @id @default(cuid())
+  sessionId           String
+  name                String
+  type                CourtType
+  startedAt           DateTime?
+  endedAt             DateTime?
+  createdBy           String
+  updatedBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  session             Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  creator   SessionPlayer @relation("CourtCreator", fields: [createdBy], references: [id])
+  updater   SessionPlayer? @relation("CourtUpdater", fields: [updatedBy], references: [id])
+
+  @@index([sessionId])
+}
+

@@ -286,7 +286,7 @@ export const updateSession = async (
       throw new AppError("Forbidden", 403);
     }
 
-    const session = await prisma.session.update({
+    const session = await tx.session.update({
       where: { id: sessionId },
       data: {
         name,
@@ -342,39 +342,108 @@ export const endSession = async (communityId, sessionId, userId) => {
   return session;
 };
 
-export const deleteSession = async (communityId, sessionId, userId) => {
+export const deleteSession = async (communityId, sessionId, authorizedId) => {
   if (!communityId) throw new AppError("Community ID is required");
   if (!communityId) throw new AppError("Session ID is required");
 
   const community = await prisma.community.findUnique({
     where: { id: communityId },
-    select: { id: true, ownerId: true },
-  });
-
-  if (!community) throw new AppError("Community not found", 404);
-  if (community.ownerId !== userId) throw new AppError("Forbidden", 403);
-
-  await prisma.session.delete({ where: { id: sessionId } });
-};
-
-// DASHBOARD, GAMES, PAYMENTS
-
-export const getSessionDashboard = async (communityId, sessionId) => {
-  if (!communityId || !sessionId)
-    throw new AppError("Community ID and session ID is required");
-
-  const community = await prisma.community.findUnique({
-    where: { id },
     select: { id: true },
   });
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const session = await prisma.session.findFirst({
-    where: { id: true, communityId: true },
-  });
+  return await prisma.$transaction(async (tx) => {
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId: authorizedId,
+        },
+      },
+    });
 
-  return session;
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    await tx.session.delete({ where: { id: sessionId } });
+  });
 };
 
-// TODO: FIX AUTHORITY IN SESSION AND DELETE SESSION
+// DASHBOARD, GAMES, PAYMENTS
+
+export const getSessionDashboard = async (communityId, sessionId) => {
+  if (!communityId || !sessionId) {
+    throw new AppError("Community ID and session ID are required", 400);
+  }
+
+  const sessionDashboardData = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      communityId: communityId,
+    },
+    include: {
+      // 1. Get metadata about who created the session
+      creator: {
+        select: {
+          id: true,
+          username: true,
+        },
+      },
+      // 2. Fetch the players registered for this specific session
+      players: {
+        select: {
+          id: true,
+          status: true,
+          acceptedAt: true,
+          // Dive into the CommunityPlayer mapping to get the actual User's profile info
+          sessionPlayer: {
+            select: {
+              role: true, // Their role inside this community (e.g., admin, host, player)
+              communityPlayer: {
+                select: {
+                  id: true,
+                  username: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      // 3. Add rapid aggregations (great for UI count badges)
+      _count: {
+        select: {
+          players: true, // Total applications/signups
+        },
+      },
+    },
+  });
+
+  if (!sessionDashboardData) {
+    throw new AppError(
+      "Session not found or doesn't belong to this community",
+      404,
+    );
+  }
+
+  // 4. (Optional) Format or clean up the response shape before sending it to the frontend
+  return {
+    ...sessionDashboardData,
+    stats: {
+      totalSignUps: sessionDashboardData._count.players,
+      totalAccepted: sessionDashboardData.players.filter(
+        (p) => p.status === "accepted",
+      ).length,
+      totalRejected: sessionDashboardData.players.filter(
+        (p) => p.status === "rejected",
+      ).length,
+    },
+  };
+};
