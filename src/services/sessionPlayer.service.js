@@ -27,6 +27,7 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
     select: {
       id: true,
       status: true,
+      isHide: true,
       requestedAt: true,
       acceptedAt: true,
 
