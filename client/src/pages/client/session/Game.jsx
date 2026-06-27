@@ -1,56 +1,70 @@
-import { EllipsisVertical } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useAuth } from "../../../hooks/useAuth";
+import { DragDropContext } from "@hello-pangea/dnd";
 import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
+import MatchCourt from "../../../components/session_comp/game/MatchCourt";
+import QueueCourt from "../../../components/session_comp/game/QueueCourt";
 
 const Game = () => {
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
-  const [players, setPlayers] = useState([]);
 
-  const getAllPlayers = useCallback(async () => {
-    // Guard against missing URL parameters on initial component render
+  // 🟢 Single state slice for layout data prevents unnecessary multi-render thrashing
+  const [sessionData, setSessionData] = useState({
+    players: [],
+    matchCourts: [],
+    queueCourts: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 🟢 Combined fetch mechanism resolves waterfalling network states
+  const fetchDashboardContext = useCallback(async () => {
     if (!communityId || !sessionId) return;
 
     try {
-      const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players`,
-        {
-          method: "GET",
-        },
-      );
+      setIsLoading(true);
+      const baseUrl = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`;
 
-      if (!response || !response.ok) {
-        throw new Error(
-          `HTTP failed with status: ${response?.status || "Unknown"}`,
-        );
+      // Concurrent execution on the browser thread
+      const [playersRes, matchRes, queueRes] = await Promise.all([
+        fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
+        fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
+        fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
+      ]);
+
+      // Simple validation gate
+      if (!playersRes.ok || !matchRes.ok || !queueRes.ok) {
+        throw new Error("One or more dashboard resources failed to load.");
       }
 
-      const data = await response.json();
+      const [playersData, matchData, queueData] = await Promise.all([
+        playersRes.json(),
+        matchRes.json(),
+        queueRes.json(),
+      ]);
 
-      if (!data.success) {
-        throw new Error(data?.message || "Failed to retrieve player roster");
-      }
-
-      setPlayers(data.players);
+      // 🟢 Batch update state exactly ONCE
+      setSessionData({
+        players: playersData.players || [],
+        matchCourts: matchData.courts || [],
+        queueCourts: queueData.courts || [],
+      });
     } catch (error) {
-      console.error("Failed to fetch session roster:", error.message);
+      console.error("Dashboard initialization error:", error.message);
+    } finally {
+      setIsLoading(false);
     }
   }, [communityId, sessionId, fetchWithAuth]);
 
   useEffect(() => {
-    getAllPlayers();
-  }, [getAllPlayers]);
+    fetchDashboardContext();
+  }, [fetchDashboardContext]);
 
   const handleDragEnd = (result) => {
     const { source, destination } = result;
-
-    // Dropped outside a valid container layout zone
     if (!destination) return;
 
-    // Dropped back in the same list at the same index positioning
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
@@ -58,28 +72,37 @@ const Game = () => {
       return;
     }
 
-    // Optional: Rearrange pool list locally if just reordering within the pool
+    // Rearrange player-pool context locally
     if (
       source.droppableId === "player-pool" &&
       destination.droppableId === "player-pool"
     ) {
-      const reorderedPlayers = Array.from(players);
+      const reorderedPlayers = Array.from(sessionData.players);
       const [removed] = reorderedPlayers.splice(source.index, 1);
       reorderedPlayers.splice(destination.index, 0, removed);
-      setPlayers(reorderedPlayers);
+
+      setSessionData((prev) => ({ ...prev, players: reorderedPlayers }));
     }
   };
 
-  return (
-    // 🌟 1. Context wrapper around your main board architecture
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-6 p-4">
-        {/* PLAYERS */}
-        <PlayersContainer players={players} />
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] text-gray-500 font-medium">
+        Loading session configurations...
+      </div>
+    );
+  }
 
-        {/* COURTS SECTION DROP TARGETS GO HERE */}
-        <div className="flex-1 border border-dashed rounded-lg flex items-center justify-center bg-gray-50 text-gray-400">
-          Courts layout placeholder
+  return (
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div className="flex flex-col md:flex-row gap-6 p-4">
+        {/* PLAYERS COLUMN */}
+        <PlayersContainer players={sessionData.players} />
+
+        {/* COURTS WORKING GRID */}
+        <div className="flex-1 flex flex-col gap-4">
+          <MatchCourt matchCourts={sessionData.matchCourts} />
+          <QueueCourt queueCourts={sessionData.queueCourts} />
         </div>
       </div>
     </DragDropContext>
