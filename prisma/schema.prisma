@@ -133,6 +133,7 @@ model SessionPlayer {
   playerId          String
   gameStatus        GameStatus @default(waiting)
   status            ApplicationStatus @default(accepted)
+  isHide            Boolean @default(false)
   requestedAt       DateTime?
   acceptedAt        DateTime?
   acceptedBy        String?

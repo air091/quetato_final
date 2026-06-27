@@ -576,7 +576,7 @@ export const assignPlayerToSlot = async (
   const targetTeam = targetPosition <= 1 ? "a" : "b";
 
   return await prisma.$transaction(async (tx) => {
-    // 1. Fetch entire context concurrently (Authorization, Courts Status, All Active Slots, and Player Validation)
+    // 1. Fetch entire context concurrently
     const [
       authorizingAttendee,
       allSessionCourts,
@@ -627,7 +627,6 @@ export const assignPlayerToSlot = async (
       throw new AppError("Target court not found in this session", 404);
     }
 
-    // Integrity Guard: Verify the incoming player actually exists in this session
     if (!playerExistsInSession) {
       throw new AppError(
         `Invalid Player: The provided sessionPlayerId (${sessionPlayerId}) does not exist or is not accepted in this session.`,
@@ -635,25 +634,20 @@ export const assignPlayerToSlot = async (
       );
     }
 
-    // Locate where the incoming player currently sits (if anywhere)
     const sourceSlot = allActiveSlots.find(
       (s) => s.sessionPlayerId === sessionPlayerId,
     );
-
-    // 🌟 FIXED: Defined 'occupiedSlot' cleanly back into scope here
     const occupiedSlot = allActiveSlots.find(
       (s) => s.courtId === targetCourtId && s.position === targetPosition,
     );
 
     // 4. Live Match Rule Guards
-    // Prevent actions if the target court is already live
     if (targetCourt.startedAt !== null) {
       throw new AppError(
         "Forbidden: Cannot alter lineups on a live match court",
         400,
       );
     }
-    // Prevent actions if the player's current court is already live
     if (sourceSlot) {
       const sourceCourt = allSessionCourts.find(
         (c) => c.id === sourceSlot.courtId,
@@ -666,9 +660,10 @@ export const assignPlayerToSlot = async (
       }
     }
 
-    // 5. Execute the Intelligent Assignment Matrix
+    // 5. Execute the Intelligent Assignment Matrix + Game Status Updates
 
-    // Case 1: SWAP — Incoming player is on a court, and the target slot is occupied
+    // Case 1: SWAP — Both players are on courts already.
+    // Both remain on courts, so both stay "queued". No status updates needed.
     if (sourceSlot && occupiedSlot) {
       await Promise.all([
         tx.courtSlot.update({
@@ -682,7 +677,8 @@ export const assignPlayerToSlot = async (
       ]);
     }
 
-    // Case 2: MOVE — Incoming player is on a court, but the target slot is completely empty
+    // Case 2: MOVE — Player moves from one court slot to an empty court slot.
+    // They remain on a court, so they stay "queued".
     else if (sourceSlot && !occupiedSlot) {
       await Promise.all([
         tx.courtSlot.delete({ where: { id: sourceSlot.id } }),
@@ -697,7 +693,9 @@ export const assignPlayerToSlot = async (
       ]);
     }
 
-    // Case 3: KICK/REPLACE — Player is from the lobby pool, but targets an occupied slot
+    // Case 3: KICK/REPLACE — Lobby player takes an occupied court slot.
+    // The player inside the slot is kicked back to the lobby ("waiting").
+    // The incoming player is now on the court ("queued").
     else if (!sourceSlot && occupiedSlot) {
       await Promise.all([
         tx.courtSlot.delete({ where: { id: occupiedSlot.id } }),
@@ -709,22 +707,39 @@ export const assignPlayerToSlot = async (
             team: targetTeam,
           },
         }),
+        // Update kicked player to waiting
+        tx.sessionPlayer.update({
+          where: { id: occupiedSlot.sessionPlayerId },
+          data: { gameStatus: "waiting" },
+        }),
+        // Update incoming player to queued
+        tx.sessionPlayer.update({
+          where: { id: sessionPlayerId },
+          data: { gameStatus: "queued" },
+        }),
       ]);
     }
 
-    // Case 4: FRESH ASSIGNMENT — Player is from the lobby pool, moving into an empty slot
+    // Case 4: FRESH ASSIGNMENT — Lobby player moves into an empty court slot.
+    // Incoming player moves from lobby pool to court slot ("queued").
     else {
-      await tx.courtSlot.create({
-        data: {
-          courtId: targetCourtId,
-          sessionPlayerId: sessionPlayerId,
-          position: targetPosition,
-          team: targetTeam,
-        },
-      });
+      await Promise.all([
+        tx.courtSlot.create({
+          data: {
+            courtId: targetCourtId,
+            sessionPlayerId: sessionPlayerId,
+            position: targetPosition,
+            team: targetTeam,
+          },
+        }),
+        tx.sessionPlayer.update({
+          where: { id: sessionPlayerId },
+          data: { gameStatus: "queued" },
+        }),
+      ]);
     }
 
-    // Return the updated states of the entire court collection for easy frontend re-rendering
+    // Return the updated states of the entire court collection
     return await tx.courtSlot.findMany({
       where: { court: { sessionId } },
     });
