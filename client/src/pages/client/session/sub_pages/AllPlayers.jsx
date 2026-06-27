@@ -57,36 +57,82 @@ const AllPlayers = () => {
       </header>
 
       <main>
-        <div>
-          <h4>Creator, admins, & hosts</h4>
-          {players
-            .filter(
-              (player) =>
-                player.sessionPlayer?.role === "owner" ||
-                player.sessionPlayer?.role === "admin" ||
-                player.sessionPlayer?.role === "host",
-            )
-            .map((player) => (
-              <div
-                key={player.id}
-                className="relative flex items-center justify-between border w-fit gap-x-4 px-3 py-1 rounded"
-              >
-                <div className="flex flex-col">
-                  <span className="font-semibold leading-5">
-                    {player.sessionPlayer?.communityPlayer?.username}
-                  </span>
-                  <span className="text-[14px] bg-blue-500/80 text-blue-100 rounded px-1 w-fit">
-                    {player.sessionPlayer?.role}
-                  </span>
+        {/* ADMIN */}
+        <div className="p-2 flex flex-col gap-y-2 border-t">
+          <h4 className="font-semibold">Creator, admins, & hosts</h4>
+          <div className="flex flex-wrap gap-2">
+            {players
+              .filter(
+                (player) =>
+                  player.sessionPlayer?.role === "owner" ||
+                  player.sessionPlayer?.role === "admin" ||
+                  player.sessionPlayer?.role === "host",
+              )
+              .map((player) => (
+                <div
+                  key={player.id}
+                  className="relative flex items-center justify-between border min-w-[182px] px-2 py-1 rounded"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold leading-6">
+                      {player.sessionPlayer?.communityPlayer?.username}
+                    </span>
+                    <div className="flex items-center gap-x-1 font-medium">
+                      <span className="text-[12px] bg-gray-500/30 text-black rounded px-1 w-fit">
+                        {player.sessionPlayer?.communityPlayer.type}
+                      </span>
+                      <span className="text-[12px] bg-blue-500/80 text-blue-100 rounded px-1 w-fit">
+                        {player.sessionPlayer?.role}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-x-1">
+                    <span className="text-[12px]">00/00</span>
+                    <button className="hover:bg-gray-200 hover:text-gray-700 text-gray-400 p-1 font-medium text-[14px] cursor-pointer rounded-full">
+                      <EllipsisVertical size={16} />
+                    </button>
+                  </div>
                 </div>
-                <button className="hover:bg-gray-200 hover:text-gray-700 text-gray-400 p-1 font-medium text-[14px] cursor-pointer rounded-full">
-                  <EllipsisVertical size={16} />
-                </button>
+              ))}
+          </div>
+        </div>
 
-                {/* win / games */}
-                <span></span>
-              </div>
-            ))}
+        <div className="p-2 flex flex-col gap-y-2 border-t">
+          <h4 className="font-semibold">Players & Statics</h4>
+          <div className="flex flex-wrap gap-2">
+            {players
+              .filter(
+                (player) =>
+                  player.sessionPlayer?.role === "player" ||
+                  player.sessionPlayer?.communityPlayer?.type === "static",
+              )
+              .map((player) => (
+                <div
+                  key={player.id}
+                  className="relative flex items-center justify-between border min-w-[182px] px-2 py-1 rounded"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold leading-6">
+                      {player.sessionPlayer?.communityPlayer?.username}
+                    </span>
+                    <div className="flex items-center gap-x-1 font-medium">
+                      <span className="text-[12px] bg-gray-500/30 text-black rounded px-1 w-fit">
+                        {player.sessionPlayer?.communityPlayer.type}
+                      </span>
+                      <span className="text-[12px] bg-blue-500/80 text-blue-100 rounded px-1 w-fit">
+                        {player.sessionPlayer?.role}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-x-1">
+                    <span className="text-[12px]">00/00</span>
+                    <button className="hover:bg-gray-200 hover:text-gray-700 text-gray-400 p-1 font-medium text-[14px] cursor-pointer rounded-full">
+                      <EllipsisVertical size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       </main>
     </>
