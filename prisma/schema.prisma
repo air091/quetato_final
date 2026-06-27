@@ -115,6 +115,13 @@ model CommunityPlayer {
   @@index([userId])
 }
 
+enum GameStatus {
+  waiting
+  queued
+  playing
+  paid
+}
+
 enum ApplicationStatus {
   accepted
   rejected
@@ -124,6 +131,7 @@ model SessionPlayer {
   id                String @id @default(cuid())
   sessionId         String
   playerId          String
+  gameStatus        GameStatus @default(waiting)
   status            ApplicationStatus @default(accepted)
   requestedAt       DateTime?
   acceptedAt        DateTime?
@@ -143,6 +151,13 @@ model SessionPlayer {
   @@index([playerId])
 }
 
+enum CourtStatus {
+  idle
+  started
+  paused
+  ended
+}
+
 enum CourtType {
   match
   queue
@@ -152,6 +167,7 @@ model Court {
   id                  String @id @default(cuid())
   sessionId           String
   name                String
+  status              CourtStatus @default(idle)
   type                CourtType
   startedAt           DateTime?
   endedAt             DateTime?
