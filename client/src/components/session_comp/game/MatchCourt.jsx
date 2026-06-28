@@ -3,20 +3,22 @@ import React from "react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 
 const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
+  const courtsList =
+    matchCourts?.courts || (Array.isArray(matchCourts) ? matchCourts : []);
+  const countDisplay = matchCourts?.counts?.match || courtsList.length;
+
   return (
     <div className="space-y-2 p-2">
-      <h4 className="font-semibold text-gray-700">
-        Match ({matchCourts?.counts?.match || 0})
-      </h4>
+      <h4 className="font-semibold text-gray-700">Match ({countDisplay})</h4>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {matchCourts?.courts?.map((matchCourt) => {
+        {courtsList.map((matchCourt) => {
           const stableKey = matchCourt?.id;
 
           return (
             <div
               key={stableKey}
-              className="relative p-3 rounded-md bg-white shadow-sm overflow-hidden min-h-[180px]"
+              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden min-h-[180px]"
             >
               {/* BACKGROUND SVG */}
               <svg
@@ -24,24 +26,65 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                 height="100%"
                 viewBox="0 0 300 150"
                 fill="none"
-                stroke="rgba(255, 255, 255, 0.25)"
+                stroke="rgba(200, 200, 200, 0.8)"
                 strokeWidth="2"
                 preserveAspectRatio="none"
-                className="bg-blue-800/90 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+                className="bg-blue-800/80 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
               >
-                <rect x="25" y="15" width="250" height="120" fill="none" />
+                <rect
+                  x="25"
+                  y="25"
+                  width="250"
+                  height="100"
+                  fill="none"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="2"
+                />
                 <line
                   x1="150"
-                  y1="15"
+                  y1="25"
                   x2="150"
-                  y2="135"
+                  y2="125"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="2"
                   strokeDasharray="5,5"
                 />
-                <line x1="25" y1="75" x2="275" y2="75" strokeWidth="1" />
+                <line
+                  x1="25"
+                  y1="50"
+                  x2="275"
+                  y2="50"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+                <line
+                  x1="25"
+                  y1="100"
+                  x2="275"
+                  y2="100"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+                <line
+                  x1="50"
+                  y1="25"
+                  x2="50"
+                  y2="125"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+                <line
+                  x1="250"
+                  y1="25"
+                  x2="250"
+                  y2="125"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
               </svg>
 
               {/* FOREGROUND CONTENT */}
-              <header className="relative z-20 flex items-center justify-between text-white mb-3">
+              <header className="relative z-20 flex items-center justify-between text-white mb-2">
                 <span className="text-[14px] font-semibold">
                   {matchCourt?.name}
                 </span>
@@ -53,24 +96,22 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
               {/* SLOTS AREA */}
               <main className="relative z-20 grid grid-cols-2 gap-2">
                 {[0, 1, 2, 3].map((position) => {
-                  // Find if there is a slot database row for this position
                   const slotData = matchCourt?.slots?.find(
                     (s) => s.position === position,
                   );
 
-                  // 🟢 Find the full player data from your global state using the slot's ID
-                  const matchedPoolPlayer = allPlayers.find(
-                    (p) => p.id === slotData?.sessionPlayerId,
-                  );
+                  const matchedPoolPlayer = slotData?.sessionPlayerId
+                    ? allPlayers.find((p) => p.id === slotData.sessionPlayerId)
+                    : null;
 
-                  // Extract the username regardless of whether your payload structure is flat or nested
                   const username =
                     matchedPoolPlayer?.sessionPlayer?.communityPlayer
                       ?.username ||
                     matchedPoolPlayer?.communityPlayer?.username ||
                     matchedPoolPlayer?.username;
 
-                  const droppableId = `court-${stableKey}-pos-${position}`;
+                  // 🟢 FIX: Uniform droppable format
+                  const droppableId = `match-court-${stableKey}-pos-${position}`;
 
                   return (
                     <Droppable key={position} droppableId={droppableId}>
@@ -78,14 +119,13 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`border rounded min-h-[50px] p-1 flex items-center justify-center transition-all relative ${
+                          className={`border rounded h-[49px] backdrop-blur-xs flex items-center justify-center transition-colors p-1 overflow-hidden relative ${
                             snapshot.isDraggingOver
-                              ? "bg-emerald-500/30 border-emerald-400 scale-[1.02]"
-                              : "border-white/20 bg-black/10 backdrop-blur-xs hover:bg-black/20"
+                              ? "border-green-400 bg-green-500/20"
+                              : "border-white/30 bg-transparent"
                           }`}
                         >
                           {slotData && matchedPoolPlayer ? (
-                            // If slot has a sessionPlayerId matched in our state, render them!
                             <Draggable
                               draggableId={matchedPoolPlayer.id}
                               index={0}
@@ -94,26 +134,25 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                                 <div
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
-                                  className={`flex items-center gap-1 w-full bg-white p-1 rounded shadow-sm text-gray-800 text-[12px] select-none z-30 ${
+                                  className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
                                     dragSnapshot.isDragging
-                                      ? "ring-2 ring-blue-500 shadow-xl"
+                                      ? "shadow-md border-blue-500 ring-2 ring-blue-100"
                                       : ""
                                   }`}
                                 >
                                   <div
                                     {...dragProvided.dragHandleProps}
-                                    className="text-gray-400 hover:text-gray-600 p-0.5 cursor-grab active:cursor-grabbing"
+                                    className="text-gray-400 p-0.5 cursor-grab active:cursor-grabbing hover:text-gray-600 z-30"
                                   >
                                     <GripVertical size={12} />
                                   </div>
-                                  <span className="font-medium truncate flex-1">
+                                  <span className="truncate flex-1 text-black font-semibold">
                                     {username || "Unknown Player"}
                                   </span>
                                 </div>
                               )}
                             </Draggable>
                           ) : (
-                            // Empty slot placeholder hint
                             <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
                               Player {position <= 1 ? "A" : "B"}-
                               {position % 2 === 0 ? "1" : "2"}

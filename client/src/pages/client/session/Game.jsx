@@ -17,13 +17,11 @@ const Game = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🟢 FIXED: Added `isSilentRefetch` flag to prevent UI flickering on updates
   const fetchDashboardContext = useCallback(
     async (isSilentRefetch = false) => {
       if (!communityId || !sessionId) return;
 
       try {
-        // Only show full screen loading on initial mount, skip during background drag updates
         if (!isSilentRefetch) {
           setIsLoading(true);
         }
@@ -54,7 +52,6 @@ const Game = () => {
       } catch (error) {
         console.error("Dashboard initialization error:", error.message);
       } finally {
-        // 🟢 FIXED: Only toggle loading state off if we actually toggled it on
         if (!isSilentRefetch) {
           setIsLoading(false);
         }
@@ -64,7 +61,7 @@ const Game = () => {
   );
 
   useEffect(() => {
-    fetchDashboardContext(false); // Initial load is NOT silent
+    fetchDashboardContext(false);
   }, [fetchDashboardContext]);
 
   const assignPlayerToSlot = useCallback(
@@ -96,12 +93,8 @@ const Game = () => {
         }
 
         const data = await response.json();
-
         if (!data.success) {
-          throw new Error(
-            data?.message ||
-              "Server rejected slot assignment configuration change",
-          );
+          throw new Error(data?.message || "Server rejected slot assignment");
         }
 
         return data;
@@ -128,10 +121,9 @@ const Game = () => {
       return;
     }
 
-    // Save the previous state in case we need to roll back on an error
     const rollbackState = { ...sessionData };
 
-    // --- CASE A: MOVING / REORDERING INSIDE THE PLAYER POOL LOBBY ---
+    // --- CASE A: REORDERING POOL LOBBY ---
     if (
       source.droppableId === "player-pool" &&
       destination.droppableId === "player-pool"
@@ -143,52 +135,73 @@ const Game = () => {
       return;
     }
 
-    // --- CASE B: DRAGGING INTO A COURT SLOT (OPTIMISTICALLY UPDATED) ---
-    if (destination.droppableId.startsWith("court-")) {
-      const [, targetCourtId, , targetPosition] =
-        destination.droppableId.split("-");
+    // --- CASE B: DRAGGING INTO ANY COURT SLOT ---
+    if (destination.droppableId.includes("-court-")) {
+      const isQueue = destination.droppableId.startsWith("queue-");
+      const parts = destination.droppableId.split("-");
+
+      // Clean split configuration mapping:
+      // Queue format: ["queue", "court", "courtId", "pos", "position"]
+      // Match format: ["match", "court", "courtId", "pos", "position"]
+      const targetCourtId = parts[2];
+      const targetPosition = parts[4];
       const sessionPlayerId = draggableId;
       const targetPosInt = parseInt(targetPosition, 10);
 
-      // 1. OPTIMISTIC UPDATE: Instantly change the client-side state
+      // 1. OPTIMISTIC UPDATE
       setSessionData((prev) => {
         const movingPlayer = prev.players.find((p) => p.id === sessionPlayerId);
         if (!movingPlayer) return prev;
 
-        // Target the nested .courts array inside the matchCourts object wrapper
-        const currentCourtsArray = prev.matchCourts?.courts || [];
-
-        const updatedCourtsList = currentCourtsArray.map((court) => {
-          if (court.id !== targetCourtId) return court;
-
-          const updatedSlots = Array.from(court.slots || []);
-          const existingSlotIndex = updatedSlots.findIndex(
-            (s) => s.position === targetPosInt,
-          );
-
-          const newSlotItem = {
-            position: targetPosInt,
-            sessionPlayerId: movingPlayer.id,
-            sessionPlayer: movingPlayer,
-          };
-
-          if (existingSlotIndex !== -1) {
-            updatedSlots[existingSlotIndex] = newSlotItem;
-          } else {
-            updatedSlots.push(newSlotItem);
-          }
-
-          return { ...court, slots: updatedSlots };
-        });
-
-        // Return the complete updated object tree structure intact
-        return {
-          ...prev,
-          matchCourts: {
-            ...prev.matchCourts,
-            courts: updatedCourtsList,
-          },
+        const newSlotItem = {
+          position: targetPosInt,
+          sessionPlayerId: movingPlayer.id,
+          sessionPlayer: movingPlayer,
         };
+
+        if (!isQueue) {
+          const currentCourts =
+            prev.matchCourts?.courts ||
+            (Array.isArray(prev.matchCourts) ? prev.matchCourts : []);
+          const updated = currentCourts.map((court) => {
+            if (court.id !== targetCourtId) return court;
+            const updatedSlots = Array.from(court.slots || []);
+            const idx = updatedSlots.findIndex(
+              (s) => s.position === targetPosInt,
+            );
+            if (idx !== -1) updatedSlots[idx] = newSlotItem;
+            else updatedSlots.push(newSlotItem);
+            return { ...court, slots: updatedSlots };
+          });
+
+          return {
+            ...prev,
+            matchCourts: Array.isArray(prev.matchCourts)
+              ? updated
+              : { ...prev.matchCourts, courts: updated },
+          };
+        } else {
+          const currentCourts =
+            prev.queueCourts?.courts ||
+            (Array.isArray(prev.queueCourts) ? prev.queueCourts : []);
+          const updated = currentCourts.map((court) => {
+            if (court.id !== targetCourtId) return court;
+            const updatedSlots = Array.from(court.slots || []);
+            const idx = updatedSlots.findIndex(
+              (s) => s.position === targetPosInt,
+            );
+            if (idx !== -1) updatedSlots[idx] = newSlotItem;
+            else updatedSlots.push(newSlotItem);
+            return { ...court, slots: updatedSlots };
+          });
+
+          return {
+            ...prev,
+            queueCourts: Array.isArray(prev.queueCourts)
+              ? updated
+              : { ...prev.queueCourts, courts: updated },
+          };
+        }
       });
 
       // 2. BACKEND MUTATION
@@ -198,12 +211,12 @@ const Game = () => {
           sessionPlayerId,
           targetPosition,
         );
-
-        // Silently sync with backend database safely without any flashing
         await fetchDashboardContext(true);
       } catch (err) {
-        console.error("Backend failed! Rolling back UI layout...", err.message);
-        // 3. ROLLBACK: Revert to previous layout state if server rejects the change
+        console.error(
+          "Backend assignment rejected. Rolling back layout...",
+          err.message,
+        );
         setSessionData(rollbackState);
       }
       return;
@@ -218,20 +231,20 @@ const Game = () => {
     );
   }
 
-  // 🟢 RESTORED: Main grid layout context tree structure
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="flex flex-col md:flex-row">
-        {/* PLAYERS COLUMN */}
         <PlayersContainer players={sessionData.players} />
 
-        {/* COURTS WORKING GRID */}
         <div className="flex-1 flex flex-col gap-4">
           <MatchCourt
             matchCourts={sessionData.matchCourts}
             allPlayers={sessionData.players}
           />
-          <QueueCourt queueCourts={sessionData.queueCourts} />
+          <QueueCourt
+            queueCourts={sessionData.queueCourts}
+            allPlayers={sessionData.players}
+          />
         </div>
       </div>
     </DragDropContext>
