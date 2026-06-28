@@ -1,4 +1,4 @@
-import { EllipsisVertical, GripVertical } from "lucide-react";
+import { EllipsisVertical, GripVertical, Plus } from "lucide-react";
 import React from "react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 
@@ -18,7 +18,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
           return (
             <div
               key={stableKey}
-              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden min-h-[180px]"
+              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
               {/* BACKGROUND COURT SVG */}
               <svg
@@ -29,7 +29,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                 stroke="rgba(200, 200, 200, 0.8)"
                 strokeWidth="2"
                 preserveAspectRatio="none"
-                className="bg-blue-800/80 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+                className="bg-blue-900/80 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
               >
                 <rect
                   x="25"
@@ -84,13 +84,28 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
               </svg>
 
               {/* FOREGROUND HEADER */}
-              <header className="relative z-20 flex items-center justify-between text-white mb-2">
-                <span className="text-[14px] font-semibold">
-                  {matchCourt?.name}
-                </span>
-                <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
-                  <EllipsisVertical size={14} />
-                </button>
+              <header className="relative z-20 flex flex-col text-white mb-1">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[14px] font-semibold">
+                    {matchCourt?.name}
+                  </span>
+                  <div className="flex items-center gap-x-1">
+                    <button className="cursor-pointer bg-stone-800 hover:text-stone-50 px-2 py-1 rounded-full transition-colors text-stone-300 text-[12px]">
+                      Start game
+                    </button>
+                    <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
+                      <EllipsisVertical size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-x-2 mt-1">
+                  <button className="w-full text-[14px] py-0.5 bg-orange-700 hover:bg-orange-800 cursor-pointer rounded-full">
+                    Team A
+                  </button>
+                  <button className="w-full text-[14px] py-0.5 bg-gray-700 hover:bg-gray-800 cursor-pointer rounded-full">
+                    Team B
+                  </button>
+                </div>
               </header>
 
               {/* SLOTS MATRIX */}
@@ -126,8 +141,9 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                         >
                           {slotData && matchedPoolPlayer ? (
                             <Draggable
+                              key={matchedPoolPlayer.id}
                               draggableId={matchedPoolPlayer.id}
-                              index={0}
+                              index={position}
                             >
                               {(dragProvided, dragSnapshot) => (
                                 <div
@@ -165,6 +181,76 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
             </div>
           );
         })}
+        <button className="relative border border-blue-900/80 bg-blue-500/20 min-h-[156px] rounded-md flex items-center justify-center gap-x-2 cursor-pointer">
+          {/* BACKGROUND COURT SVG */}
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 300 150"
+            fill="none"
+            stroke="rgba(200, 200, 200, 0.8)"
+            strokeWidth="2"
+            preserveAspectRatio="none"
+            className="bg-blue-900/80 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+          >
+            <rect
+              x="25"
+              y="25"
+              width="250"
+              height="100"
+              fill="none"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="2"
+            />
+            <line
+              x1="150"
+              y1="25"
+              x2="150"
+              y2="125"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+            />
+            <line
+              x1="25"
+              y1="50"
+              x2="275"
+              y2="50"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="25"
+              y1="100"
+              x2="275"
+              y2="100"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="50"
+              y1="25"
+              x2="50"
+              y2="125"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="250"
+              y1="25"
+              x2="250"
+              y2="125"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+          </svg>
+          <span className="z-20 backdrop-blur-xs rounded-md h-full w-full flex items-center justify-center gap-x-2 text-blue-200 font-medium">
+            <span>
+              <Plus size={20} />
+            </span>
+            Add Court
+          </span>
+        </button>
       </div>
     </div>
   );

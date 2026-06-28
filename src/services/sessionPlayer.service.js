@@ -30,6 +30,7 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
       isHide: true,
       requestedAt: true,
       acceptedAt: true,
+      gameStatus: true,
 
       // The target player's profile information
       sessionPlayer: {

@@ -9,13 +9,13 @@ import QueueCourt from "../../../components/session_comp/game/QueueCourt";
 const Game = () => {
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
-
   const [sessionData, setSessionData] = useState({
     players: [],
     matchCourts: [],
     queueCourts: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchDashboardContext = useCallback(
     async (isSilentRefetch = false) => {
@@ -66,45 +66,25 @@ const Game = () => {
 
   const assignPlayerToSlot = useCallback(
     async (targetCourtId, sessionPlayerId, targetPosition) => {
-      if (!communityId || !sessionId || !targetCourtId || !sessionPlayerId) {
-        console.warn("Missing critical parameters for slot assignment");
-        return null;
-      }
-
-      try {
-        const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${targetCourtId}/slots/assign`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              sessionPlayerId,
-              position: parseInt(targetPosition, 10),
-            }),
+      const response = await fetchWithAuth(
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${targetCourtId}/slots/assign`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            sessionPlayerId,
+            position: targetPosition,
+          }),
+        },
+      );
 
-        if (!response || !response.ok) {
-          throw new Error(
-            `Failed to assign player. Status: ${response?.status || "Unknown"}`,
-          );
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data?.message || "Server rejected slot assignment");
-        }
-
-        return data;
-      } catch (error) {
-        console.error(
-          "Failed to execute assignPlayerToSlot operation:",
-          error.message,
-        );
-        throw error;
+      if (!response.ok) {
+        throw new Error("Assignment failed.");
       }
+
+      return await response.json();
     },
     [communityId, sessionId, fetchWithAuth],
   );
@@ -121,8 +101,6 @@ const Game = () => {
       return;
     }
 
-    const rollbackState = { ...sessionData };
-
     // --- CASE A: REORDERING POOL LOBBY ---
     if (
       source.droppableId === "player-pool" &&
@@ -135,107 +113,29 @@ const Game = () => {
       return;
     }
 
-    // --- CASE B: DRAGGING INTO ANY COURT SLOT ---
+    // --- CASE B: DRAGGING INTO A COURT SLOT (OPTIMISTIC) ---
     if (destination.droppableId.includes("-court-")) {
-      const isQueue = destination.droppableId.startsWith("queue-");
+      const isMatchCourt = destination.droppableId.startsWith("match-court-");
       const parts = destination.droppableId.split("-");
-
       const targetCourtId = parts[2];
-      const targetPosition = parts[4];
-      const sessionPlayerId = draggableId;
-      const targetPosInt = parseInt(targetPosition, 10);
+      const targetPosition = parseInt(parts[4], 10);
+      const sessionPlayerId = draggableId; // This is the ID of the dragged player
 
-      // 1. INSTANT OPTIMISTIC STATE UPDATE
-      setSessionData((prev) => {
-        // Find the player object from the general pool or existing slots
-        let movingPlayer = prev.players.find((p) => p.id === sessionPlayerId);
+      setIsUpdating(true);
 
-        if (!movingPlayer) {
-          // Fallback: search inside match courts if not found in lobby pool
-          const allMatchCourts =
-            prev.matchCourts?.courts ||
-            (Array.isArray(prev.matchCourts) ? prev.matchCourts : []);
-          for (const c of allMatchCourts) {
-            const slot = c.slots?.find(
-              (s) => s.sessionPlayerId === sessionPlayerId,
-            );
-            if (slot?.sessionPlayer) {
-              movingPlayer = slot.sessionPlayer;
-              break;
-            }
-          }
-        }
-
-        if (!movingPlayer) return prev;
-
-        const newSlotItem = {
-          position: targetPosInt,
-          sessionPlayerId: movingPlayer.id,
-          sessionPlayer: movingPlayer,
-        };
-
-        // Clean matchCourts: Remove this player from ANY court slot they occupied previously
-        const currentMatchList =
-          prev.matchCourts?.courts ||
-          (Array.isArray(prev.matchCourts) ? prev.matchCourts : []);
-        const cleanedMatchCourts = currentMatchList.map((court) => {
-          // Filter out player from all other slots, and also clear the exact target position slot we are overwriting
-          let updatedSlots = (court.slots || []).filter(
-            (s) =>
-              s.sessionPlayerId !== sessionPlayerId &&
-              s.position !==
-                (court.id === targetCourtId && !isQueue ? targetPosInt : -1),
-          );
-
-          // If this is our target Match Court, inject the player item
-          if (court.id === targetCourtId && !isQueue) {
-            updatedSlots = [...updatedSlots, newSlotItem];
-          }
-          return { ...court, slots: updatedSlots };
-        });
-
-        // Clean queueCourts: Remove this player from ANY queue court slot they occupied previously
-        const currentQueueList =
-          prev.queueCourts?.courts ||
-          (Array.isArray(prev.queueCourts) ? prev.queueCourts : []);
-        const cleanedQueueCourts = currentQueueList.map((court) => {
-          // Filter out player from all other slots, and also clear the exact target position slot we are overwriting
-          let updatedSlots = (court.slots || []).filter(
-            (s) =>
-              s.sessionPlayerId !== sessionPlayerId &&
-              s.position !==
-                (court.id === targetCourtId && isQueue ? targetPosInt : -1),
-          );
-
-          // If this is our target Queue Court, inject the player item
-          if (court.id === targetCourtId && isQueue) {
-            updatedSlots = [...updatedSlots, newSlotItem];
-          }
-          return { ...court, slots: updatedSlots };
-        });
-
-        return {
-          ...prev,
-          matchCourts: Array.isArray(prev.matchCourts)
-            ? cleanedMatchCourts
-            : { ...prev.matchCourts, courts: cleanedMatchCourts },
-          queueCourts: Array.isArray(prev.queueCourts)
-            ? cleanedQueueCourts
-            : { ...prev.queueCourts, courts: cleanedQueueCourts },
-        };
-      });
-
-      // 2. BACKEND MUTATION (ONLY Rollback if it fails!)
       try {
-        await assignPlayerToSlot(targetCourtId, sessionPlayerId, targetPosInt);
-      } catch (err) {
-        console.error(
-          "Backend validation rejected assignment. Rolling back...",
-          err.message,
+        await assignPlayerToSlot(
+          targetCourtId,
+          sessionPlayerId,
+          targetPosition,
         );
-        setSessionData(rollbackState);
+
+        await fetchDashboardContext(true);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsUpdating(false);
       }
-      return;
     }
   };
 
@@ -248,7 +148,7 @@ const Game = () => {
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext onDragEnd={isUpdating ? undefined : handleDragEnd}>
       <div className="flex gap-x-2">
         <PlayersContainer players={sessionData.players} />
 

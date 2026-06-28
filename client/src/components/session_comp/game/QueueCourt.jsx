@@ -1,6 +1,7 @@
 import { EllipsisVertical, GripVertical } from "lucide-react";
 import React from "react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
+import OptionalPortal from "../../OptionalPortal";
 
 const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
   // Normalize checking whether structure is a direct array or wrapped inside a wrapper layout
@@ -19,7 +20,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
           return (
             <div
               key={stableKey}
-              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden min-h-[180px]"
+              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
               {/* BACKGROUND SVG */}
               <svg
@@ -89,9 +90,14 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                 <span className="text-[14px] font-semibold">
                   {queueCourt?.name}
                 </span>
-                <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
-                  <EllipsisVertical size={14} />
-                </button>
+                <div className="flex items-center gap-x-1">
+                  <button className="cursor-pointer bg-stone-800 hover:text-stone-50 px-2 py-1 rounded-full transition-colors text-stone-300 text-[12px]">
+                    Transfer to court
+                  </button>
+                  <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
+                    <EllipsisVertical size={14} />
+                  </button>
+                </div>
               </header>
 
               {/* SLOTS AREA */}
@@ -130,7 +136,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`border rounded h-[49px] backdrop-blur-xs flex items-center justify-center transition-colors p-1 overflow-hidden relative ${
+                          className={`border-2 border-[dashed] [border-dasharray:4_4] rounded h-[49px] backdrop-blur-xs flex items-center justify-center transition-colors p-1 overflow-hidden relative ${
                             snapshot.isDraggingOver
                               ? "border-green-400 bg-green-500/20"
                               : "border-white/30 bg-transparent"
@@ -140,31 +146,41 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                           player &&
                           draggableId &&
                           resolvedName ? (
-                            <Draggable draggableId={draggableId} index={0}>
+                            <Draggable
+                              key={draggableId}
+                              draggableId={draggableId}
+                              index={position}
+                            >
                               {(dragProvided, dragSnapshot) => (
-                                <div
-                                  ref={dragProvided.innerRef}
-                                  {...dragProvided.draggableProps}
-                                  style={{
-                                    ...dragProvided.draggableProps.style,
-                                    transform:
-                                      dragProvided.draggableProps.style
-                                        ?.transform,
-                                  }}
-                                  {...dragProvided.dragHandleProps}
-                                  className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
-                                    dragSnapshot.isDragging
-                                      ? "shadow-md border-blue-500 ring-2 ring-blue-100"
-                                      : ""
-                                  }`}
+                                /* 🟢 ADD THIS WRAPPER RIGHT HERE */
+                                <OptionalPortal
+                                  usePortal={dragSnapshot.isDragging}
                                 >
-                                  <span className="truncate flex-1 text-black font-semibold">
-                                    {resolvedName}
-                                  </span>
-                                  <button className="text-gray-400 p-1">
-                                    <EllipsisVertical size={14} />
-                                  </button>
-                                </div>
+                                  <div
+                                    ref={dragProvided.innerRef}
+                                    {...dragProvided.draggableProps}
+                                    {...dragProvided.dragHandleProps}
+                                    style={{
+                                      ...dragProvided.draggableProps.style,
+                                      // 🟢 Force a massive z-index layer shift so it floats perfectly over all sections
+                                      zIndex: dragSnapshot.isDragging
+                                        ? 99999
+                                        : 20,
+                                    }}
+                                    className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
+                                      dragSnapshot.isDragging
+                                        ? "shadow-lg border-blue-500 ring-2 ring-blue-100"
+                                        : ""
+                                    }`}
+                                  >
+                                    <span className="truncate flex-1 text-black font-semibold">
+                                      {resolvedName}
+                                    </span>
+                                    <button className="text-gray-400 p-1">
+                                      <EllipsisVertical size={14} />
+                                    </button>
+                                  </div>
+                                </OptionalPortal> /* 🟢 CLOSE THE WRAPPER HERE */
                               )}
                             </Draggable>
                           ) : (
