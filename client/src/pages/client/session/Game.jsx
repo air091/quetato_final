@@ -128,6 +128,9 @@ const Game = () => {
       return;
     }
 
+    // Save the previous state in case we need to roll back on an error
+    const rollbackState = { ...sessionData };
+
     // --- CASE A: MOVING / REORDERING INSIDE THE PLAYER POOL LOBBY ---
     if (
       source.droppableId === "player-pool" &&
@@ -140,12 +143,55 @@ const Game = () => {
       return;
     }
 
-    // --- CASE B: DRAGGING INTO A COURT SLOT ---
+    // --- CASE B: DRAGGING INTO A COURT SLOT (OPTIMISTICALLY UPDATED) ---
     if (destination.droppableId.startsWith("court-")) {
       const [, targetCourtId, , targetPosition] =
         destination.droppableId.split("-");
       const sessionPlayerId = draggableId;
+      const targetPosInt = parseInt(targetPosition, 10);
 
+      // 1. OPTIMISTIC UPDATE: Instantly change the client-side state
+      setSessionData((prev) => {
+        const movingPlayer = prev.players.find((p) => p.id === sessionPlayerId);
+        if (!movingPlayer) return prev;
+
+        // 🟢 FIXED: Target the nested .courts array inside the matchCourts object wrapper
+        const currentCourtsArray = prev.matchCourts?.courts || [];
+
+        const updatedCourtsList = currentCourtsArray.map((court) => {
+          if (court.id !== targetCourtId) return court;
+
+          const updatedSlots = Array.from(court.slots || []);
+          const existingSlotIndex = updatedSlots.findIndex(
+            (s) => s.position === targetPosInt,
+          );
+
+          const newSlotItem = {
+            position: targetPosInt,
+            sessionPlayerId: movingPlayer.id,
+            sessionPlayer: movingPlayer,
+          };
+
+          if (existingSlotIndex !== -1) {
+            updatedSlots[existingSlotIndex] = newSlotItem;
+          } else {
+            updatedSlots.push(newSlotItem);
+          }
+
+          return { ...court, slots: updatedSlots };
+        });
+
+        // Return the complete updated object tree structure intact
+        return {
+          ...prev,
+          matchCourts: {
+            ...prev.matchCourts,
+            courts: updatedCourtsList, // 🟢 Set the updated array here smoothly
+          },
+        };
+      });
+
+      // 2. BACKEND MUTATION
       try {
         await assignPlayerToSlot(
           targetCourtId,
@@ -153,23 +199,14 @@ const Game = () => {
           targetPosition,
         );
 
-        // 🟢 FIXED: Pass `true` here to update the data cleanly in the background
+        // Silently sync with backend database safely without any flashing
         await fetchDashboardContext(true);
       } catch (err) {
-        console.error("DND Board Mutation Layout Error:", err.message);
+        console.error("Backend failed! Rolling back UI layout...", err.message);
+        // 3. ROLLBACK: Revert to previous layout state if server rejects the change
+        setSessionData(rollbackState);
       }
       return;
-    }
-
-    // --- CASE C: DRAGGING FROM A COURT SLOT BACK TO THE LOBBY POOL ---
-    if (
-      source.droppableId.startsWith("court-") &&
-      destination.droppableId === "player-pool"
-    ) {
-      console.log(
-        "Player removed from court and returned to pool:",
-        draggableId,
-      );
     }
   };
 

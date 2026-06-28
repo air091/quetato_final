@@ -114,7 +114,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                             </Draggable>
                           ) : (
                             // Empty slot placeholder hint
-                            <span className="text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
+                            <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
                               Player {position <= 1 ? "A" : "B"}-
                               {position % 2 === 0 ? "1" : "2"}
                             </span>
