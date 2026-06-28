@@ -9,7 +9,9 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
 
   return (
     <div className="">
-      <h4 className="font-semibold text-gray-700">Match ({countDisplay})</h4>
+      <h4 className="font-semibold text-gray-700 mb-2">
+        Match ({countDisplay})
+      </h4>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {courtsList.map((matchCourt) => {
@@ -84,21 +86,21 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
               </svg>
 
               {/* FOREGROUND HEADER */}
-              <header className="relative z-20 flex flex-col text-white mb-1">
+              <header className="relative z-20 flex flex-col items-center justify-between text-white mb-2">
                 <div className="flex items-center justify-between w-full">
                   <span className="text-[14px] font-semibold">
                     {matchCourt?.name}
                   </span>
                   <div className="flex items-center gap-x-1">
-                    <button className="cursor-pointer bg-stone-800 hover:text-stone-50 px-2 py-1 rounded-full transition-colors text-stone-300 text-[12px]">
+                    <button className="cursor-pointer bg-stone-800 text-stone-400 hover:text-stone-200 text-[14px] py-0.5 px-2 rounded-full">
                       Start game
                     </button>
-                    <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
+                    <button className="cursor-pointer hover:bg-stone-700/40 p-1 rounded-full transition-colors text-white">
                       <EllipsisVertical size={14} />
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-x-2 mt-1">
+                <div className="flex gap-x-2 mt-1 w-full">
                   <button className="w-full text-[14px] py-0.5 bg-orange-700 hover:bg-orange-800 cursor-pointer rounded-full">
                     Team A
                   </button>
@@ -133,13 +135,31 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`border rounded h-[49px] backdrop-blur-xs flex items-center justify-center transition-colors p-1 overflow-hidden relative ${
+                          className={`border-2 border-dashed rounded h-[49px] backdrop-blur-xs flex items-center justify-center transition-colors p-1 overflow-hidden relative ${
                             snapshot.isDraggingOver
                               ? "border-green-400 bg-green-500/20"
                               : "border-white/30 bg-transparent"
                           }`}
                         >
-                          {slotData && matchedPoolPlayer ? (
+                          {/* Default Underlay Background Position Label */}
+                          <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
+                            Player {position <= 1 ? "A" : "B"}-
+                            {position % 2 === 0 ? "1" : "2"}
+                          </span>
+
+                          {/* FIXED UNDERLAY CLONE: Displays behind the real card with opacity-40 while dragging */}
+                          {slotData && matchedPoolPlayer && username && (
+                            <div className="absolute inset-1 flex items-center gap-1 px-2 rounded text-xs font-medium text-gray-500 bg-gray-200 border border-dashed border-gray-300 shadow-xs pointer-events-none select-none z-10">
+                              <span className="truncate flex-1 text-gray-400 font-medium">
+                                {username}
+                              </span>
+                              <div className="text-gray-300 p-1">
+                                <EllipsisVertical size={14} />
+                              </div>
+                            </div>
+                          )}
+
+                          {slotData && matchedPoolPlayer && username && (
                             <Draggable
                               key={matchedPoolPlayer.id}
                               draggableId={matchedPoolPlayer.id}
@@ -150,14 +170,21 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   {...dragProvided.dragHandleProps}
+                                  style={{
+                                    ...dragProvided.draggableProps.style,
+                                    zIndex: dragSnapshot.isDragging
+                                      ? 99999
+                                      : 20,
+                                  }}
                                   className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
                                     dragSnapshot.isDragging
-                                      ? "shadow-md border-blue-500 ring-2 ring-blue-100"
-                                      : ""
+                                      ? "shadow-md border-blue-500 ring-2 ring-blue-100 opacity-100 scale-102"
+                                      : "relative z-20"
                                   }`}
                                 >
+                                  {/* 🟢 RESTORED INNER ELEMENTS */}
                                   <span className="truncate flex-1 text-black font-semibold">
-                                    {username || "Unknown Player"}
+                                    {username}
                                   </span>
                                   <button className="text-gray-400 p-1">
                                     <EllipsisVertical size={14} />
@@ -165,11 +192,6 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                                 </div>
                               )}
                             </Draggable>
-                          ) : (
-                            <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
-                              Player {position <= 1 ? "A" : "B"}-
-                              {position % 2 === 0 ? "1" : "2"}
-                            </span>
                           )}
                           {provided.placeholder}
                         </div>

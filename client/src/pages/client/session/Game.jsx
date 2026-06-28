@@ -15,7 +15,6 @@ const Game = () => {
     queueCourts: [],
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchDashboardContext = useCallback(
     async (isSilentRefetch = false) => {
@@ -119,22 +118,95 @@ const Game = () => {
       const parts = destination.droppableId.split("-");
       const targetCourtId = parts[2];
       const targetPosition = parseInt(parts[4], 10);
-      const sessionPlayerId = draggableId; // This is the ID of the dragged player
+      const sessionPlayerId = draggableId;
 
-      setIsUpdating(true);
+      // Snapshot backup copy for instant error rollbacks
+      const previousSessionData = { ...sessionData };
 
+      // Update the UI instantly
+      setSessionData((prev) => {
+        const keyToUpdate = isMatchCourt ? "matchCourts" : "queueCourts";
+
+        // 🔴 SAFE GUARD: Extract the array safely even if wrapped in an object structure
+        const rawTarget = prev[keyToUpdate];
+        const currentCourts = Array.isArray(rawTarget)
+          ? rawTarget
+          : rawTarget?.courts || [];
+
+        // Find the player information object being dragged
+        const draggedPlayerContext = prev.players.find(
+          (p) => String(p.id) === String(sessionPlayerId),
+        );
+
+        const updatedCourts = currentCourts.map((court) => {
+          if (String(court.id) !== String(targetCourtId)) return court;
+
+          const baseSlots = court.slots || [];
+          const existingSlot = baseSlots.find(
+            (s) => s.position === targetPosition,
+          );
+          const replacedPlayerId = existingSlot?.sessionPlayerId;
+
+          let updatedSlots = baseSlots.map((slot) => {
+            if (slot.position === targetPosition) {
+              return {
+                ...slot,
+                sessionPlayerId,
+                sessionPlayer:
+                  draggedPlayerContext?.sessionPlayer || draggedPlayerContext,
+              };
+            }
+
+            if (
+              replacedPlayerId &&
+              String(slot.sessionPlayerId) === String(sessionPlayerId)
+            ) {
+              return {
+                ...slot,
+                sessionPlayerId: replacedPlayerId,
+                sessionPlayer: existingSlot?.sessionPlayer,
+              };
+            }
+            return slot;
+          });
+
+          if (!baseSlots.some((s) => s.position === targetPosition)) {
+            updatedSlots.push({
+              position: targetPosition,
+              sessionPlayerId,
+              sessionPlayer:
+                draggedPlayerContext?.sessionPlayer || draggedPlayerContext,
+            });
+          }
+
+          return { ...court, slots: updatedSlots };
+        });
+
+        // 🔴 SAFE RETURN: Match the state shape structure perfectly
+        if (Array.isArray(rawTarget)) {
+          return { ...prev, [keyToUpdate]: updatedCourts };
+        } else {
+          return {
+            ...prev,
+            [keyToUpdate]: { ...rawTarget, courts: updatedCourts },
+          };
+        }
+      });
+
+      // Fire backend API quietly behind the scenes
       try {
         await assignPlayerToSlot(
           targetCourtId,
           sessionPlayerId,
           targetPosition,
         );
-
-        await fetchDashboardContext(true);
+        await fetchDashboardContext(true); // Quietly sync with database
       } catch (err) {
-        console.error(err);
-      } finally {
-        setIsUpdating(false);
+        console.error(
+          "Server update failed. Rolling back interface UI...",
+          err.message,
+        );
+        setSessionData(previousSessionData);
       }
     }
   };
@@ -148,7 +220,7 @@ const Game = () => {
   }
 
   return (
-    <DragDropContext onDragEnd={isUpdating ? undefined : handleDragEnd}>
+    <DragDropContext onDragEnd={handleDragEnd}>
       <div className="flex gap-x-2">
         <PlayersContainer players={sessionData.players} />
 
