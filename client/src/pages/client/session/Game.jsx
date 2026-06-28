@@ -155,7 +155,7 @@ const Game = () => {
         const movingPlayer = prev.players.find((p) => p.id === sessionPlayerId);
         if (!movingPlayer) return prev;
 
-        // 🟢 FIXED: Target the nested .courts array inside the matchCourts object wrapper
+        // Target the nested .courts array inside the matchCourts object wrapper
         const currentCourtsArray = prev.matchCourts?.courts || [];
 
         const updatedCourtsList = currentCourtsArray.map((court) => {
@@ -186,7 +186,7 @@ const Game = () => {
           ...prev,
           matchCourts: {
             ...prev.matchCourts,
-            courts: updatedCourtsList, // 🟢 Set the updated array here smoothly
+            courts: updatedCourtsList,
           },
         };
       });
@@ -218,6 +218,7 @@ const Game = () => {
     );
   }
 
+  // 🟢 RESTORED: Main grid layout context tree structure
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="flex flex-col md:flex-row">
