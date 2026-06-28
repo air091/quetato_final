@@ -7,7 +7,7 @@ import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
 
 const Game = () => {
-  const { fetchWithAuth } = useAuth();
+  const { user, fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
 
   // 🟢 Single state slice for layout data prevents unnecessary multi-render thrashing
@@ -61,27 +61,83 @@ const Game = () => {
     fetchDashboardContext();
   }, [fetchDashboardContext]);
 
-  const handleDragEnd = (result) => {
-    const { source, destination } = result;
+  const assignPlayerToSlot = useCallback(
+    async (targetCourtId, sessionPlayerId, targetPosition) => {
+      if (!communityId || !sessionId || !targetCourtId || !sessionPlayerId) {
+        console.warn("Missing critical parameters for slot assignment");
+        return null;
+      }
+
+      try {
+        // 🟢 Adjust this endpoint match string to match your exact backend routing requirements
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${targetCourtId}/slots/assign`,
+          {
+            method: "POST", // pattern could be POST or PUT depending on your backend controller design
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sessionPlayerId,
+              position: parseInt(targetPosition, 10),
+            }),
+          },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `Failed to assign player. Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(
+            data?.message ||
+              "Server rejected slot assignment configuration change",
+          );
+        }
+
+        return data; // Returns data up to handleDragEnd so it can trigger a layout update
+      } catch (error) {
+        console.error(
+          "Failed to execute assignPlayerToSlot operation:",
+          error.message,
+        );
+        throw error; // Bubble error up to the parent catch block so it can handle UI feedback
+      }
+    },
+    [communityId, sessionId, fetchWithAuth],
+  );
+
+  const handleDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
     if (!destination) return;
 
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    // Rearrange player-pool context locally
+    // Moving from pool into a court position slot
     if (
       source.droppableId === "player-pool" &&
-      destination.droppableId === "player-pool"
+      destination.droppableId.startsWith("court-")
     ) {
-      const reorderedPlayers = Array.from(sessionData.players);
-      const [removed] = reorderedPlayers.splice(source.index, 1);
-      reorderedPlayers.splice(destination.index, 0, removed);
+      // e.g. "court-cmq123-pos-2" -> [, courtId, position]
+      const [, targetCourtId, , targetPosition] =
+        destination.droppableId.split("-");
 
-      setSessionData((prev) => ({ ...prev, players: reorderedPlayers }));
+      try {
+        // 🟢 FIXED: Only pass the parameters your wrapper function actually expects.
+        // The user auth validation happens implicitly via fetchWithAuth header tokens.
+        await assignPlayerToSlot(
+          targetCourtId,
+          draggableId, // sessionPlayerId
+          targetPosition,
+        );
+
+        // Re-fetch context values to update the UI board layout
+        await fetchDashboardContext();
+      } catch (err) {
+        console.error("DND processing error:", err.message);
+      }
     }
   };
 
@@ -95,13 +151,16 @@ const Game = () => {
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex flex-col md:flex-row gap-6 p-4">
+      <div className="flex flex-col md:flex-row">
         {/* PLAYERS COLUMN */}
         <PlayersContainer players={sessionData.players} />
 
         {/* COURTS WORKING GRID */}
         <div className="flex-1 flex flex-col gap-4">
-          <MatchCourt matchCourts={sessionData.matchCourts} />
+          <MatchCourt
+            matchCourts={sessionData.matchCourts}
+            allPlayers={sessionData.players}
+          />
           <QueueCourt queueCourts={sessionData.queueCourts} />
         </div>
       </div>

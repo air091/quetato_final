@@ -621,17 +621,14 @@ export const assignPlayerToSlot = async (
       );
     }
 
-    // 3. Find our specific targets in memory
+    // 3. Find targets in memory
     const targetCourt = allSessionCourts.find((c) => c.id === targetCourtId);
     if (!targetCourt) {
       throw new AppError("Target court not found in this session", 404);
     }
 
     if (!playerExistsInSession) {
-      throw new AppError(
-        `Invalid Player: The provided sessionPlayerId (${sessionPlayerId}) does not exist or is not accepted in this session.`,
-        400,
-      );
+      throw new AppError(`Invalid Player: Provided ID does not exist.`, 400);
     }
 
     const sourceSlot = allActiveSlots.find(
@@ -660,59 +657,57 @@ export const assignPlayerToSlot = async (
       }
     }
 
-    // 5. Execute the Intelligent Assignment Matrix + Game Status Updates
+    // 5. Intelligent Assignment Matrix
 
-    // Case 1: SWAP — Both players are on courts already.
-    // Both remain on courts, so both stay "queued". No status updates needed.
+    // Case 1: SWAP — Swapping positions between two distinct court slots.
     if (sourceSlot && occupiedSlot) {
+      // 🟢 FIX: We swap the exact parameters (court, position, and team rules) so they take over each other's layout coordinates safely.
       await Promise.all([
         tx.courtSlot.update({
           where: { id: sourceSlot.id },
-          data: { sessionPlayerId: occupiedSlot.sessionPlayerId },
+          data: {
+            courtId: occupiedSlot.courtId,
+            position: occupiedSlot.position,
+            team: occupiedSlot.team,
+          },
         }),
         tx.courtSlot.update({
           where: { id: occupiedSlot.id },
-          data: { sessionPlayerId: sourceSlot.sessionPlayerId },
+          data: {
+            courtId: sourceSlot.courtId,
+            position: sourceSlot.position,
+            team: sourceSlot.team,
+          },
         }),
       ]);
     }
 
-    // Case 2: MOVE — Player moves from one court slot to an empty court slot.
-    // They remain on a court, so they stay "queued".
+    // Case 2: MOVE — Existing slot changes layout coordinates to an empty slot.
     else if (sourceSlot && !occupiedSlot) {
-      await Promise.all([
-        tx.courtSlot.delete({ where: { id: sourceSlot.id } }),
-        tx.courtSlot.create({
-          data: {
-            courtId: targetCourtId,
-            sessionPlayerId: sourceSlot.sessionPlayerId,
-            position: targetPosition,
-            team: targetTeam,
-          },
-        }),
-      ]);
+      // 🟢 FIX: Simply update the record directly instead of running a separate delete + create cycle.
+      await tx.courtSlot.update({
+        where: { id: sourceSlot.id },
+        data: {
+          courtId: targetCourtId,
+          position: targetPosition,
+          team: targetTeam,
+        },
+      });
     }
 
     // Case 3: KICK/REPLACE — Lobby player takes an occupied court slot.
-    // The player inside the slot is kicked back to the lobby ("waiting").
-    // The incoming player is now on the court ("queued").
     else if (!sourceSlot && occupiedSlot) {
       await Promise.all([
-        tx.courtSlot.delete({ where: { id: occupiedSlot.id } }),
-        tx.courtSlot.create({
+        tx.courtSlot.update({
+          where: { id: occupiedSlot.id },
           data: {
-            courtId: targetCourtId,
-            sessionPlayerId: sessionPlayerId,
-            position: targetPosition,
-            team: targetTeam,
+            sessionPlayerId: sessionPlayerId, // Replaces occupant with the incoming user ID
           },
         }),
-        // Update kicked player to waiting
         tx.sessionPlayer.update({
           where: { id: occupiedSlot.sessionPlayerId },
           data: { gameStatus: "waiting" },
         }),
-        // Update incoming player to queued
         tx.sessionPlayer.update({
           where: { id: sessionPlayerId },
           data: { gameStatus: "queued" },
@@ -721,7 +716,6 @@ export const assignPlayerToSlot = async (
     }
 
     // Case 4: FRESH ASSIGNMENT — Lobby player moves into an empty court slot.
-    // Incoming player moves from lobby pool to court slot ("queued").
     else {
       await Promise.all([
         tx.courtSlot.create({
