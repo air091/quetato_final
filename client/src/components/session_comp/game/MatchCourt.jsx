@@ -8,7 +8,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
   const countDisplay = matchCourts?.counts?.match || courtsList.length;
 
   return (
-    <div className="space-y-2 p-2">
+    <div className="">
       <h4 className="font-semibold text-gray-700">Match ({countDisplay})</h4>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -20,7 +20,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
               key={stableKey}
               className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden min-h-[180px]"
             >
-              {/* BACKGROUND SVG */}
+              {/* BACKGROUND COURT SVG */}
               <svg
                 width="100%"
                 height="100%"
@@ -83,7 +83,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                 />
               </svg>
 
-              {/* FOREGROUND CONTENT */}
+              {/* FOREGROUND HEADER */}
               <header className="relative z-20 flex items-center justify-between text-white mb-2">
                 <span className="text-[14px] font-semibold">
                   {matchCourt?.name}
@@ -93,7 +93,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                 </button>
               </header>
 
-              {/* SLOTS AREA */}
+              {/* SLOTS MATRIX */}
               <main className="relative z-20 grid grid-cols-2 gap-2">
                 {[0, 1, 2, 3].map((position) => {
                   const slotData = matchCourt?.slots?.find(
@@ -110,7 +110,6 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                     matchedPoolPlayer?.communityPlayer?.username ||
                     matchedPoolPlayer?.username;
 
-                  // 🟢 FIX: Uniform droppable format
                   const droppableId = `match-court-${stableKey}-pos-${position}`;
 
                   return (
@@ -134,21 +133,19 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                                 <div
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
+                                  {...dragProvided.dragHandleProps}
                                   className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
                                     dragSnapshot.isDragging
                                       ? "shadow-md border-blue-500 ring-2 ring-blue-100"
                                       : ""
                                   }`}
                                 >
-                                  <div
-                                    {...dragProvided.dragHandleProps}
-                                    className="text-gray-400 p-0.5 cursor-grab active:cursor-grabbing hover:text-gray-600 z-30"
-                                  >
-                                    <GripVertical size={12} />
-                                  </div>
                                   <span className="truncate flex-1 text-black font-semibold">
                                     {username || "Unknown Player"}
                                   </span>
+                                  <button className="text-gray-400 p-1">
+                                    <EllipsisVertical size={14} />
+                                  </button>
                                 </div>
                               )}
                             </Draggable>

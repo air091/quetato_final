@@ -7,7 +7,7 @@ import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
 
 const Game = () => {
-  const { user, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
 
   const [sessionData, setSessionData] = useState({
@@ -140,17 +140,32 @@ const Game = () => {
       const isQueue = destination.droppableId.startsWith("queue-");
       const parts = destination.droppableId.split("-");
 
-      // Clean split configuration mapping:
-      // Queue format: ["queue", "court", "courtId", "pos", "position"]
-      // Match format: ["match", "court", "courtId", "pos", "position"]
       const targetCourtId = parts[2];
       const targetPosition = parts[4];
       const sessionPlayerId = draggableId;
       const targetPosInt = parseInt(targetPosition, 10);
 
-      // 1. OPTIMISTIC UPDATE
+      // 1. INSTANT OPTIMISTIC STATE UPDATE
       setSessionData((prev) => {
-        const movingPlayer = prev.players.find((p) => p.id === sessionPlayerId);
+        // Find the player object from the general pool or existing slots
+        let movingPlayer = prev.players.find((p) => p.id === sessionPlayerId);
+
+        if (!movingPlayer) {
+          // Fallback: search inside match courts if not found in lobby pool
+          const allMatchCourts =
+            prev.matchCourts?.courts ||
+            (Array.isArray(prev.matchCourts) ? prev.matchCourts : []);
+          for (const c of allMatchCourts) {
+            const slot = c.slots?.find(
+              (s) => s.sessionPlayerId === sessionPlayerId,
+            );
+            if (slot?.sessionPlayer) {
+              movingPlayer = slot.sessionPlayer;
+              break;
+            }
+          }
+        }
+
         if (!movingPlayer) return prev;
 
         const newSlotItem = {
@@ -159,62 +174,63 @@ const Game = () => {
           sessionPlayer: movingPlayer,
         };
 
-        if (!isQueue) {
-          const currentCourts =
-            prev.matchCourts?.courts ||
-            (Array.isArray(prev.matchCourts) ? prev.matchCourts : []);
-          const updated = currentCourts.map((court) => {
-            if (court.id !== targetCourtId) return court;
-            const updatedSlots = Array.from(court.slots || []);
-            const idx = updatedSlots.findIndex(
-              (s) => s.position === targetPosInt,
-            );
-            if (idx !== -1) updatedSlots[idx] = newSlotItem;
-            else updatedSlots.push(newSlotItem);
-            return { ...court, slots: updatedSlots };
-          });
+        // Clean matchCourts: Remove this player from ANY court slot they occupied previously
+        const currentMatchList =
+          prev.matchCourts?.courts ||
+          (Array.isArray(prev.matchCourts) ? prev.matchCourts : []);
+        const cleanedMatchCourts = currentMatchList.map((court) => {
+          // Filter out player from all other slots, and also clear the exact target position slot we are overwriting
+          let updatedSlots = (court.slots || []).filter(
+            (s) =>
+              s.sessionPlayerId !== sessionPlayerId &&
+              s.position !==
+                (court.id === targetCourtId && !isQueue ? targetPosInt : -1),
+          );
 
-          return {
-            ...prev,
-            matchCourts: Array.isArray(prev.matchCourts)
-              ? updated
-              : { ...prev.matchCourts, courts: updated },
-          };
-        } else {
-          const currentCourts =
-            prev.queueCourts?.courts ||
-            (Array.isArray(prev.queueCourts) ? prev.queueCourts : []);
-          const updated = currentCourts.map((court) => {
-            if (court.id !== targetCourtId) return court;
-            const updatedSlots = Array.from(court.slots || []);
-            const idx = updatedSlots.findIndex(
-              (s) => s.position === targetPosInt,
-            );
-            if (idx !== -1) updatedSlots[idx] = newSlotItem;
-            else updatedSlots.push(newSlotItem);
-            return { ...court, slots: updatedSlots };
-          });
+          // If this is our target Match Court, inject the player item
+          if (court.id === targetCourtId && !isQueue) {
+            updatedSlots = [...updatedSlots, newSlotItem];
+          }
+          return { ...court, slots: updatedSlots };
+        });
 
-          return {
-            ...prev,
-            queueCourts: Array.isArray(prev.queueCourts)
-              ? updated
-              : { ...prev.queueCourts, courts: updated },
-          };
-        }
+        // Clean queueCourts: Remove this player from ANY queue court slot they occupied previously
+        const currentQueueList =
+          prev.queueCourts?.courts ||
+          (Array.isArray(prev.queueCourts) ? prev.queueCourts : []);
+        const cleanedQueueCourts = currentQueueList.map((court) => {
+          // Filter out player from all other slots, and also clear the exact target position slot we are overwriting
+          let updatedSlots = (court.slots || []).filter(
+            (s) =>
+              s.sessionPlayerId !== sessionPlayerId &&
+              s.position !==
+                (court.id === targetCourtId && isQueue ? targetPosInt : -1),
+          );
+
+          // If this is our target Queue Court, inject the player item
+          if (court.id === targetCourtId && isQueue) {
+            updatedSlots = [...updatedSlots, newSlotItem];
+          }
+          return { ...court, slots: updatedSlots };
+        });
+
+        return {
+          ...prev,
+          matchCourts: Array.isArray(prev.matchCourts)
+            ? cleanedMatchCourts
+            : { ...prev.matchCourts, courts: cleanedMatchCourts },
+          queueCourts: Array.isArray(prev.queueCourts)
+            ? cleanedQueueCourts
+            : { ...prev.queueCourts, courts: cleanedQueueCourts },
+        };
       });
 
-      // 2. BACKEND MUTATION
+      // 2. BACKEND MUTATION (ONLY Rollback if it fails!)
       try {
-        await assignPlayerToSlot(
-          targetCourtId,
-          sessionPlayerId,
-          targetPosition,
-        );
-        await fetchDashboardContext(true);
+        await assignPlayerToSlot(targetCourtId, sessionPlayerId, targetPosInt);
       } catch (err) {
         console.error(
-          "Backend assignment rejected. Rolling back layout...",
+          "Backend validation rejected assignment. Rolling back...",
           err.message,
         );
         setSessionData(rollbackState);
@@ -233,10 +249,10 @@ const Game = () => {
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex flex-col md:flex-row">
+      <div className="flex gap-x-2">
         <PlayersContainer players={sessionData.players} />
 
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex-1 flex flex-col gap-y-2">
           <MatchCourt
             matchCourts={sessionData.matchCourts}
             allPlayers={sessionData.players}

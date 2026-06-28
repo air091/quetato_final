@@ -9,7 +9,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
   const countDisplay = queueCourts?.counts?.queue || courtsList.length;
 
   return (
-    <div className="space-y-2 p-2">
+    <div className="">
       <h4 className="font-semibold text-gray-700">Queues ({countDisplay})</h4>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -151,21 +151,19 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                                       dragProvided.draggableProps.style
                                         ?.transform,
                                   }}
+                                  {...dragProvided.dragHandleProps}
                                   className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
                                     dragSnapshot.isDragging
                                       ? "shadow-md border-blue-500 ring-2 ring-blue-100"
                                       : ""
                                   }`}
                                 >
-                                  <div
-                                    {...dragProvided.dragHandleProps}
-                                    className="text-gray-400 p-0.5 cursor-grab active:cursor-grabbing hover:text-gray-600 z-30"
-                                  >
-                                    <GripVertical size={12} />
-                                  </div>
                                   <span className="truncate flex-1 text-black font-semibold">
                                     {resolvedName}
                                   </span>
+                                  <button className="text-gray-400 p-1">
+                                    <EllipsisVertical size={14} />
+                                  </button>
                                 </div>
                               )}
                             </Draggable>
