@@ -87,7 +87,7 @@ const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
                           {slotData && matchedPoolPlayer ? (
                             // If slot has a sessionPlayerId matched in our state, render them!
                             <Draggable
-                              draggableId={slotData.sessionPlayerId}
+                              draggableId={matchedPoolPlayer.id}
                               index={0}
                             >
                               {(dragProvided, dragSnapshot) => (

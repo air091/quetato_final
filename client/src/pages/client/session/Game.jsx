@@ -10,7 +10,6 @@ const Game = () => {
   const { user, fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
 
-  // 🟢 Single state slice for layout data prevents unnecessary multi-render thrashing
   const [sessionData, setSessionData] = useState({
     players: [],
     matchCourts: [],
@@ -18,47 +17,54 @@ const Game = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🟢 Combined fetch mechanism resolves waterfalling network states
-  const fetchDashboardContext = useCallback(async () => {
-    if (!communityId || !sessionId) return;
+  // 🟢 FIXED: Added `isSilentRefetch` flag to prevent UI flickering on updates
+  const fetchDashboardContext = useCallback(
+    async (isSilentRefetch = false) => {
+      if (!communityId || !sessionId) return;
 
-    try {
-      setIsLoading(true);
-      const baseUrl = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`;
+      try {
+        // Only show full screen loading on initial mount, skip during background drag updates
+        if (!isSilentRefetch) {
+          setIsLoading(true);
+        }
 
-      // Concurrent execution on the browser thread
-      const [playersRes, matchRes, queueRes] = await Promise.all([
-        fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
-        fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
-        fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
-      ]);
+        const baseUrl = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`;
 
-      // Simple validation gate
-      if (!playersRes.ok || !matchRes.ok || !queueRes.ok) {
-        throw new Error("One or more dashboard resources failed to load.");
+        const [playersRes, matchRes, queueRes] = await Promise.all([
+          fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
+          fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
+          fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
+        ]);
+
+        if (!playersRes.ok || !matchRes.ok || !queueRes.ok) {
+          throw new Error("One or more dashboard resources failed to load.");
+        }
+
+        const [playersData, matchData, queueData] = await Promise.all([
+          playersRes.json(),
+          matchRes.json(),
+          queueRes.json(),
+        ]);
+
+        setSessionData({
+          players: playersData.players || [],
+          matchCourts: matchData.courts || [],
+          queueCourts: queueData.courts || [],
+        });
+      } catch (error) {
+        console.error("Dashboard initialization error:", error.message);
+      } finally {
+        // 🟢 FIXED: Only toggle loading state off if we actually toggled it on
+        if (!isSilentRefetch) {
+          setIsLoading(false);
+        }
       }
-
-      const [playersData, matchData, queueData] = await Promise.all([
-        playersRes.json(),
-        matchRes.json(),
-        queueRes.json(),
-      ]);
-
-      // 🟢 Batch update state exactly ONCE
-      setSessionData({
-        players: playersData.players || [],
-        matchCourts: matchData.courts || [],
-        queueCourts: queueData.courts || [],
-      });
-    } catch (error) {
-      console.error("Dashboard initialization error:", error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [communityId, sessionId, fetchWithAuth]);
+    },
+    [communityId, sessionId, fetchWithAuth],
+  );
 
   useEffect(() => {
-    fetchDashboardContext();
+    fetchDashboardContext(false); // Initial load is NOT silent
   }, [fetchDashboardContext]);
 
   const assignPlayerToSlot = useCallback(
@@ -69,11 +75,10 @@ const Game = () => {
       }
 
       try {
-        // 🟢 Adjust this endpoint match string to match your exact backend routing requirements
         const response = await fetchWithAuth(
           `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${targetCourtId}/slots/assign`,
           {
-            method: "POST", // pattern could be POST or PUT depending on your backend controller design
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
@@ -99,13 +104,13 @@ const Game = () => {
           );
         }
 
-        return data; // Returns data up to handleDragEnd so it can trigger a layout update
+        return data;
       } catch (error) {
         console.error(
           "Failed to execute assignPlayerToSlot operation:",
           error.message,
         );
-        throw error; // Bubble error up to the parent catch block so it can handle UI feedback
+        throw error;
       }
     },
     [communityId, sessionId, fetchWithAuth],
@@ -113,31 +118,58 @@ const Game = () => {
 
   const handleDragEnd = async (result) => {
     const { source, destination, draggableId } = result;
+
     if (!destination) return;
 
-    // Moving from pool into a court position slot
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
+
+    // --- CASE A: MOVING / REORDERING INSIDE THE PLAYER POOL LOBBY ---
     if (
       source.droppableId === "player-pool" &&
-      destination.droppableId.startsWith("court-")
+      destination.droppableId === "player-pool"
     ) {
-      // e.g. "court-cmq123-pos-2" -> [, courtId, position]
+      const reorderedPlayers = Array.from(sessionData.players);
+      const [removed] = reorderedPlayers.splice(source.index, 1);
+      reorderedPlayers.splice(destination.index, 0, removed);
+      setSessionData((prev) => ({ ...prev, players: reorderedPlayers }));
+      return;
+    }
+
+    // --- CASE B: DRAGGING INTO A COURT SLOT ---
+    if (destination.droppableId.startsWith("court-")) {
       const [, targetCourtId, , targetPosition] =
         destination.droppableId.split("-");
+      const sessionPlayerId = draggableId;
 
       try {
-        // 🟢 FIXED: Only pass the parameters your wrapper function actually expects.
-        // The user auth validation happens implicitly via fetchWithAuth header tokens.
         await assignPlayerToSlot(
           targetCourtId,
-          draggableId, // sessionPlayerId
+          sessionPlayerId,
           targetPosition,
         );
 
-        // Re-fetch context values to update the UI board layout
-        await fetchDashboardContext();
+        // 🟢 FIXED: Pass `true` here to update the data cleanly in the background
+        await fetchDashboardContext(true);
       } catch (err) {
-        console.error("DND processing error:", err.message);
+        console.error("DND Board Mutation Layout Error:", err.message);
       }
+      return;
+    }
+
+    // --- CASE C: DRAGGING FROM A COURT SLOT BACK TO THE LOBBY POOL ---
+    if (
+      source.droppableId.startsWith("court-") &&
+      destination.droppableId === "player-pool"
+    ) {
+      console.log(
+        "Player removed from court and returned to pool:",
+        draggableId,
+      );
     }
   };
 
