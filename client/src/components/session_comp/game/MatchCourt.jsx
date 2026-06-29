@@ -1,6 +1,45 @@
-import { useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { EllipsisVertical } from "lucide-react";
 import React from "react";
+
+const DraggableSlotPlayer = ({
+  matchedPoolPlayer,
+  username,
+  isDragging,
+  attributes,
+  listeners,
+  setNodeRef,
+  transform,
+}) => {
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    position: isDragging ? "fixed" : "relative",
+    zIndex: isDragging ? 9999 : 20,
+    width: isDragging ? "132px" : "100%",
+    height: isDragging ? "41px" : "100%",
+    pointerEvents: isDragging ? "none" : "auto",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
+        isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
+      }`}
+    >
+      <span className="truncate flex-1 text-black font-semibold">
+        {username}
+      </span>
+      <button className="text-gray-400 p-0.5 cursor-pointer hover:text-gray-600">
+        <EllipsisVertical size={14} />
+      </button>
+    </div>
+  );
+};
 
 const CourtSlot = ({
   position,
@@ -13,28 +52,53 @@ const CourtSlot = ({
     id: `slot-${courtId}-${position}`,
   });
 
+  // Call hook here so we can read its active dragging state inside the slot container
+  const draggableProps = useDraggable({
+    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id}`,
+    data: { player: matchedPoolPlayer },
+  });
+
+  const hasPlayer = slotData && matchedPoolPlayer && username;
+
   return (
     <div
       ref={setNodeRef}
       className={`border-2 border-dashed rounded h-[49px] flex items-center justify-center transition-all p-1 overflow-hidden relative ${
         isOver
-          ? "border-green-400 bg-green-500/20 scale-[1.02]" // Highlight when hovering a player card over this slot
+          ? "border-green-400 bg-green-500/20 scale-[1.02]"
           : "border-white/30 bg-transparent"
       }`}
     >
+      {/* Background Position Label Indicator */}
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
       </span>
 
-      {slotData && matchedPoolPlayer && username && (
-        <div className="absolute inset-1 flex items-center gap-1 px-2 rounded text-xs font-semibold text-gray-800 bg-white border shadow-xs z-20">
-          <span className="truncate flex-1 text-black font-semibold">
-            {username}
-          </span>
-          <button className="text-gray-400 p-1 cursor-pointer">
-            <EllipsisVertical size={14} />
-          </button>
-        </div>
+      {hasPlayer && (
+        <>
+          {/* 1. This is the free-floating active draggable container */}
+          <DraggableSlotPlayer
+            matchedPoolPlayer={matchedPoolPlayer}
+            username={username}
+            isDragging={draggableProps.isDragging}
+            attributes={draggableProps.attributes}
+            listeners={draggableProps.listeners}
+            setNodeRef={draggableProps.setNodeRef}
+            transform={draggableProps.transform}
+          />
+
+          {/* 2. PLACEHOLDER CARD: This renders underneath only while dragging to fill the empty slot space */}
+          {draggableProps.isDragging && (
+            <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
+              <span className="truncate flex-1 text-black font-semibold">
+                {username}
+              </span>
+              <button className="text-gray-400 p-0.5">
+                <EllipsisVertical size={14} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,10 +1,61 @@
 import React from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { EllipsisVertical } from "lucide-react";
-import { useDroppable } from "@dnd-kit/core";
 
-const QueueSlot = ({ position, username, hasPlayer, courtId }) => {
+const DraggableSlotPlayer = ({
+  matchedPoolPlayer,
+  username,
+  isDragging,
+  attributes,
+  listeners,
+  setNodeRef,
+  transform,
+}) => {
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    position: isDragging ? "fixed" : "relative",
+    zIndex: isDragging ? 9999 : 20,
+    width: isDragging ? "132px" : "100%",
+    height: isDragging ? "41px" : "100%",
+    pointerEvents: isDragging ? "none" : "auto",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
+        isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
+      }`}
+    >
+      <span className="truncate flex-1 text-black font-semibold">
+        {username}
+      </span>
+      <button className="text-gray-400 p-0.5 cursor-pointer hover:text-gray-600">
+        <EllipsisVertical size={14} />
+      </button>
+    </div>
+  );
+};
+
+const QueueSlot = ({
+  position,
+  username,
+  hasPlayer,
+  matchedPoolPlayer,
+  courtId,
+}) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
+  });
+
+  // Call hook here to monitor internal active dragging state and attach handlers
+  const draggableProps = useDraggable({
+    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id}`,
+    data: { player: matchedPoolPlayer },
   });
 
   return (
@@ -12,7 +63,7 @@ const QueueSlot = ({ position, username, hasPlayer, courtId }) => {
       ref={setNodeRef}
       className={`border-2 border-dashed rounded h-[49px] flex items-center justify-center transition-all p-1 overflow-hidden relative ${
         isOver
-          ? "border-green-400 bg-green-500/20 scale-[1.02]" // Highlight when hovering a player card over this slot
+          ? "border-green-400 bg-green-500/20 scale-[1.02]"
           : "border-white/30 bg-transparent"
       }`}
     >
@@ -21,16 +72,31 @@ const QueueSlot = ({ position, username, hasPlayer, courtId }) => {
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
       </span>
 
-      {/* Render Occupied Player Card Target */}
       {hasPlayer && username && (
-        <div className="absolute inset-1 flex items-center gap-1 px-2 rounded text-xs font-semibold text-gray-800 bg-white border shadow-xs z-20">
-          <span className="truncate flex-1 text-black font-semibold">
-            {username}
-          </span>
-          <button className="text-gray-400 p-1 cursor-pointer">
-            <EllipsisVertical size={14} />
-          </button>
-        </div>
+        <>
+          {/* 1. Free-floating functional draggable target object */}
+          <DraggableSlotPlayer
+            matchedPoolPlayer={matchedPoolPlayer}
+            username={username}
+            isDragging={draggableProps.isDragging}
+            attributes={draggableProps.attributes}
+            listeners={draggableProps.listeners}
+            setNodeRef={draggableProps.setNodeRef}
+            transform={draggableProps.transform}
+          />
+
+          {/* 2. PLACEHOLDER CARD: Retains structural placeholder presence in slot upon active execution */}
+          {draggableProps.isDragging && (
+            <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
+              <span className="truncate flex-1 text-black font-semibold">
+                {username}
+              </span>
+              <button className="text-gray-400 p-0.5">
+                <EllipsisVertical size={14} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -159,6 +225,7 @@ const QueueCourt = ({ queueCourts, players = [] }) => {
                       position={position}
                       username={resolvedName}
                       hasPlayer={!!(matchedSlot && player && resolvedName)}
+                      matchedPoolPlayer={player}
                       courtId={queueCourt.id}
                     />
                   );

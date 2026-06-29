@@ -20,7 +20,7 @@ export const PlayerCard = ({ username, isAssigned, isDragging }) => {
 const DraggablePlayer = ({ player, username }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: `draggable-${player.sessionPlayer.id}`,
+      id: `draggable-player-container-${player.id}`,
       data: { player },
     });
 

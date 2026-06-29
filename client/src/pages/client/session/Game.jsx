@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
@@ -38,18 +38,26 @@ const Game = () => {
           queueRes.json(),
         ]);
 
+        // Standardized structures matching what the components expect
+        const extractedMatch =
+          matchData.courts ||
+          matchData.data ||
+          (Array.isArray(matchData) ? matchData : []);
+        const extractedQueue =
+          queueData.courts ||
+          queueData.data ||
+          (Array.isArray(queueData) ? queueData : []);
+
         setSessionData({
           players:
             playersData.players ||
             (Array.isArray(playersData) ? playersData : []),
-          matchCourts:
-            matchData.courts ||
-            matchData.data ||
-            (Array.isArray(matchData) ? matchData : []),
-          queueCourts:
-            queueData.courts ||
-            queueData.data ||
-            (Array.isArray(queueData) ? queueData : []),
+          matchCourts: Array.isArray(extractedMatch)
+            ? { courts: extractedMatch, counts: matchData.counts }
+            : extractedMatch,
+          queueCourts: Array.isArray(extractedQueue)
+            ? { courts: extractedQueue, counts: queueData.counts }
+            : extractedQueue,
         });
       } catch (error) {
         console.error("Dashboard engine data loading error:", error.message);
@@ -64,7 +72,6 @@ const Game = () => {
     fetchDashboardContext(false);
   }, [fetchDashboardContext]);
 
-  // Retained in case your child components still trigger explicit manual assignments (e.g., via click buttons)
   const assignPlayerToSlot = useCallback(
     async (targetCourtId, sessionPlayerId, targetPosition) => {
       const response = await fetchWithAuth(
@@ -89,6 +96,78 @@ const Game = () => {
     [communityId, sessionId, fetchWithAuth],
   );
 
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const player = active.data.current?.player;
+    if (!player) return;
+
+    if (over.id.startsWith("slot-")) {
+      const [_, courtId, positionStr] = over.id.split("-");
+      const position = parseInt(positionStr, 10);
+
+      // 1. SNAPSHOT CURRENT STATES FOR INSURANCE ROLLBACK
+      const previousSessionData = structuredClone(sessionData);
+
+      // 2. BUILD OPTIMISTIC ALTERED DATA STRUCTS
+      const updateCourtsListOptimistically = (currentCourtsObj) => {
+        if (!currentCourtsObj?.courts) return currentCourtsObj;
+
+        const updatedCourts = currentCourtsObj.courts.map((court) => {
+          // A. Clean out the player from their original slot anywhere else on this group canvas
+          let slots = (court.slots || []).map((slot) => {
+            if (slot.sessionPlayerId === player.id) {
+              return { ...slot, sessionPlayerId: null, sessionPlayer: null };
+            }
+            return slot;
+          });
+
+          // B. Inject player into their target layout coordinates
+          if (court.id === courtId) {
+            const slotIndex = slots.findIndex((s) => s.position === position);
+            const targetSlotStructure = {
+              position: position,
+              sessionPlayerId: player.id,
+              sessionPlayer: player,
+            };
+
+            if (slotIndex !== -1) {
+              slots[slotIndex] = targetSlotStructure;
+            } else {
+              slots.push(targetSlotStructure);
+            }
+          }
+
+          return { ...court, slots };
+        });
+
+        return { ...currentCourtsObj, courts: updatedCourts };
+      };
+
+      // 3. FORCE OPTIMISTIC LOCAL STATE CHANGE INSTANTLY
+      setSessionData((prev) => ({
+        ...prev,
+        matchCourts: updateCourtsListOptimistically(prev.matchCourts),
+        queueCourts: updateCourtsListOptimistically(prev.queueCourts),
+      }));
+
+      // 4. SYNC WITH THE BACKEND API IN THE BACKGROUND
+      try {
+        await assignPlayerToSlot(courtId, player.id, position);
+        console.log("⚡ Success: Server synced perfectly.");
+      } catch (error) {
+        console.error(
+          "❌ API Sync failed! Reverting view changes optimistically...",
+          error,
+        );
+        // 5. ROLLBACK ON FAILURE
+        setSessionData(previousSessionData);
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
@@ -96,34 +175,6 @@ const Game = () => {
       </div>
     );
   }
-
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-
-    // 1. If dropped outside a valid slot, do nothing
-    if (!over) return;
-
-    // 2. Safely grab the actual player object you passed into 'data'
-    const player = active.data.current?.player;
-    const username =
-      player?.sessionPlayer?.communityPlayer?.username || "Unknown";
-
-    // 3. Destructure the target court and position slot from over.id
-    // Format received: "slot-courtId-position"
-    if (over.id.startsWith("slot-")) {
-      const [_, courtId, positionStr] = over.id.split("-");
-      const position = parseInt(positionStr, 10);
-
-      // Now you have everything clean and typed perfectly!
-      console.log(
-        `🎯 Dropped ${username} (${player.id}) into Court: ${courtId} at Slot Position: ${position}`,
-      );
-
-      // TODO: Trigger your state update or API call here
-      // updatePlayerCourtSlot(actualPlayerId, courtId, position);
-      await assignPlayerToSlot(courtId, player.id, position);
-    }
-  };
 
   return (
     <DndContext collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
