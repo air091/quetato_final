@@ -1,9 +1,21 @@
 import React from "react";
 import { EllipsisVertical } from "lucide-react";
+import { useDroppable } from "@dnd-kit/core";
 
-const QueueSlot = ({ position, username, hasPlayer }) => {
+const QueueSlot = ({ position, username, hasPlayer, courtId }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `slot-${courtId}-${position}`,
+  });
+
   return (
-    <div className="border-2 border-dashed rounded h-[49px] backdrop-blur-xs flex items-center justify-center p-1 overflow-hidden relative border-white/30 bg-transparent">
+    <div
+      ref={setNodeRef}
+      className={`border-2 border-dashed rounded h-[49px] flex items-center justify-center transition-all p-1 overflow-hidden relative ${
+        isOver
+          ? "border-green-400 bg-green-500/20 scale-[1.02]" // Highlight when hovering a player card over this slot
+          : "border-white/30 bg-transparent"
+      }`}
+    >
       {/* Background Matrix Text Position Indicator */}
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
@@ -147,6 +159,7 @@ const QueueCourt = ({ queueCourts, players = [] }) => {
                       position={position}
                       username={resolvedName}
                       hasPlayer={!!(matchedSlot && player && resolvedName)}
+                      courtId={queueCourt.id}
                     />
                   );
                 })}

@@ -25,11 +25,19 @@ const DraggablePlayer = ({ player, username }) => {
     });
 
   const style = {
-    // This maps the coordinates globally rather than relatively
-    transform: CSS.Transform.toString(transform),
-    // 3. Crucial: Use position fixed during active drag to break out of overflow boundaries
+    // 1. FIXED HERE: Changed from CSS.Transform to CSS.Translate
+    transform: CSS.Translate.toString(transform),
+
+    // 2. Crucial: Use position fixed during active drag to break out of overflow boundaries
     position: isDragging ? "fixed" : "relative",
     zIndex: isDragging ? 9999 : "auto",
+
+    // 3. Crucial fallback: Elements under "position: fixed" drop their width constraints.
+    // Setting this ensures the card keeps its expected size while floating!
+    width: isDragging ? "132px" : "100%",
+
+    // 4. Prevents the dragging item from swallowing hover collisions on the slots underneath it
+    pointerEvents: isDragging ? "none" : "auto",
   };
 
   return (
