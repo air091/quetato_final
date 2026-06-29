@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
-import { DragDropContext } from "@hello-pangea/dnd";
 import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
 import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
@@ -19,12 +18,8 @@ const Game = () => {
   const fetchDashboardContext = useCallback(
     async (isSilentRefetch = false) => {
       if (!communityId || !sessionId) return;
-
       try {
-        if (!isSilentRefetch) {
-          setIsLoading(true);
-        }
-
+        if (!isSilentRefetch) setIsLoading(true);
         const baseUrl = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`;
 
         const [playersRes, matchRes, queueRes] = await Promise.all([
@@ -33,9 +28,8 @@ const Game = () => {
           fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
         ]);
 
-        if (!playersRes.ok || !matchRes.ok || !queueRes.ok) {
-          throw new Error("One or more dashboard resources failed to load.");
-        }
+        if (!playersRes.ok || !matchRes.ok || !queueRes.ok)
+          throw new Error("Resource endpoint returned an HTTP error status");
 
         const [playersData, matchData, queueData] = await Promise.all([
           playersRes.json(),
@@ -44,16 +38,22 @@ const Game = () => {
         ]);
 
         setSessionData({
-          players: playersData.players || [],
-          matchCourts: matchData.courts || [],
-          queueCourts: queueData.courts || [],
+          players:
+            playersData.players ||
+            (Array.isArray(playersData) ? playersData : []),
+          matchCourts:
+            matchData.courts ||
+            matchData.data ||
+            (Array.isArray(matchData) ? matchData : []),
+          queueCourts:
+            queueData.courts ||
+            queueData.data ||
+            (Array.isArray(queueData) ? queueData : []),
         });
       } catch (error) {
-        console.error("Dashboard initialization error:", error.message);
+        console.error("Dashboard engine data loading error:", error.message);
       } finally {
-        if (!isSilentRefetch) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     },
     [communityId, sessionId, fetchWithAuth],
@@ -63,179 +63,74 @@ const Game = () => {
     fetchDashboardContext(false);
   }, [fetchDashboardContext]);
 
+  // Retained in case your child components still trigger explicit manual assignments (e.g., via click buttons)
   const assignPlayerToSlot = useCallback(
     async (targetCourtId, sessionPlayerId, targetPosition) => {
+      console.log("Payload inspection:", {
+        sessionPlayerId: String(sessionPlayerId),
+        position: Number(targetPosition),
+      });
+
       const response = await fetchWithAuth(
         `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${targetCourtId}/slots/assign`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sessionPlayerId,
-            position: targetPosition,
+            sessionPlayerId: String(sessionPlayerId),
+            position: Number(targetPosition),
           }),
         },
       );
-
       if (!response.ok) {
-        throw new Error("Assignment failed.");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Backend validation details:", errorData);
+        throw new Error("Assignment failed");
       }
-
       return await response.json();
     },
     [communityId, sessionId, fetchWithAuth],
   );
 
-  const handleDragEnd = async (result) => {
-    const { source, destination, draggableId } = result;
+  const assignedPlayerIds = useMemo(() => {
+    const validMatches = Array.isArray(sessionData?.matchCourts)
+      ? sessionData.matchCourts
+      : [];
+    const validQueues = Array.isArray(sessionData?.queueCourts)
+      ? sessionData.queueCourts
+      : [];
 
-    if (!destination) return;
-
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
-
-    // --- CASE A: REORDERING POOL LOBBY ---
-    if (
-      source.droppableId === "player-pool" &&
-      destination.droppableId === "player-pool"
-    ) {
-      const reorderedPlayers = Array.from(sessionData.players);
-      const [removed] = reorderedPlayers.splice(source.index, 1);
-      reorderedPlayers.splice(destination.index, 0, removed);
-      setSessionData((prev) => ({ ...prev, players: reorderedPlayers }));
-      return;
-    }
-
-    // --- CASE B: DRAGGING INTO A COURT SLOT (OPTIMISTIC) ---
-    if (destination.droppableId.includes("-court-")) {
-      const isMatchCourt = destination.droppableId.startsWith("match-court-");
-      const parts = destination.droppableId.split("-");
-      const targetCourtId = parts[2];
-      const targetPosition = parseInt(parts[4], 10);
-      const sessionPlayerId = draggableId;
-
-      // Snapshot backup copy for instant error rollbacks
-      const previousSessionData = { ...sessionData };
-
-      // Update the UI instantly
-      setSessionData((prev) => {
-        const keyToUpdate = isMatchCourt ? "matchCourts" : "queueCourts";
-
-        // 🔴 SAFE GUARD: Extract the array safely even if wrapped in an object structure
-        const rawTarget = prev[keyToUpdate];
-        const currentCourts = Array.isArray(rawTarget)
-          ? rawTarget
-          : rawTarget?.courts || [];
-
-        // Find the player information object being dragged
-        const draggedPlayerContext = prev.players.find(
-          (p) => String(p.id) === String(sessionPlayerId),
-        );
-
-        const updatedCourts = currentCourts.map((court) => {
-          if (String(court.id) !== String(targetCourtId)) return court;
-
-          const baseSlots = court.slots || [];
-          const existingSlot = baseSlots.find(
-            (s) => s.position === targetPosition,
-          );
-          const replacedPlayerId = existingSlot?.sessionPlayerId;
-
-          let updatedSlots = baseSlots.map((slot) => {
-            if (slot.position === targetPosition) {
-              return {
-                ...slot,
-                sessionPlayerId,
-                sessionPlayer:
-                  draggedPlayerContext?.sessionPlayer || draggedPlayerContext,
-              };
-            }
-
-            if (
-              replacedPlayerId &&
-              String(slot.sessionPlayerId) === String(sessionPlayerId)
-            ) {
-              return {
-                ...slot,
-                sessionPlayerId: replacedPlayerId,
-                sessionPlayer: existingSlot?.sessionPlayer,
-              };
-            }
-            return slot;
-          });
-
-          if (!baseSlots.some((s) => s.position === targetPosition)) {
-            updatedSlots.push({
-              position: targetPosition,
-              sessionPlayerId,
-              sessionPlayer:
-                draggedPlayerContext?.sessionPlayer || draggedPlayerContext,
-            });
-          }
-
-          return { ...court, slots: updatedSlots };
-        });
-
-        // 🔴 SAFE RETURN: Match the state shape structure perfectly
-        if (Array.isArray(rawTarget)) {
-          return { ...prev, [keyToUpdate]: updatedCourts };
-        } else {
-          return {
-            ...prev,
-            [keyToUpdate]: { ...rawTarget, courts: updatedCourts },
-          };
-        }
-      });
-
-      // Fire backend API quietly behind the scenes
-      try {
-        await assignPlayerToSlot(
-          targetCourtId,
-          sessionPlayerId,
-          targetPosition,
-        );
-        await fetchDashboardContext(true); // Quietly sync with database
-      } catch (err) {
-        console.error(
-          "Server update failed. Rolling back interface UI...",
-          err.message,
-        );
-        setSessionData(previousSessionData);
-      }
-    }
-  };
+    return [...validMatches, ...validQueues]
+      .flatMap((court) => court?.slots || [])
+      .map((slot) => String(slot?.sessionPlayerId));
+  }, [sessionData?.matchCourts, sessionData?.queueCourts]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-gray-500 font-medium">
-        Loading session configurations...
+      <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
+        Loading session dashboard...
       </div>
     );
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-x-2">
-        <PlayersContainer players={sessionData.players} />
+    <div className="flex gap-x-2">
+      <PlayersContainer
+        players={sessionData.players}
+        assignedPlayerIds={assignedPlayerIds}
+      />
 
-        <div className="flex-1 flex flex-col gap-y-2">
-          <MatchCourt
-            matchCourts={sessionData.matchCourts}
-            allPlayers={sessionData.players}
-          />
-          <QueueCourt
-            queueCourts={sessionData.queueCourts}
-            allPlayers={sessionData.players}
-          />
-        </div>
+      <div className="flex-1 flex flex-col gap-y-2">
+        <MatchCourt
+          matchCourts={sessionData.matchCourts}
+          allPlayers={sessionData.players}
+        />
+        <QueueCourt
+          queueCourts={sessionData.queueCourts}
+          allPlayers={sessionData.players}
+        />
       </div>
-    </DragDropContext>
+    </div>
   );
 };
 

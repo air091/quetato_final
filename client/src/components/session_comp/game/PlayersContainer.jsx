@@ -1,22 +1,34 @@
 import React, { useState } from "react";
-import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { EllipsisVertical } from "lucide-react";
 
-const PlayersContainer = ({ players = [] }) => {
+// Presentation-only card component
+export const StaticPlayerCard = ({ username, isAssigned }) => {
+  return (
+    <div
+      className={`flex items-center justify-between p-2 rounded-md border text-sm font-medium select-none w-full ${
+        isAssigned
+          ? "bg-gray-100/70 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed"
+          : "bg-stone-50 border-gray-200 text-gray-800 cursor-pointer hover:bg-stone-100"
+      }`}
+    >
+      <span className="truncate">{username}</span>
+      {!isAssigned && (
+        <button className="text-gray-400 p-0.5">
+          <EllipsisVertical size={14} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+// Main Container List Component
+const PlayersContainer = ({ players = [], assignedPlayerIds = [] }) => {
   const [activeTab, setActiveTab] = useState("all");
 
-  // 1. Filter the list based on your actual backend JSON structure
   const filteredPlayers = players.filter((player) => {
     if (activeTab === "all") return true;
-
-    // Safely pull gameStatus and convert to lowercase just in case
     const status = (player?.gameStatus || "").toLowerCase();
-
-    if (activeTab === "waiting") return status === "waiting";
-    if (activeTab === "queued") return status === "queued";
-    if (activeTab === "paid") return status === "paid";
-
-    return true;
+    return status === activeTab;
   });
 
   return (
@@ -42,63 +54,35 @@ const PlayersContainer = ({ players = [] }) => {
         </div>
       </header>
 
-      {/* DROPPABLE CONTAINER FOR THE LOBBY */}
-      <Droppable droppableId="player-pool">
-        {(provided, snapshot) => (
-          <main
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={`flex-1 p-2 overflow-y-auto space-y-1.5 transition-colors min-h-[150px] ${
-              snapshot.isDraggingOver ? "bg-blue-50/40" : ""
-            }`}
-          >
-            {filteredPlayers.length === 0 ? (
-              <div className="text-center text-xs text-gray-400 mt-8 font-medium">
-                No players found in this category.
+      <main className="flex-1 p-2 overflow-y-auto space-y-1.5 min-h-[150px]">
+        {filteredPlayers.length === 0 ? (
+          <div className="text-center text-xs text-gray-400 mt-8 font-medium">
+            No players found in this category.
+          </div>
+        ) : (
+          filteredPlayers.map((player) => {
+            const stableId = player?.sessionPlayer?.id;
+
+            const isAssigned = assignedPlayerIds.some(
+              (assignedId) =>
+                assignedId === String(player?.id) ||
+                assignedId === String(stableId),
+            );
+
+            const username =
+              player?.sessionPlayer?.communityPlayer?.username ||
+              "Unknown Player";
+
+            if (!stableId) return null;
+
+            return (
+              <div key={player.id} className="w-full">
+                <StaticPlayerCard username={username} isAssigned={isAssigned} />
               </div>
-            ) : (
-              filteredPlayers.map((player, index) => {
-                const stableId = String(player?.id);
-
-                // 2. Exact match for your JSON depth: player.sessionPlayer.communityPlayer.username
-                const username =
-                  player?.sessionPlayer?.communityPlayer?.username ||
-                  player?.username ||
-                  "Unknown Player";
-
-                return (
-                  <Draggable
-                    key={stableId}
-                    draggableId={stableId}
-                    index={index}
-                  >
-                    {(dragProvided, dragSnapshot) => (
-                      <div
-                        ref={dragProvided.innerRef}
-                        {...dragProvided.draggableProps}
-                        {...dragProvided.dragHandleProps}
-                        className={`flex items-center justify-between p-2 rounded-md bg-stone-50 border border-gray-200 shadow-xs text-sm font-medium ${
-                          dragSnapshot.isDragging
-                            ? "shadow-md border-blue-400 bg-white ring-2 ring-blue-50"
-                            : ""
-                        }`}
-                      >
-                        <span className="truncate text-gray-800">
-                          {username}
-                        </span>
-                        <button className="text-gray-400 hover:text-gray-600 p-0.5 transition-colors">
-                          <EllipsisVertical size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </Draggable>
-                );
-              })
-            )}
-            {provided.placeholder}
-          </main>
+            );
+          })
         )}
-      </Droppable>
+      </main>
     </div>
   );
 };

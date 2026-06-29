@@ -1,7 +1,28 @@
-import { EllipsisVertical, GripVertical } from "lucide-react";
 import React from "react";
-import { Droppable, Draggable } from "@hello-pangea/dnd";
-import OptionalPortal from "../../OptionalPortal";
+import { EllipsisVertical } from "lucide-react";
+
+const QueueSlot = ({ position, username, hasPlayer }) => {
+  return (
+    <div className="border-2 border-dashed rounded h-[49px] backdrop-blur-xs flex items-center justify-center p-1 overflow-hidden relative border-white/30 bg-transparent">
+      {/* Background Matrix Text Position Indicator */}
+      <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
+        Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
+      </span>
+
+      {/* Render Occupied Player Card Target */}
+      {hasPlayer && username && (
+        <div className="absolute inset-1 flex items-center gap-1 px-2 rounded text-xs font-semibold text-gray-800 bg-white border shadow-xs z-20">
+          <span className="truncate flex-1 text-black font-semibold">
+            {username}
+          </span>
+          <button className="text-gray-400 p-1">
+            <EllipsisVertical size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
   const courtsList =
@@ -9,7 +30,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
   const countDisplay = queueCourts?.counts?.queue || courtsList.length;
 
   return (
-    <div className="">
+    <div>
       <h4 className="font-semibold text-gray-700 mb-2">
         Queues ({countDisplay})
       </h4>
@@ -23,7 +44,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
               key={stableKey}
               className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
-              {/* BACKGROUND COURT SVG */}
+              {/* BACKGROUND COURT SVG CANVAS */}
               <svg
                 width="100%"
                 height="100%"
@@ -86,7 +107,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                 />
               </svg>
 
-              {/* FOREGROUND CONTENT */}
+              {/* FOREGROUND HEADER CONTENT */}
               <header className="relative z-20 flex items-center justify-between text-white mb-2">
                 <span className="text-[14px] font-semibold">
                   {queueCourt?.name}
@@ -101,7 +122,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                 </div>
               </header>
 
-              {/* SLOTS AREA */}
+              {/* SLOTS TARGET ROW MATRIX */}
               <main className="relative z-20 grid grid-cols-2 gap-2">
                 {[0, 1, 2, 3].map((position) => {
                   const matchedSlot = queueCourt?.slots?.find(
@@ -113,9 +134,11 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                       allPlayers.find(
                         (p) =>
                           (matchedSlot.sessionPlayerId &&
-                            p.id === matchedSlot.sessionPlayerId) ||
+                            String(p.id) ===
+                              String(matchedSlot.sessionPlayerId)) ||
                           (matchedSlot.sessionPlayerId &&
-                            p.sessionPlayerId === matchedSlot.sessionPlayerId),
+                            String(p.sessionPlayerId) ===
+                              String(matchedSlot.sessionPlayerId)),
                       )
                     : null;
 
@@ -125,84 +148,13 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                     player?.communityPlayer?.username ||
                     "";
 
-                  const droppableId = `queue-court-${queueCourt.id}-pos-${position}`;
-                  const draggableId =
-                    player?.id || matchedSlot?.sessionPlayerId;
-
                   return (
-                    <Droppable droppableId={droppableId} key={droppableId}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={`border-2 border-dashed rounded h-[49px] backdrop-blur-xs flex items-center justify-center transition-colors p-1 overflow-hidden relative ${
-                            snapshot.isDraggingOver
-                              ? "border-green-400 bg-green-500/20"
-                              : "border-white/30 bg-transparent"
-                          }`}
-                        >
-                          {/* Default Background Text Label */}
-                          <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
-                            Player {position <= 1 ? "A" : "B"}-
-                            {position % 2 === 0 ? "1" : "2"}
-                          </span>
-
-                          {/* 🔴 FIXED CLONE: Added 'opacity-40 border-dashed bg-white/70' to lower transparency during dragging */}
-                          {matchedSlot && player && resolvedName && (
-                            <div className="absolute inset-1 flex items-center gap-1 px-2 rounded text-xs font-medium text-gray-500 bg-gray-200 border border-dashed border-gray-300 shadow-xs pointer-events-none select-none z-10">
-                              <span className="truncate flex-1 text-gray-400 font-medium">
-                                {resolvedName}
-                              </span>
-                              <div className="text-gray-300 p-1">
-                                <EllipsisVertical size={14} />
-                              </div>
-                            </div>
-                          )}
-
-                          {matchedSlot &&
-                            player &&
-                            draggableId &&
-                            resolvedName && (
-                              <Draggable
-                                key={draggableId}
-                                draggableId={draggableId}
-                                index={position}
-                              >
-                                {(dragProvided, dragSnapshot) => (
-                                  <OptionalPortal
-                                    usePortal={dragSnapshot.isDragging}
-                                  >
-                                    <div
-                                      ref={dragProvided.innerRef}
-                                      {...dragProvided.draggableProps}
-                                      {...dragProvided.dragHandleProps}
-                                      style={{
-                                        ...dragProvided.draggableProps.style,
-                                        zIndex: dragSnapshot.isDragging
-                                          ? 99999
-                                          : 20,
-                                      }}
-                                      className={`flex items-center gap-1 w-full h-full px-2 rounded text-xs font-medium select-none text-gray-800 bg-white border shadow-xs ${
-                                        dragSnapshot.isDragging
-                                          ? "shadow-lg border-blue-500 ring-2 ring-blue-100 opacity-100 scale-102"
-                                          : "relative z-20"
-                                      }`}
-                                    >
-                                      <span className="truncate flex-1 text-black font-semibold">
-                                        {resolvedName}
-                                      </span>
-                                      <button className="text-gray-400 p-1">
-                                        <EllipsisVertical size={14} />
-                                      </button>
-                                    </div>
-                                  </OptionalPortal>
-                                )}
-                              </Draggable>
-                            )}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
+                    <QueueSlot
+                      key={position}
+                      position={position}
+                      username={resolvedName}
+                      hasPlayer={!!(matchedSlot && player && resolvedName)}
+                    />
                   );
                 })}
               </main>
