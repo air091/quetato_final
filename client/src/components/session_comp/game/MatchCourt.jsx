@@ -1,11 +1,12 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { EllipsisVertical } from "lucide-react";
+import { CornerDownLeft, EllipsisVertical, IterationCw } from "lucide-react";
 import React from "react";
 
 const DraggableSlotPlayer = ({
   matchedPoolPlayer,
   username,
+  onRemovePlayer,
   isDragging,
   attributes,
   listeners,
@@ -34,9 +35,20 @@ const DraggableSlotPlayer = ({
       <span className="truncate flex-1 text-black font-semibold">
         {username}
       </span>
-      <button className="text-gray-400 p-0.5 cursor-pointer hover:text-gray-600">
-        <EllipsisVertical size={14} />
-      </button>
+      <div className="flex items-center gap-x-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents dnd-kit from intercepting click actions
+            onRemovePlayer();
+          }}
+          className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full z-30"
+        >
+          <CornerDownLeft size={14} />
+        </button>
+        <button className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full">
+          <EllipsisVertical size={14} />
+        </button>
+      </div>
     </div>
   );
 };
@@ -47,14 +59,23 @@ const CourtSlot = ({
   slotData,
   matchedPoolPlayer,
   courtId,
+  onRemovePlayer,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
   });
 
-  // Call hook here so we can read its active dragging state inside the slot container
+  const handleRemoveClick = () => {
+    if (onRemovePlayer && slotData) {
+      // FIX: Use fallback identifier paths if slotData.id isn't present yet
+      const targetIdentifier =
+        slotData.id || slotData.sessionPlayerId || `opt-${position}`;
+      onRemovePlayer(courtId, targetIdentifier);
+    }
+  };
+
   const draggableProps = useDraggable({
-    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id}`,
+    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id}`,
     data: { player: matchedPoolPlayer },
   });
 
@@ -69,17 +90,16 @@ const CourtSlot = ({
           : "border-white/30 bg-transparent"
       }`}
     >
-      {/* Background Position Label Indicator */}
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
       </span>
 
       {hasPlayer && (
         <>
-          {/* 1. This is the free-floating active draggable container */}
           <DraggableSlotPlayer
             matchedPoolPlayer={matchedPoolPlayer}
             username={username}
+            onRemovePlayer={handleRemoveClick}
             isDragging={draggableProps.isDragging}
             attributes={draggableProps.attributes}
             listeners={draggableProps.listeners}
@@ -87,15 +107,19 @@ const CourtSlot = ({
             transform={draggableProps.transform}
           />
 
-          {/* 2. PLACEHOLDER CARD: This renders underneath only while dragging to fill the empty slot space */}
           {draggableProps.isDragging && (
             <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
               <span className="truncate flex-1 text-black font-semibold">
                 {username}
               </span>
-              <button className="text-gray-400 p-0.5">
-                <EllipsisVertical size={14} />
-              </button>
+              <div className="flex items-center gap-x-1">
+                <button className="text-gray-400 p-0.5">
+                  <CornerDownLeft size={14} />
+                </button>
+                <button className="text-gray-400 p-0.5">
+                  <EllipsisVertical size={14} />
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -104,9 +128,9 @@ const CourtSlot = ({
   );
 };
 
-const MatchCourt = ({ matchCourts, players = [] }) => {
-  const courtsList = matchCourts?.courts;
-  const countDisplay = matchCourts?.counts?.match;
+const MatchCourt = ({ matchCourts, players = [], onRemovePlayer }) => {
+  const courtsList = matchCourts?.courts || [];
+  const countDisplay = matchCourts?.counts?.match || 0;
 
   return (
     <div>
@@ -122,7 +146,6 @@ const MatchCourt = ({ matchCourts, players = [] }) => {
               key={stableKey}
               className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
-              {/* BACKGROUND COURT SVG CANVAS */}
               <svg
                 width="100%"
                 height="100%"
@@ -217,7 +240,6 @@ const MatchCourt = ({ matchCourts, players = [] }) => {
                   const matchedPoolPlayer = slotData?.sessionPlayerId
                     ? players.find((p) => p.id === slotData.sessionPlayerId)
                     : null;
-
                   const username =
                     matchedPoolPlayer?.sessionPlayer?.communityPlayer?.username;
 
@@ -229,6 +251,7 @@ const MatchCourt = ({ matchCourts, players = [] }) => {
                       slotData={slotData}
                       matchedPoolPlayer={matchedPoolPlayer}
                       courtId={matchCourt.id}
+                      onRemovePlayer={onRemovePlayer}
                     />
                   );
                 })}

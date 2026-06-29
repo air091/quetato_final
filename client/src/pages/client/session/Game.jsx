@@ -4,7 +4,13 @@ import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
 import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
-import { DndContext, pointerWithin } from "@dnd-kit/core";
+import {
+  DndContext,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 
 const Game = () => {
   const { fetchWithAuth } = useAuth();
@@ -38,7 +44,6 @@ const Game = () => {
           queueRes.json(),
         ]);
 
-        // Standardized structures matching what the components expect
         const extractedMatch =
           matchData.courts ||
           matchData.data ||
@@ -96,6 +101,74 @@ const Game = () => {
     [communityId, sessionId, fetchWithAuth],
   );
 
+  const removePlayerToSlot = useCallback(
+    async (courtId, slotId) => {
+      const response = await fetchWithAuth(
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/slots/remove`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ courtId, slotId }),
+        },
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Backend deletion failure details:", errorData);
+        throw new Error("Failed to remove player from slot");
+      }
+      return true;
+    },
+    [communityId, sessionId, fetchWithAuth],
+  );
+
+  const handleRemovePlayer = async (courtId, slotId) => {
+    const previousSessionData = structuredClone(sessionData);
+
+    const removeFromCourtsList = (currentCourtsObj) => {
+      if (!currentCourtsObj?.courts) return currentCourtsObj;
+
+      const updatedCourts = currentCourtsObj.courts.map((court) => {
+        if (court.id !== courtId) return court;
+
+        const updatedSlots = (court.slots || []).map((slot) => {
+          // SAFE MATCH: If the unique string ID matches, OR if a freshly dragged player matching slotId matches
+          if (
+            slot.id === slotId ||
+            slot.sessionPlayerId === slotId ||
+            `opt-${slot.position}` === slotId
+          ) {
+            return { ...slot, sessionPlayerId: null, sessionPlayer: null };
+          }
+          return slot;
+        });
+
+        return { ...court, slots: updatedSlots };
+      });
+
+      return { ...currentCourtsObj, courts: updatedCourts };
+    };
+
+    // 1. Force state wipe on frontend instantly
+    setSessionData((prev) => ({
+      ...prev,
+      matchCourts: removeFromCourtsList(prev.matchCourts),
+      queueCourts: removeFromCourtsList(prev.queueCourts),
+    }));
+
+    try {
+      // If it's a completely temporary client-side ID, we don't dispatch it to the backend yet
+      if (typeof slotId === "string" && slotId.startsWith("opt-")) {
+        console.log("⚡ Success: Cleared an unsaved optimistic slot wrapper.");
+        return;
+      }
+
+      await removePlayerToSlot(courtId, slotId);
+    } catch (error) {
+      console.error("❌ Deletion dropped! Restoring state context...", error);
+      setSessionData(previousSessionData);
+    }
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
 
@@ -108,15 +181,12 @@ const Game = () => {
       const [_, courtId, positionStr] = over.id.split("-");
       const position = parseInt(positionStr, 10);
 
-      // 1. SNAPSHOT CURRENT STATES FOR INSURANCE ROLLBACK
       const previousSessionData = structuredClone(sessionData);
 
-      // 2. BUILD OPTIMISTIC ALTERED DATA STRUCTS
       const updateCourtsListOptimistically = (currentCourtsObj) => {
         if (!currentCourtsObj?.courts) return currentCourtsObj;
 
         const updatedCourts = currentCourtsObj.courts.map((court) => {
-          // A. Clean out the player from their original slot anywhere else on this group canvas
           let slots = (court.slots || []).map((slot) => {
             if (slot.sessionPlayerId === player.id) {
               return { ...slot, sessionPlayerId: null, sessionPlayer: null };
@@ -124,10 +194,12 @@ const Game = () => {
             return slot;
           });
 
-          // B. Inject player into their target layout coordinates
           if (court.id === courtId) {
             const slotIndex = slots.findIndex((s) => s.position === position);
+
+            // FIX: Inject a fallback ID so handleRemovePlayer doesn't break if clicked immediately
             const targetSlotStructure = {
+              id: slots[slotIndex]?.id || `opt-${position}`,
               position: position,
               sessionPlayerId: player.id,
               sessionPlayer: player,
@@ -146,27 +218,59 @@ const Game = () => {
         return { ...currentCourtsObj, courts: updatedCourts };
       };
 
-      // 3. FORCE OPTIMISTIC LOCAL STATE CHANGE INSTANTLY
       setSessionData((prev) => ({
         ...prev,
         matchCourts: updateCourtsListOptimistically(prev.matchCourts),
         queueCourts: updateCourtsListOptimistically(prev.queueCourts),
       }));
 
-      // 4. SYNC WITH THE BACKEND API IN THE BACKGROUND
       try {
-        await assignPlayerToSlot(courtId, player.id, position);
-        console.log("⚡ Success: Server synced perfectly.");
-      } catch (error) {
-        console.error(
-          "❌ API Sync failed! Reverting view changes optimistically...",
-          error,
+        const syncedPayload = await assignPlayerToSlot(
+          courtId,
+          player.id,
+          position,
         );
-        // 5. ROLLBACK ON FAILURE
+
+        // Quietly update the temp placeholder ID with the official one from the database
+        if (syncedPayload?.id || syncedPayload?.slot?.id) {
+          const realSlotId = syncedPayload.id || syncedPayload.slot?.id;
+          setSessionData((prev) => {
+            const updateId = (obj) => ({
+              ...obj,
+              courts: obj.courts.map((c) =>
+                c.id !== courtId
+                  ? c
+                  : {
+                      ...c,
+                      slots: c.slots.map((s) =>
+                        s.position === position ? { ...s, id: realSlotId } : s,
+                      ),
+                    },
+              ),
+            });
+            return {
+              ...prev,
+              matchCourts: updateId(prev.matchCourts),
+              queueCourts: updateId(prev.queueCourts),
+            };
+          });
+        }
+      } catch (error) {
+        console.error("❌ API Sync failed! Reverting view changes...", error);
         setSessionData(previousSessionData);
       }
     }
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        // Requires moving the cursor at least 1 pixel to start a drag.
+        // This lets pure static button clicks bypass dnd-kit entirely!
+        distance: 1,
+      },
+    }),
+  );
 
   if (isLoading) {
     return (
@@ -177,7 +281,11 @@ const Game = () => {
   }
 
   return (
-    <DndContext collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex gap-x-2">
         <PlayersContainer players={sessionData.players} />
 
@@ -185,10 +293,12 @@ const Game = () => {
           <MatchCourt
             matchCourts={sessionData.matchCourts}
             players={sessionData.players}
+            onRemovePlayer={handleRemovePlayer}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
             players={sessionData.players}
+            onRemovePlayer={handleRemovePlayer}
           />
         </div>
       </div>

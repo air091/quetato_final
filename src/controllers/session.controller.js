@@ -18,6 +18,7 @@ import {
   deleteMatchCourt,
   deleteQueueCourt,
   getAllCourts,
+  removePlayerToSlot,
   updateMatchCourtName,
   updateQueueCourtName,
   updateQueueCourtToMatch,
@@ -496,6 +497,36 @@ export const assignPlayerToSlotController = async (request, response) => {
     return response.status(201).json({ success: true, updatedSlotsState });
   } catch (error) {
     console.error("Assign player to slot failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const removePlayerToSlotController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+    const { courtId, slotId } = request.body;
+
+    const court = await removePlayerToSlot(
+      communityId,
+      sessionId,
+      courtId,
+      slotId,
+      request.user.sub,
+    );
+
+    return response.status(204).json({ success: true });
+  } catch (error) {
+    console.error("Remove player from slot failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 

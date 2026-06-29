@@ -739,3 +739,71 @@ export const assignPlayerToSlot = async (
     });
   });
 };
+
+export const removePlayerToSlot = async (
+  communityId,
+  sessionId,
+  courtId,
+  slotId,
+  authorizedId,
+) => {
+  // 1. Fail fast: Validate all required fields upfront
+  if (!communityId || !sessionId || !courtId || !slotId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, Slot ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 2. Verify player credentials and roles
+    const authorizingAttendee = await tx.sessionPlayer.findFirst({
+      where: {
+        sessionId: sessionId,
+        sessionPlayer: {
+          communityId: communityId,
+          userId: authorizedId,
+        },
+      },
+      select: {
+        id: true,
+        sessionPlayer: { select: { role: true } },
+      },
+    });
+
+    // 3. Security Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can remove players from slots",
+        403,
+      );
+    }
+
+    // 4. Delete the court slot using relation filtering for security
+    // This ensures the slot actually belongs to the given court and session hierarchy
+    const deletedSlot = await tx.courtSlot.deleteMany({
+      where: {
+        id: slotId,
+        courtId: courtId,
+        court: {
+          sessionId: sessionId,
+        },
+      },
+    });
+
+    // 5. Verification Check
+    if (deletedSlot.count === 0) {
+      throw new AppError("Court slot not found in this court or session", 404);
+    }
+
+    return { id: slotId, message: "Player removed from slot successfully" };
+  });
+};

@@ -21,6 +21,7 @@ import {
   getAllPublicSessionsController,
   getAllSessionsController,
   getSessionByIdController,
+  removePlayerToSlotController,
   sessionDashboardController,
   startSessionController,
   updateMatchCourtNameController,
@@ -138,6 +139,11 @@ router.patch(
 router.post(
   "/:communityId/sessions/:sessionId/courts/slots/assign",
   assignPlayerToSlotController,
+);
+
+router.delete(
+  "/:communityId/sessions/:sessionId/courts/slots/remove",
+  removePlayerToSlotController,
 );
 
 export default router;
