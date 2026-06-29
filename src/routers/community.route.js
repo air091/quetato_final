@@ -142,7 +142,7 @@ router.post(
 );
 
 router.delete(
-  "/:communityId/sessions/:sessionId/courts/slots/remove",
+  "/:communityId/sessions/:sessionId/courts/:courtId/slots/:slotId/remove",
   removePlayerToSlotController,
 );
 

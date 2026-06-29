@@ -513,8 +513,7 @@ export const assignPlayerToSlotController = async (request, response) => {
 
 export const removePlayerToSlotController = async (request, response) => {
   try {
-    const { communityId, sessionId } = request.params;
-    const { courtId, slotId } = request.body;
+    const { communityId, sessionId, courtId, slotId } = request.params;
 
     const court = await removePlayerToSlot(
       communityId,

@@ -104,11 +104,9 @@ const Game = () => {
   const removePlayerToSlot = useCallback(
     async (courtId, slotId) => {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/slots/remove`,
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/slots/${slotId}/remove`,
         {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courtId, slotId }),
         },
       );
       if (!response.ok) {
