@@ -132,7 +132,7 @@ const Game = () => {
         />
         <QueueCourt
           queueCourts={sessionData.queueCourts}
-          allPlayers={sessionData.players}
+          players={sessionData.players}
         />
       </div>
     </div>

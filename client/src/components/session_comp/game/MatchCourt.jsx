@@ -23,7 +23,6 @@ const CourtSlot = ({ position, username, slotData, matchedPoolPlayer }) => {
 };
 
 const MatchCourt = ({ matchCourts, players = [] }) => {
-  console.log(matchCourts);
   const courtsList = matchCourts?.courts;
   const countDisplay = matchCourts?.counts?.match;
 

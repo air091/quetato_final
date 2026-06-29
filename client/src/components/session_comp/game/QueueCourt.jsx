@@ -15,7 +15,7 @@ const QueueSlot = ({ position, username, hasPlayer }) => {
           <span className="truncate flex-1 text-black font-semibold">
             {username}
           </span>
-          <button className="text-gray-400 p-1">
+          <button className="text-gray-400 p-1 cursor-pointer">
             <EllipsisVertical size={14} />
           </button>
         </div>
@@ -24,10 +24,9 @@ const QueueSlot = ({ position, username, hasPlayer }) => {
   );
 };
 
-const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
-  const courtsList =
-    queueCourts?.courts || (Array.isArray(queueCourts) ? queueCourts : []);
-  const countDisplay = queueCourts?.counts?.queue || courtsList.length;
+const QueueCourt = ({ queueCourts, players = [] }) => {
+  const courtsList = queueCourts?.courts;
+  const countDisplay = queueCourts?.counts?.queue;
 
   return (
     <div>
@@ -131,22 +130,16 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
 
                   const player = matchedSlot
                     ? matchedSlot.sessionPlayer ||
-                      allPlayers.find(
+                      players.find(
                         (p) =>
-                          (matchedSlot.sessionPlayerId &&
-                            String(p.id) ===
-                              String(matchedSlot.sessionPlayerId)) ||
-                          (matchedSlot.sessionPlayerId &&
-                            String(p.sessionPlayerId) ===
-                              String(matchedSlot.sessionPlayerId)),
+                          matchedSlot.sessionPlayerId &&
+                          p.id === matchedSlot.sessionPlayerId,
                       )
                     : null;
 
                   const resolvedName =
-                    player?.username ||
                     player?.sessionPlayer?.communityPlayer?.username ||
-                    player?.communityPlayer?.username ||
-                    "";
+                    "Unknown player";
 
                   return (
                     <QueueSlot
