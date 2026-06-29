@@ -89,25 +89,6 @@ const Game = () => {
     [communityId, sessionId, fetchWithAuth],
   );
 
-  const assignedPlayerIds = useMemo(() => {
-    const validMatches = Array.isArray(sessionData?.matchCourts)
-      ? sessionData.matchCourts
-      : [];
-    const validQueues = Array.isArray(sessionData?.queueCourts)
-      ? sessionData.queueCourts
-      : [];
-
-    console.log(
-      [...validMatches, ...validQueues]
-        .flatMap((court) => court?.slots || [])
-        .map((slot) => String(slot?.sessionPlayerId)),
-    );
-
-    return [...validMatches, ...validQueues]
-      .flatMap((court) => court?.slots || [])
-      .map((slot) => String(slot?.sessionPlayerId));
-  }, [sessionData?.matchCourts, sessionData?.queueCourts]);
-
   if (isLoading) {
     return (
       <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
@@ -116,14 +97,32 @@ const Game = () => {
     );
   }
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     const { active, over } = event;
+
+    // 1. If dropped outside a valid slot, do nothing
     if (!over) return;
 
-    const playerId = active.id;
-    const courtId = over.id;
+    // 2. Safely grab the actual player object you passed into 'data'
+    const player = active.data.current?.player;
+    const username =
+      player?.sessionPlayer?.communityPlayer?.username || "Unknown";
 
-    console.log(`Player: ${playerId} | Court: ${courtId}`);
+    // 3. Destructure the target court and position slot from over.id
+    // Format received: "slot-courtId-position"
+    if (over.id.startsWith("slot-")) {
+      const [_, courtId, positionStr] = over.id.split("-");
+      const position = parseInt(positionStr, 10);
+
+      // Now you have everything clean and typed perfectly!
+      console.log(
+        `🎯 Dropped ${username} (${player.id}) into Court: ${courtId} at Slot Position: ${position}`,
+      );
+
+      // TODO: Trigger your state update or API call here
+      // updatePlayerCourtSlot(actualPlayerId, courtId, position);
+      await assignPlayerToSlot(courtId, player.id, position);
+    }
   };
 
   return (
