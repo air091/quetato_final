@@ -4,6 +4,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
 import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
+import { DndContext, pointerWithin } from "@dnd-kit/core";
 
 const Game = () => {
   const { fetchWithAuth } = useAuth();
@@ -115,27 +116,33 @@ const Game = () => {
     );
   }
 
-  // const Draggable = () => {
-  //   const {attributes, listeners, setNodeRef, transform} = useDraggable({
-  //     id: sessionData.players.
-  //   });
-  // }
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const playerId = active.id;
+    const courtId = over.id;
+
+    console.log(`Player: ${playerId} | Court: ${courtId}`);
+  };
 
   return (
-    <div className="flex gap-x-2">
-      <PlayersContainer players={sessionData.players} />
+    <DndContext collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+      <div className="flex gap-x-2">
+        <PlayersContainer players={sessionData.players} />
 
-      <div className="flex-1 flex flex-col gap-y-2">
-        <MatchCourt
-          matchCourts={sessionData.matchCourts}
-          players={sessionData.players}
-        />
-        <QueueCourt
-          queueCourts={sessionData.queueCourts}
-          players={sessionData.players}
-        />
+        <div className="flex-1 flex flex-col gap-y-2">
+          <MatchCourt
+            matchCourts={sessionData.matchCourts}
+            players={sessionData.players}
+          />
+          <QueueCourt
+            queueCourts={sessionData.queueCourts}
+            players={sessionData.players}
+          />
+        </div>
       </div>
-    </div>
+    </DndContext>
   );
 };
 

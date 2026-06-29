@@ -1,16 +1,47 @@
 import React, { useState } from "react";
 import { EllipsisVertical } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 // Presentation-only card component
-export const PlayerCard = ({ username, isAssigned }) => {
+export const PlayerCard = ({ username, isAssigned, isDragging }) => {
   return (
     <div
-      className={`flex items-center justify-between p-2 rounded-md border text-sm font-medium select-none w-full`}
+      className={`flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none w-full ${isDragging ? "border-blue-500" : ""}`}
     >
       <span className="truncate">{username}</span>{" "}
       <button className="text-gray-400 p-0.5 cursor-pointer">
         <EllipsisVertical size={14} />
       </button>
+    </div>
+  );
+};
+
+const DraggablePlayer = ({ player, username }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: `draggable-${player.sessionPlayer.id}`,
+      data: { player },
+    });
+
+  const style = {
+    // This maps the coordinates globally rather than relatively
+    transform: CSS.Transform.toString(transform),
+    // 3. Crucial: Use position fixed during active drag to break out of overflow boundaries
+    position: isDragging ? "fixed" : "relative",
+    zIndex: isDragging ? 9999 : "auto",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      // Style changes while dragging (e.g., lower opacity)
+      className={`w-full cursor-grab active:cursor-grabbing touch-none`}
+    >
+      <PlayerCard username={username} isDragging={isDragging} />
     </div>
   );
 };
@@ -64,9 +95,11 @@ const PlayersContainer = ({ players = [] }) => {
             if (!stableId) return null;
 
             return (
-              <div key={player.id} className="w-full">
-                <PlayerCard username={username} />
-              </div>
+              <DraggablePlayer
+                key={player.id}
+                player={player}
+                username={username}
+              />
             );
           })
         )}
