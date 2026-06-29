@@ -13,7 +13,7 @@ const CourtSlot = ({ position, username, slotData, matchedPoolPlayer }) => {
           <span className="truncate flex-1 text-black font-semibold">
             {username}
           </span>
-          <button className="text-gray-400 p-1">
+          <button className="text-gray-400 p-1 cursor-pointer">
             <EllipsisVertical size={14} />
           </button>
         </div>
@@ -23,9 +23,9 @@ const CourtSlot = ({ position, username, slotData, matchedPoolPlayer }) => {
 };
 
 const MatchCourt = ({ matchCourts, players = [] }) => {
-  const courtsList =
-    matchCourts?.courts || (Array.isArray(matchCourts) ? matchCourts : []);
-  const countDisplay = matchCourts?.counts?.match || courtsList.length;
+  console.log(matchCourts);
+  const courtsList = matchCourts?.courts;
+  const countDisplay = matchCourts?.counts?.match;
 
   return (
     <div>
@@ -41,16 +41,89 @@ const MatchCourt = ({ matchCourts, players = [] }) => {
               key={stableKey}
               className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
-              {/* COURT GRAPHICS CANVAS BACKGROUND */}
-              <div className="bg-blue-900/80 absolute inset-0 z-10 pointer-events-none rounded-md" />
+              {/* BACKGROUND COURT SVG CANVAS */}
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 300 150"
+                fill="none"
+                stroke="rgba(200, 200, 200, 0.8)"
+                strokeWidth="2"
+                preserveAspectRatio="none"
+                className="bg-blue-900/90 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+              >
+                <rect
+                  x="25"
+                  y="25"
+                  width="250"
+                  height="100"
+                  fill="none"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="2"
+                />
+                <line
+                  x1="150"
+                  y1="25"
+                  x2="150"
+                  y2="125"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="2"
+                  strokeDasharray="5,5"
+                />
+                <line
+                  x1="25"
+                  y1="50"
+                  x2="275"
+                  y2="50"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+                <line
+                  x1="25"
+                  y1="100"
+                  x2="275"
+                  y2="100"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+                <line
+                  x1="50"
+                  y1="25"
+                  x2="50"
+                  y2="125"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+                <line
+                  x1="250"
+                  y1="25"
+                  x2="250"
+                  y2="125"
+                  stroke="rgba(200, 200, 200, 0.8)"
+                  strokeWidth="1.5"
+                />
+              </svg>
 
               <header className="relative z-20 flex flex-col items-center justify-between text-white mb-2">
                 <div className="flex items-center justify-between w-full">
                   <span className="text-[14px] font-semibold">
                     {matchCourt?.name}
                   </span>
-                  <button className="cursor-pointer bg-stone-800 text-stone-400 hover:text-stone-200 text-[14px] py-0.5 px-2 rounded-full">
-                    Start game
+                  <div className="flex items-center gap-x-1">
+                    <button className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full">
+                      Start game
+                    </button>
+                    <button className="cursor-pointer hover:bg-white/10 rounded-full p-1">
+                      <EllipsisVertical size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex w-full gap-x-2 mt-1">
+                  <button className="cursor-pointer bg-orange-600 hover:bg-orange-700 w-full rounded-full text-[14px] text-stone-300 hover:text-stone-50">
+                    Team A
+                  </button>
+                  <button className="cursor-pointer bg-stone-600 hover:bg-stone-700 w-full rounded-full text-[14px] text-stone-300 hover:text-stone-50">
+                    Team B
                   </button>
                 </div>
               </header>
@@ -61,17 +134,11 @@ const MatchCourt = ({ matchCourts, players = [] }) => {
                     (s) => s.position === position,
                   );
                   const matchedPoolPlayer = slotData?.sessionPlayerId
-                    ? allPlayers.find(
-                        (p) =>
-                          String(p.id) === String(slotData.sessionPlayerId) ||
-                          String(p.sessionPlayerId) ===
-                            String(slotData.sessionPlayerId),
-                      )
+                    ? players.find((p) => p.id === slotData.sessionPlayerId)
                     : null;
 
                   const username =
-                    matchedPoolPlayer?.sessionPlayer?.communityPlayer
-                      ?.username || matchedPoolPlayer?.username;
+                    matchedPoolPlayer?.sessionPlayer?.communityPlayer?.username;
 
                   return (
                     <CourtSlot

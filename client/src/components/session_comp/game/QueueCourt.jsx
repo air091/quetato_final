@@ -117,7 +117,7 @@ const QueueCourt = ({ queueCourts, allPlayers = [] }) => {
                     Transfer to court
                   </button>
                   <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
-                    <EllipsisVertical size={14} />
+                    <EllipsisVertical size={16} />
                   </button>
                 </div>
               </header>
