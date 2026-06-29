@@ -66,18 +66,14 @@ const Game = () => {
   // Retained in case your child components still trigger explicit manual assignments (e.g., via click buttons)
   const assignPlayerToSlot = useCallback(
     async (targetCourtId, sessionPlayerId, targetPosition) => {
-      console.log("Payload inspection:", {
-        sessionPlayerId: String(sessionPlayerId),
-        position: Number(targetPosition),
-      });
-
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${targetCourtId}/slots/assign`,
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/slots/assign`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sessionPlayerId: String(sessionPlayerId),
+            courtId: targetCourtId,
+            sessionPlayerId: sessionPlayerId,
             position: Number(targetPosition),
           }),
         },
@@ -100,6 +96,12 @@ const Game = () => {
       ? sessionData.queueCourts
       : [];
 
+    console.log(
+      [...validMatches, ...validQueues]
+        .flatMap((court) => court?.slots || [])
+        .map((slot) => String(slot?.sessionPlayerId)),
+    );
+
     return [...validMatches, ...validQueues]
       .flatMap((court) => court?.slots || [])
       .map((slot) => String(slot?.sessionPlayerId));
@@ -113,17 +115,20 @@ const Game = () => {
     );
   }
 
+  // const Draggable = () => {
+  //   const {attributes, listeners, setNodeRef, transform} = useDraggable({
+  //     id: sessionData.players.
+  //   });
+  // }
+
   return (
     <div className="flex gap-x-2">
-      <PlayersContainer
-        players={sessionData.players}
-        assignedPlayerIds={assignedPlayerIds}
-      />
+      <PlayersContainer players={sessionData.players} />
 
       <div className="flex-1 flex flex-col gap-y-2">
         <MatchCourt
           matchCourts={sessionData.matchCourts}
-          allPlayers={sessionData.players}
+          players={sessionData.players}
         />
         <QueueCourt
           queueCourts={sessionData.queueCourts}

@@ -22,7 +22,7 @@ const CourtSlot = ({ position, username, slotData, matchedPoolPlayer }) => {
   );
 };
 
-const MatchCourt = ({ matchCourts, allPlayers = [] }) => {
+const MatchCourt = ({ matchCourts, players = [] }) => {
   const courtsList =
     matchCourts?.courts || (Array.isArray(matchCourts) ? matchCourts : []);
   const countDisplay = matchCourts?.counts?.match || courtsList.length;

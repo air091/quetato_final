@@ -2,32 +2,26 @@ import React, { useState } from "react";
 import { EllipsisVertical } from "lucide-react";
 
 // Presentation-only card component
-export const StaticPlayerCard = ({ username, isAssigned }) => {
+export const PlayerCard = ({ username, isAssigned }) => {
   return (
     <div
-      className={`flex items-center justify-between p-2 rounded-md border text-sm font-medium select-none w-full ${
-        isAssigned
-          ? "bg-gray-100/70 border-gray-200 text-gray-400 opacity-60 cursor-not-allowed"
-          : "bg-stone-50 border-gray-200 text-gray-800 cursor-pointer hover:bg-stone-100"
-      }`}
+      className={`flex items-center justify-between p-2 rounded-md border text-sm font-medium select-none w-full`}
     >
-      <span className="truncate">{username}</span>
-      {!isAssigned && (
-        <button className="text-gray-400 p-0.5">
-          <EllipsisVertical size={14} />
-        </button>
-      )}
+      <span className="truncate">{username}</span>{" "}
+      <button className="text-gray-400 p-0.5 cursor-pointer">
+        <EllipsisVertical size={14} />
+      </button>
     </div>
   );
 };
 
 // Main Container List Component
-const PlayersContainer = ({ players = [], assignedPlayerIds = [] }) => {
+const PlayersContainer = ({ players = [] }) => {
   const [activeTab, setActiveTab] = useState("all");
 
   const filteredPlayers = players.filter((player) => {
     if (activeTab === "all") return true;
-    const status = (player?.gameStatus || "").toLowerCase();
+    const status = player?.gameStatus;
     return status === activeTab;
   });
 
@@ -63,12 +57,6 @@ const PlayersContainer = ({ players = [], assignedPlayerIds = [] }) => {
           filteredPlayers.map((player) => {
             const stableId = player?.sessionPlayer?.id;
 
-            const isAssigned = assignedPlayerIds.some(
-              (assignedId) =>
-                assignedId === String(player?.id) ||
-                assignedId === String(stableId),
-            );
-
             const username =
               player?.sessionPlayer?.communityPlayer?.username ||
               "Unknown Player";
@@ -77,7 +65,7 @@ const PlayersContainer = ({ players = [], assignedPlayerIds = [] }) => {
 
             return (
               <div key={player.id} className="w-full">
-                <StaticPlayerCard username={username} isAssigned={isAssigned} />
+                <PlayerCard username={username} />
               </div>
             );
           })

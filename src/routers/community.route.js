@@ -136,7 +136,7 @@ router.patch(
 );
 
 router.post(
-  "/:communityId/sessions/:sessionId/courts/:courtId/slots/assign",
+  "/:communityId/sessions/:sessionId/courts/slots/assign",
   assignPlayerToSlotController,
 );
 

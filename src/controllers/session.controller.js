@@ -480,8 +480,8 @@ export const updateQueueCourtToMatchController = async (request, response) => {
 
 export const assignPlayerToSlotController = async (request, response) => {
   try {
-    const { communityId, sessionId, courtId } = request.params;
-    const { sessionPlayerId, position } = request.body;
+    const { communityId, sessionId } = request.params;
+    const { courtId, sessionPlayerId, position } = request.body;
     const authorizedId = request.user.id;
 
     const updatedSlotsState = await assignPlayerToSlot(
