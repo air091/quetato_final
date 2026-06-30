@@ -1,11 +1,12 @@
 import React from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { EllipsisVertical } from "lucide-react";
+import { CornerDownLeft, EllipsisVertical } from "lucide-react";
 
 const DraggableSlotPlayer = ({
   matchedPoolPlayer,
   username,
+  onRemovePlayer,
   isDragging,
   attributes,
   listeners,
@@ -34,9 +35,20 @@ const DraggableSlotPlayer = ({
       <span className="truncate flex-1 text-black font-semibold">
         {username}
       </span>
-      <button className="text-gray-400 p-0.5 cursor-pointer hover:text-gray-600">
-        <EllipsisVertical size={14} />
-      </button>
+      <div className="flex items-center gap-x-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents dnd-kit from intercepting click actions
+            onRemovePlayer();
+          }}
+          className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full z-30"
+        >
+          <CornerDownLeft size={14} />
+        </button>
+        <button className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full">
+          <EllipsisVertical size={14} />
+        </button>
+      </div>
     </div>
   );
 };
@@ -44,15 +56,25 @@ const DraggableSlotPlayer = ({
 const QueueSlot = ({
   position,
   username,
+  slotData,
   hasPlayer,
   matchedPoolPlayer,
   courtId,
+  onRemovePlayer,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
   });
 
-  // Call hook here to monitor internal active dragging state and attach handlers
+  const handleRemoveClick = () => {
+    if (onRemovePlayer && slotData) {
+      // SAFE FALLBACK IDENTIFIERS FOR DELETION PATHWAYS
+      const targetIdentifier =
+        slotData.id || slotData.sessionPlayerId || `opt-${position}`;
+      onRemovePlayer(courtId, targetIdentifier);
+    }
+  };
+
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id}`,
     data: { player: matchedPoolPlayer },
@@ -67,17 +89,16 @@ const QueueSlot = ({
           : "border-white/30 bg-transparent"
       }`}
     >
-      {/* Background Matrix Text Position Indicator */}
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
       </span>
 
       {hasPlayer && username && (
         <>
-          {/* 1. Free-floating functional draggable target object */}
           <DraggableSlotPlayer
             matchedPoolPlayer={matchedPoolPlayer}
             username={username}
+            onRemovePlayer={handleRemoveClick}
             isDragging={draggableProps.isDragging}
             attributes={draggableProps.attributes}
             listeners={draggableProps.listeners}
@@ -85,15 +106,19 @@ const QueueSlot = ({
             transform={draggableProps.transform}
           />
 
-          {/* 2. PLACEHOLDER CARD: Retains structural placeholder presence in slot upon active execution */}
           {draggableProps.isDragging && (
             <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
               <span className="truncate flex-1 text-black font-semibold">
                 {username}
               </span>
-              <button className="text-gray-400 p-0.5">
-                <EllipsisVertical size={14} />
-              </button>
+              <div className="flex items-center gap-x-1">
+                <button className="text-gray-400 p-0.5">
+                  <CornerDownLeft size={14} />
+                </button>
+                <button className="text-gray-400 p-0.5">
+                  <EllipsisVertical size={14} />
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -102,9 +127,9 @@ const QueueSlot = ({
   );
 };
 
-const QueueCourt = ({ queueCourts, players = [] }) => {
-  const courtsList = queueCourts?.courts;
-  const countDisplay = queueCourts?.counts?.queue;
+const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
+  const courtsList = queueCourts?.courts || [];
+  const countDisplay = queueCourts?.counts?.queue || 0;
 
   return (
     <div>
@@ -121,7 +146,6 @@ const QueueCourt = ({ queueCourts, players = [] }) => {
               key={stableKey}
               className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
-              {/* BACKGROUND COURT SVG CANVAS */}
               <svg
                 width="100%"
                 height="100%"
@@ -184,7 +208,6 @@ const QueueCourt = ({ queueCourts, players = [] }) => {
                 />
               </svg>
 
-              {/* FOREGROUND HEADER CONTENT */}
               <header className="relative z-20 flex items-center justify-between text-white mb-2">
                 <span className="text-[14px] font-semibold">
                   {queueCourt?.name}
@@ -199,34 +222,45 @@ const QueueCourt = ({ queueCourts, players = [] }) => {
                 </div>
               </header>
 
-              {/* SLOTS TARGET ROW MATRIX */}
               <main className="relative z-20 grid grid-cols-2 gap-2">
                 {[0, 1, 2, 3].map((position) => {
-                  const matchedSlot = queueCourt?.slots?.find(
+                  const slotData = queueCourt?.slots?.find(
                     (s) => s.position === position,
                   );
 
-                  const player = matchedSlot
-                    ? matchedSlot.sessionPlayer ||
+                  const player = slotData
+                    ? slotData.sessionPlayer ||
                       players.find(
                         (p) =>
-                          matchedSlot.sessionPlayerId &&
-                          p.id === matchedSlot.sessionPlayerId,
+                          slotData.sessionPlayerId &&
+                          p.id === slotData.sessionPlayerId,
                       )
                     : null;
 
+                  // SAFE MULTI-TIER USERNAME RESOLUTION
                   const resolvedName =
                     player?.sessionPlayer?.communityPlayer?.username ||
+                    player?.communityPlayer?.username ||
+                    player?.username ||
                     "Unknown player";
+
+                  // CHECK EXISTENCE OF COMPONENT SAFELY
+                  const slotHasPlayer = !!(
+                    slotData &&
+                    player &&
+                    resolvedName !== "Unknown player"
+                  );
 
                   return (
                     <QueueSlot
                       key={position}
                       position={position}
                       username={resolvedName}
-                      hasPlayer={!!(matchedSlot && player && resolvedName)}
+                      slotData={slotData}
+                      hasPlayer={slotHasPlayer}
                       matchedPoolPlayer={player}
                       courtId={queueCourt.id}
+                      onRemovePlayer={onRemovePlayer}
                     />
                   );
                 })}

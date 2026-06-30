@@ -181,47 +181,161 @@ const Game = () => {
 
       const previousSessionData = structuredClone(sessionData);
 
+      // --- STEP A: FIND DRAGGED PLAYER'S ORIGINAL POSITION ---
+      let sourceCourtId = null;
+      let sourcePosition = null;
+      let sourceSlotId = null;
+
+      const locateSource = (courtObj) => {
+        courtObj?.courts?.forEach((c) => {
+          c.slots?.forEach((s) => {
+            if (s.sessionPlayerId === player.id) {
+              sourceCourtId = c.id;
+              sourcePosition = s.position;
+              sourceSlotId = s.id;
+            }
+          });
+        });
+      };
+      locateSource(sessionData.matchCourts);
+      locateSource(sessionData.queueCourts);
+
+      // --- STEP B: FIND DISPLACED PLAYER AT TARGET POSITION ---
+      let displacedPlayer = null;
+      let displacedSlotId = null;
+
+      const locateTarget = (courtObj) => {
+        courtObj?.courts?.forEach((c) => {
+          if (c.id === courtId) {
+            const targetSlot = c.slots?.find((s) => s.position === position);
+            if (targetSlot?.sessionPlayerId) {
+              displacedSlotId = targetSlot.id;
+              // Lookup player object references securely from master list
+              displacedPlayer =
+                sessionData.players.find(
+                  (p) => p.id === targetSlot.sessionPlayerId,
+                ) || targetSlot.sessionPlayer;
+            }
+          }
+        });
+      };
+      locateTarget(sessionData.matchCourts);
+      locateTarget(sessionData.queueCourts);
+
+      // --- STEP C: EXECUTE THE OPTIMISTIC SWAP ---
       const updateCourtsListOptimistically = (currentCourtsObj) => {
         if (!currentCourtsObj?.courts) return currentCourtsObj;
 
         const updatedCourts = currentCourtsObj.courts.map((court) => {
-          let slots = (court.slots || []).map((slot) => {
-            if (slot.sessionPlayerId === player.id) {
+          let updatedSlots = court.slots ? [...court.slots] : [];
+
+          // 1. If this is the SOURCE court, handle the slot being vacated
+          if (court.id === sourceCourtId && sourcePosition !== null) {
+            updatedSlots = updatedSlots.map((slot) => {
+              if (slot.position === sourcePosition) {
+                if (displacedPlayer && courtId === sourceCourtId) {
+                  // Perfect intra-court swap: Place displaced player here
+                  return {
+                    ...slot,
+                    sessionPlayerId: displacedPlayer.id,
+                    sessionPlayer: displacedPlayer,
+                  };
+                } else {
+                  // Player left this court entirely: Empty out slot cleanly
+                  return {
+                    ...slot,
+                    sessionPlayerId: null,
+                    sessionPlayer: null,
+                  };
+                }
+              }
+              return slot;
+            });
+          }
+
+          // 2. If this is a CROSS-COURT swap, place the displaced player in the source court's old slot position
+          if (
+            court.id === sourceCourtId &&
+            sourcePosition !== null &&
+            courtId !== sourceCourtId &&
+            displacedPlayer
+          ) {
+            const matchingSlotIdx = updatedSlots.findIndex(
+              (s) => s.position === sourcePosition,
+            );
+            const feedbackStructure = {
+              id: sourceSlotId || `opt-${sourcePosition}`,
+              position: sourcePosition,
+              sessionPlayerId: displacedPlayer.id,
+              sessionPlayer: displacedPlayer,
+            };
+            if (matchingSlotIdx !== -1)
+              updatedSlots[matchingSlotIdx] = feedbackStructure;
+            else updatedSlots.push(feedbackStructure);
+          }
+
+          // 3. Clear out accidental remaining duplicates across the grid loop
+          updatedSlots = updatedSlots.map((slot) => {
+            if (
+              slot.position !== position &&
+              court.id === courtId &&
+              slot.sessionPlayerId === player.id
+            ) {
+              return { ...slot, sessionPlayerId: null, sessionPlayer: null };
+            }
+            if (
+              displacedPlayer &&
+              slot.position !== sourcePosition &&
+              court.id === sourceCourtId &&
+              slot.sessionPlayerId === displacedPlayer.id
+            ) {
               return { ...slot, sessionPlayerId: null, sessionPlayer: null };
             }
             return slot;
           });
 
+          // 4. Handle the TARGET court landing location
           if (court.id === courtId) {
-            const slotIndex = slots.findIndex((s) => s.position === position);
-
-            // FIX: Inject a fallback ID so handleRemovePlayer doesn't break if clicked immediately
+            const targetSlotIndex = updatedSlots.findIndex(
+              (s) => s.position === position,
+            );
             const targetSlotStructure = {
-              id: slots[slotIndex]?.id || `opt-${position}`,
+              id:
+                displacedSlotId ||
+                updatedSlots[targetSlotIndex]?.id ||
+                `opt-${position}`,
               position: position,
               sessionPlayerId: player.id,
               sessionPlayer: player,
             };
 
-            if (slotIndex !== -1) {
-              slots[slotIndex] = targetSlotStructure;
+            if (targetSlotIndex !== -1) {
+              updatedSlots[targetSlotIndex] = targetSlotStructure;
             } else {
-              slots.push(targetSlotStructure);
+              updatedSlots.push(targetSlotStructure);
             }
           }
 
-          return { ...court, slots };
+          // Filter out completely dead slots that hold absolutely zero player records
+          return {
+            ...court,
+            slots: updatedSlots.filter(
+              (s) => s.sessionPlayerId !== null || court.id === courtId,
+            ),
+          };
         });
 
         return { ...currentCourtsObj, courts: updatedCourts };
       };
 
+      // Commit changes immediately to state context
       setSessionData((prev) => ({
         ...prev,
         matchCourts: updateCourtsListOptimistically(prev.matchCourts),
         queueCourts: updateCourtsListOptimistically(prev.queueCourts),
       }));
 
+      // --- STEP D: ASYNC API TRANSMISSION ---
       try {
         const syncedPayload = await assignPlayerToSlot(
           courtId,
@@ -229,7 +343,6 @@ const Game = () => {
           position,
         );
 
-        // Quietly update the temp placeholder ID with the official one from the database
         if (syncedPayload?.id || syncedPayload?.slot?.id) {
           const realSlotId = syncedPayload.id || syncedPayload.slot?.id;
           setSessionData((prev) => {

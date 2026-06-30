@@ -237,17 +237,24 @@ const MatchCourt = ({ matchCourts, players = [], onRemovePlayer }) => {
                   const slotData = matchCourt?.slots?.find(
                     (s) => s.position === position,
                   );
-                  const matchedPoolPlayer = slotData?.sessionPlayerId
-                    ? players.find((p) => p.id === slotData.sessionPlayerId)
+
+                  const matchedPoolPlayer = slotData
+                    ? slotData.sessionPlayer ||
+                      players.find((p) => p.id === slotData.sessionPlayerId)
                     : null;
+
+                  // SAFE MULTI-TIER USERNAME RESOLUTION
                   const username =
-                    matchedPoolPlayer?.sessionPlayer?.communityPlayer?.username;
+                    matchedPoolPlayer?.sessionPlayer?.communityPlayer
+                      ?.username ||
+                    matchedPoolPlayer?.communityPlayer?.username ||
+                    matchedPoolPlayer?.username;
 
                   return (
                     <CourtSlot
                       key={position}
                       position={position}
-                      username={username}
+                      username={username || "Unknown player"}
                       slotData={slotData}
                       matchedPoolPlayer={matchedPoolPlayer}
                       courtId={matchCourt.id}
