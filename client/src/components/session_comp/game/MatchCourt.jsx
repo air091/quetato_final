@@ -133,6 +133,7 @@ const MatchCourt = ({
   onRemovePlayer,
   onAddCourt,
   onUpdateCourtName,
+  onDeleteCourt,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
@@ -253,6 +254,7 @@ const MatchCourt = ({
                         }
                         onClose={() => setActiveCourtSettingsId(null)}
                         onUpdateCourtName={onUpdateCourtName}
+                        onDeleteCourt={onDeleteCourt}
                         courtType="match"
                       />
                     )}

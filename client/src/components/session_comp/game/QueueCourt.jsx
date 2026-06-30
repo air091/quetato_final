@@ -133,6 +133,7 @@ const QueueCourt = ({
   onRemovePlayer,
   onAddCourt,
   onUpdateCourtName,
+  onDeleteCourt,
 }) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
@@ -253,6 +254,7 @@ const QueueCourt = ({
                         }
                         onClose={() => setActiveCourtSettingsId(null)}
                         onUpdateCourtName={onUpdateCourtName}
+                        onDeleteCourt={onDeleteCourt}
                         courtType="queue"
                       />
                     )}

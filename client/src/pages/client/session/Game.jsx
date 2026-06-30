@@ -470,6 +470,22 @@ const Game = () => {
     }));
   }, []);
 
+  const handleDeleteCourt = useCallback((courtId) => {
+    const filterOutCourt = (currentCourtsObj) => {
+      if (!currentCourtsObj?.courts) return currentCourtsObj;
+      return {
+        ...currentCourtsObj,
+        courts: currentCourtsObj.courts.filter((court) => court.id !== courtId),
+      };
+    };
+
+    setSessionData((prev) => ({
+      ...prev,
+      matchCourts: filterOutCourt(prev.matchCourts),
+      queueCourts: filterOutCourt(prev.queueCourts),
+    }));
+  }, []);
+
   if (isLoading) {
     return (
       <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
@@ -495,6 +511,7 @@ const Game = () => {
             onRemovePlayer={handleRemovePlayer}
             onAddCourt={handleAddMatchCourt}
             onUpdateCourtName={handleUpdateCourtName}
+            onDeleteCourt={handleDeleteCourt}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
@@ -502,6 +519,7 @@ const Game = () => {
             onRemovePlayer={handleRemovePlayer}
             onAddCourt={handleAddQueueCourt}
             onUpdateCourtName={handleUpdateCourtName}
+            onDeleteCourt={handleDeleteCourt}
           />
         </div>
       </div>
