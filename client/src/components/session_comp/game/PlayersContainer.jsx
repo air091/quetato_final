@@ -3,13 +3,15 @@ import { EllipsisVertical } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
-// Presentation-only card component
-export const PlayerCard = ({ username, isAssigned, isDragging }) => {
+// Presentation-only card component (Unmodified)
+export const PlayerCard = ({ username, isDragging, isPlaceholder }) => {
   return (
     <div
-      className={`flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none w-full ${isDragging ? "border-blue-500" : ""}`}
+      className={`w-full cursor-grab flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
+        isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
+      }`}
     >
-      <span className="truncate">{username}</span>{" "}
+      <span className="truncate text-black font-semibold">{username}</span>{" "}
       <button className="text-gray-400 p-0.5 cursor-pointer">
         <EllipsisVertical size={14} />
       </button>
@@ -17,26 +19,21 @@ export const PlayerCard = ({ username, isAssigned, isDragging }) => {
   );
 };
 
-const DraggablePlayer = ({ player, username }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: `draggable-player-container-${player.id}`,
-      data: { player },
-    });
-
+// Internal Draggable Component mirroring MatchCourt's structure
+const DraggableSlotPlayer = ({
+  username,
+  isDragging,
+  attributes,
+  listeners,
+  setNodeRef,
+  transform,
+}) => {
   const style = {
-    // 1. FIXED HERE: Changed from CSS.Transform to CSS.Translate
     transform: CSS.Translate.toString(transform),
-
-    // 2. Crucial: Use position fixed during active drag to break out of overflow boundaries
     position: isDragging ? "fixed" : "relative",
-    zIndex: isDragging ? 9999 : "auto",
-
-    // 3. Crucial fallback: Elements under "position: fixed" drop their width constraints.
-    // Setting this ensures the card keeps its expected size while floating!
+    zIndex: isDragging ? 9999 : 20,
     width: isDragging ? "132px" : "100%",
-
-    // 4. Prevents the dragging item from swallowing hover collisions on the slots underneath it
+    height: isDragging ? "41px" : "100%",
     pointerEvents: isDragging ? "none" : "auto",
   };
 
@@ -46,10 +43,46 @@ const DraggablePlayer = ({ player, username }) => {
       style={style}
       {...listeners}
       {...attributes}
-      // Style changes while dragging (e.g., lower opacity)
-      className={`w-full cursor-grab active:cursor-grabbing touch-none`}
+      className="w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
     >
       <PlayerCard username={username} isDragging={isDragging} />
+    </div>
+  );
+};
+
+const DraggablePlayer = ({ player, username }) => {
+  const draggableProps = useDraggable({
+    id: `draggable-player-container-${player.id}`,
+    data: { player },
+  });
+
+  return (
+    // FIXED: The outer grid slot item now has structural layout boundaries (w-[132px] h-[41px])
+    // to preserve positions within 'flex flex-wrap' layout pools.
+    <div className="w-[132px] h-[41px] relative shrink-0">
+      {/* 1. THE ACTUALLY DRAGGABLE ITEM */}
+      <div className="absolute inset-0 z-100">
+        <DraggableSlotPlayer
+          username={username}
+          isDragging={draggableProps.isDragging}
+          attributes={draggableProps.attributes}
+          listeners={draggableProps.listeners}
+          setNodeRef={draggableProps.setNodeRef}
+          transform={draggableProps.transform}
+        />
+      </div>
+
+      {/* 2. THE BACKGROUND PLACEHOLDER */}
+      {draggableProps.isDragging && (
+        <div className="absolute inset-0 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
+          <span className="truncate flex-1 text-black font-semibold opacity-40">
+            {username}
+          </span>
+          <div className="opacity-30">
+            <EllipsisVertical size={14} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -65,8 +98,8 @@ const PlayersContainer = ({ players = [] }) => {
   });
 
   return (
-    <div className="w-full md:w-[320px] bg-white rounded-lg flex flex-col border border-gray-200 shadow-xs h-[600px]">
-      <header className="flex-shrink-0 p-2 border-b border-gray-100">
+    <div className="w-full md:w-[320px] bg-white rounded-lg flex flex-col shadow-sm h-full">
+      <header className="flex-shrink-0 border-b border-gray-100 p-2">
         <h4 className="font-semibold text-gray-800 mb-2">
           Players ({filteredPlayers.length})
         </h4>
@@ -87,24 +120,27 @@ const PlayersContainer = ({ players = [] }) => {
         </div>
       </header>
 
-      <main className="flex-1 p-2 overflow-y-auto space-y-1.5 min-h-[150px]">
+      {/* FIXED: Added 'justify-start' so row alignments remain uniform as elements wrap */}
+      <main className="flex flex-wrap gap-2 p-2 justify-center overflow-y-auto h-full content-start">
         {filteredPlayers.length === 0 ? (
-          <div className="text-center text-xs text-gray-400 mt-8 font-medium">
+          <div className="text-center text-xs text-gray-400 font-medium w-full py-4">
             No players found in this category.
           </div>
         ) : (
           filteredPlayers.map((player) => {
-            const stableId = player?.sessionPlayer?.id;
+            const stableId = player?.sessionPlayer?.id || player?.id;
 
             const username =
               player?.sessionPlayer?.communityPlayer?.username ||
+              player?.communityPlayer?.username ||
+              player?.username ||
               "Unknown Player";
 
             if (!stableId) return null;
 
             return (
               <DraggablePlayer
-                key={player.id}
+                key={stableId}
                 player={player}
                 username={username}
               />

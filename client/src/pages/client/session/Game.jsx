@@ -397,7 +397,7 @@ const Game = () => {
       collisionDetection={pointerWithin}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-x-2">
+      <div className="flex gap-x-2 border h-full">
         <PlayersContainer players={sessionData.players} />
 
         <div className="flex-1 flex flex-col gap-y-2">
