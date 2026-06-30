@@ -569,11 +569,27 @@ export const assignPlayerToSlot = async (
   targetPosition, // Expects 0, 1, 2, or 3
   authorizedId,
 ) => {
-  if (![0, 1, 2, 3].includes(targetPosition)) {
+  if (
+    !communityId ||
+    !sessionId ||
+    !targetCourtId ||
+    !sessionPlayerId ||
+    !authorizedId
+  ) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, Session Player ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  if (
+    !Number.isInteger(targetPosition) ||
+    ![0, 1, 2, 3].includes(targetPosition)
+  ) {
     throw new AppError("Invalid slot position. Must be between 0 and 3.", 400);
   }
 
-  const targetTeam = targetPosition <= 1 ? "a" : "b";
+  const targetTeam = targetPosition % 2 === 0 ? "a" : "b";
 
   return await prisma.$transaction(async (tx) => {
     // 1. Fetch entire context concurrently
@@ -740,7 +756,7 @@ export const assignPlayerToSlot = async (
   });
 };
 
-export const removePlayerToSlot = async (
+export const removePlayerFromSlot = async (
   communityId,
   sessionId,
   courtId,
@@ -787,9 +803,9 @@ export const removePlayerToSlot = async (
       );
     }
 
-    // 4. Delete the court slot using relation filtering for security
-    // This ensures the slot actually belongs to the given court and session hierarchy
-    const deletedSlot = await tx.courtSlot.deleteMany({
+    // 4. Find the court slot first to get the attached player's ID
+    // and verify the court/session hierarchy safely
+    const existingSlot = await tx.courtSlot.findFirst({
       where: {
         id: slotId,
         courtId: courtId,
@@ -797,13 +813,173 @@ export const removePlayerToSlot = async (
           sessionId: sessionId,
         },
       },
+      select: {
+        id: true,
+        sessionPlayerId: true, // 👈 Grabbing this to target their roster status
+      },
     });
 
-    // 5. Verification Check
-    if (deletedSlot.count === 0) {
+    if (!existingSlot) {
       throw new AppError("Court slot not found in this court or session", 404);
     }
 
+    // 5. Update the player's status back to "waiting"
+    if (existingSlot.sessionPlayerId) {
+      await tx.sessionPlayer.update({
+        where: { id: existingSlot.sessionPlayerId },
+        data: { gameStatus: "waiting", updateStatus: new Date() }, // 👈 Status reset
+      });
+    }
+
+    // 6. Safely delete the court slot now that the player is free
+    await tx.courtSlot.delete({
+      where: { id: slotId },
+    });
+
     return { id: slotId, message: "Player removed from slot successfully" };
+  });
+};
+
+export const transferQueueToMatch = async (
+  communityId,
+  sessionId,
+  queueCourtId, // 👈 Added specific queueCourtId parameter
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !queueCourtId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Queue Court ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Security Guard: Verify authorizer role
+    const authorizingAttendee = await tx.sessionPlayer.findFirst({
+      where: {
+        sessionId: sessionId,
+        sessionPlayer: { communityId, userId: authorizedId },
+      },
+      select: {
+        sessionPlayer: { select: { role: true } },
+      },
+    });
+
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can manage match lineups",
+        403,
+      );
+    }
+
+    // 2. Fetch the specifically selected Queue Court and all match courts concurrently
+    const [queueCourt, matchCourts] = await Promise.all([
+      tx.court.findFirst({
+        where: { id: queueCourtId, sessionId: sessionId, type: "queue" }, // 👈 Verifies it belongs to this session and is a queue
+        include: { slots: true },
+      }),
+      tx.court.findMany({
+        where: { sessionId: sessionId, type: "match" },
+        include: { slots: true },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
+
+    // 3. Validation Guards
+    if (!queueCourt) {
+      throw new AppError(
+        "The selected Queue Court was not found or is invalid",
+        404,
+      );
+    }
+
+    if (queueCourt.slots.length === 0) {
+      throw new AppError(
+        `No players found in "${queueCourt.name}" to transfer`,
+        400,
+      );
+    }
+
+    // 4. Find the first available Match Court that hasn't started and has open slots
+    const availableMatchCourt = matchCourts.find(
+      (c) => c.startedAt === null && c.slots.length < 4,
+    );
+
+    if (!availableMatchCourt) {
+      throw new AppError(
+        "Cannot transfer: No available or open Match Courts found",
+        422,
+      );
+    }
+
+    // Sort queue slots to maintain the sequence order
+    const queueSlotsToMove = [...queueCourt.slots].sort(
+      (a, b) => a.position - b.position,
+    );
+
+    // 5. Calculate open match layout positions (0, 1, 2, 3)
+    const occupiedPositions = availableMatchCourt.slots.map((s) => s.position);
+    const allPositions = [0, 1, 2, 3];
+    const openPositions = allPositions.filter(
+      (pos) => !occupiedPositions.includes(pos),
+    );
+
+    // Determine how many players can fit
+    const spotsToFillCount = Math.min(
+      queueSlotsToMove.length,
+      openPositions.length,
+    );
+    if (spotsToFillCount === 0) {
+      throw new AppError(
+        "Target Match Court has no empty positions available",
+        422,
+      );
+    }
+
+    const movedSlotsLog = [];
+
+    // 6. Execute Transfer Loop
+    for (let i = 0; i < spotsToFillCount; i++) {
+      const sourceSlot = queueSlotsToMove[i];
+      const targetPosition = openPositions[i];
+      const targetTeam = targetPosition % 2 === 0 ? "a" : "b";
+
+      // Step A: Evict player from the specific Queue Court slot
+      await tx.courtSlot.delete({
+        where: { id: sourceSlot.id },
+      });
+
+      // Step B: Set player status to "queued"
+      await tx.sessionPlayer.update({
+        where: { id: sourceSlot.sessionPlayerId },
+        data: { gameStatus: "queued", updateStatus: new Date() },
+      });
+
+      // Step C: Place player in the Match Court slot
+      const freshMatchSlot = await tx.courtSlot.create({
+        data: {
+          courtId: availableMatchCourt.id,
+          sessionPlayerId: sourceSlot.sessionPlayerId,
+          position: targetPosition,
+          team: targetTeam,
+        },
+      });
+
+      movedSlotsLog.push(freshMatchSlot);
+    }
+
+    return {
+      message: `Successfully transferred ${movedSlotsLog.length} player(s) from "${queueCourt.name}" to "${availableMatchCourt.name}"`,
+      targetCourtId: availableMatchCourt.id,
+      transferredCount: movedSlotsLog.length,
+    };
   });
 };

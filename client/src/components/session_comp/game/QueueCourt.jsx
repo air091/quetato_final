@@ -1,11 +1,10 @@
-import React, { useState, useRef } from "react";
+import { useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Plus } from "lucide-react";
 import CourtSettings from "./CourtSettings";
 
 const DraggableSlotPlayer = ({
-  matchedPoolPlayer,
   username,
   onRemovePlayer,
   isDragging,
@@ -59,10 +58,16 @@ const CourtSlot = ({
   slotData,
   matchedPoolPlayer,
   courtId,
+  courtType,
   onRemovePlayer,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
+    data: {
+      courtId,
+      courtType,
+      position,
+    },
   });
 
   const handleRemoveClick = () => {
@@ -89,14 +94,13 @@ const CourtSlot = ({
           : "border-white/30 bg-transparent"
       }`}
     >
-      <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
-        Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
+      <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
+        Player {position % 2 === 0 ? "A" : "B"}-{position <= 1 ? "1" : "2"}
       </span>
 
       {hasPlayer && (
         <>
           <DraggableSlotPlayer
-            matchedPoolPlayer={matchedPoolPlayer}
             username={username}
             onRemovePlayer={handleRemoveClick}
             isDragging={draggableProps.isDragging}
@@ -134,13 +138,14 @@ const QueueCourt = ({
   onAddCourt,
   onUpdateCourtName,
   onDeleteCourt,
+  onTransferQueue,
 }) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
 
   // Track open dropdown menu panel settings exactly like MatchCourt
   const [activeCourtSettingsId, setActiveCourtSettingsId] = useState(null);
-  const toggleButtonRefs = useRef({});
+  const [settingsAnchor, setSettingsAnchor] = useState(null);
 
   return (
     <div>
@@ -229,18 +234,22 @@ const QueueCourt = ({
                     {queueCourt?.name}
                   </span>
                   <div className="flex items-center gap-x-1 relative">
-                    <button className="cursor-pointer bg-stone-700 hover:bg-stone-600 text-stone-200 text-[12px] py-0.5 px-2 rounded-full transition-colors">
-                      Transfer to court
-                    </button>
+                    {queueCourt.slots.length > 0 && (
+                      <button
+                        onClick={() => onTransferQueue(queueCourt.id)} // 👈 3. Triggers transfer with this court's ID
+                        title="Transfer players to first open Match Court"
+                        className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full"
+                      >
+                        Transfer to Court
+                      </button>
+                    )}
                     <button
-                      ref={(el) =>
-                        (toggleButtonRefs.current[queueCourt.id] = el)
-                      }
-                      onClick={() =>
+                      onClick={(event) => {
+                        setSettingsAnchor(event.currentTarget);
                         setActiveCourtSettingsId((prev) =>
                           prev === queueCourt.id ? null : queueCourt.id,
-                        )
-                      }
+                        );
+                      }}
                       className="cursor-pointer hover:bg-white/10 rounded-full p-1"
                     >
                       <EllipsisVertical size={16} />
@@ -249,9 +258,7 @@ const QueueCourt = ({
                     {isSettingsOpen && (
                       <CourtSettings
                         court={queueCourt}
-                        toggleButtonRef={
-                          toggleButtonRefs.current[queueCourt.id]
-                        }
+                        toggleButtonRef={settingsAnchor}
                         onClose={() => setActiveCourtSettingsId(null)}
                         onUpdateCourtName={onUpdateCourtName}
                         onDeleteCourt={onDeleteCourt}
@@ -287,6 +294,7 @@ const QueueCourt = ({
                       slotData={slotData}
                       matchedPoolPlayer={matchedPoolPlayer}
                       courtId={queueCourt.id}
+                      courtType="queue"
                       onRemovePlayer={onRemovePlayer}
                     />
                   );

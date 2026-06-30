@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { EllipsisVertical } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
 // Presentation-only card component (Unmodified)
-export const PlayerCard = ({ username, isDragging, isPlaceholder }) => {
+export const PlayerCard = ({ username, isDragging }) => {
   return (
     <div
       className={`w-full cursor-grab flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${

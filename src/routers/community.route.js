@@ -21,9 +21,10 @@ import {
   getAllPublicSessionsController,
   getAllSessionsController,
   getSessionByIdController,
-  removePlayerToSlotController,
+  removePlayerFromSlotController,
   sessionDashboardController,
   startSessionController,
+  transferQueueToMatchController,
   updateMatchCourtNameController,
   updateQueueCourtNameController,
   updateSessionController,
@@ -143,7 +144,12 @@ router.post(
 
 router.delete(
   "/:communityId/sessions/:sessionId/courts/:courtId/slots/:slotId/remove",
-  removePlayerToSlotController,
+  removePlayerFromSlotController,
+);
+
+router.post(
+  "/:communityId/sessions/:sessionId/courts/transfer-queue",
+  transferQueueToMatchController,
 );
 
 export default router;

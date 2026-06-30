@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
@@ -10,8 +10,20 @@ import {
   pointerWithin,
   useSensor,
   useSensors,
-  DragOverlay, // <-- Added tracking overlay context wrapper
+  DragOverlay,
 } from "@dnd-kit/core";
+
+const resolveSessionPlayerId = (player) =>
+  player?.id || player?.sessionPlayerId || null;
+
+const setPlayerGameStatus = (player, sessionPlayerId, gameStatus) => {
+  if (resolveSessionPlayerId(player) !== sessionPlayerId) return player;
+
+  return {
+    ...player,
+    gameStatus,
+  };
+};
 
 const Game = () => {
   const { fetchWithAuth } = useAuth();
@@ -68,6 +80,7 @@ const Game = () => {
             ? { courts: extractedQueue, counts: queueData.counts }
             : extractedQueue,
         });
+
       } catch (error) {
         console.error("Dashboard engine data loading error:", error.message);
       } finally {
@@ -78,7 +91,11 @@ const Game = () => {
   );
 
   useEffect(() => {
-    fetchDashboardContext(false);
+    const timeoutId = window.setTimeout(() => {
+      fetchDashboardContext(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [fetchDashboardContext]);
 
   const assignPlayerToSlot = useCallback(
@@ -125,6 +142,27 @@ const Game = () => {
 
   const handleRemovePlayer = async (courtId, slotId) => {
     const previousSessionData = structuredClone(sessionData);
+    const removedPlayerId = [
+      sessionData.matchCourts,
+      sessionData.queueCourts,
+    ].reduce((foundPlayerId, courtsObj) => {
+      if (foundPlayerId) return foundPlayerId;
+
+      const targetCourt = courtsObj?.courts?.find(
+        (court) => court.id === courtId,
+      );
+      const targetSlot = targetCourt?.slots?.find(
+        (slot) =>
+          slot.id === slotId ||
+          slot.sessionPlayerId === slotId ||
+          `opt-${slot.position}` === slotId,
+      );
+
+      return (
+        targetSlot?.sessionPlayerId ||
+        resolveSessionPlayerId(targetSlot?.sessionPlayer)
+      );
+    }, null);
 
     const removeFromCourtsList = (currentCourtsObj) => {
       if (!currentCourtsObj?.courts) return currentCourtsObj;
@@ -153,14 +191,58 @@ const Game = () => {
       ...prev,
       matchCourts: removeFromCourtsList(prev.matchCourts),
       queueCourts: removeFromCourtsList(prev.queueCourts),
+      players: removedPlayerId
+        ? prev.players.map((player) =>
+            setPlayerGameStatus(player, removedPlayerId, "waiting"),
+          )
+        : prev.players,
     }));
 
     try {
-      if (typeof slotId === "string" && slotId.startsWith("opt-")) {
-        return;
+      let targetSlotId = slotId;
+
+      // 🟢 FIX: If a temporary ID is found, download real IDs right now and find the real replacement ID
+      if (typeof targetSlotId === "string" && targetSlotId.startsWith("opt-")) {
+        console.warn(
+          "Temporary ID detected during removal. Resolving real database IDs...",
+        );
+
+        // 1. Wait for the server data to download and refresh state completely
+        await fetchDashboardContext(true);
+
+        // 2. Scan the freshly fetched database courts data to track down the newly created slot ID
+        let resolvedRealId = null;
+        const scanForRealId = (courtObj) => {
+          courtObj?.courts?.forEach((c) => {
+            if (c.id === courtId) {
+              c.slots?.forEach((s) => {
+                // Match by the player who was sitting in that position
+                if (s.sessionPlayerId === removedPlayerId) {
+                  resolvedRealId = s.id;
+                }
+              });
+            }
+          });
+        };
+
+        // Check current state data references
+        scanForRealId(sessionData.matchCourts);
+        scanForRealId(sessionData.queueCourts);
+
+        if (!resolvedRealId) {
+          throw new Error(
+            "Could not find real database slot ID after refetching context.",
+          );
+        }
+
+        targetSlotId = resolvedRealId;
       }
-      await removePlayerToSlot(courtId, slotId);
+
+      // 🟢 3. Immediately hit the backend endpoint using the newly resolved ID on the SAME click
+      await removePlayerToSlot(courtId, targetSlotId);
+      await fetchDashboardContext(true);
     } catch (error) {
+      console.error("Removal engine execution failure:", error);
       setSessionData(previousSessionData);
     }
   };
@@ -181,194 +263,128 @@ const Game = () => {
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    setActivePlayerData(null); // Wipe tracking pointer cleanly
+    setActivePlayerData(null);
 
     if (!over) return;
 
     const player = active.data.current?.player;
     if (!player) return;
 
-    if (over.id.startsWith("slot-")) {
-      const [_, courtId, positionStr] = over.id.split("-");
-      const position = parseInt(positionStr, 10);
+    // 1. Get the true SessionPlayer CUID required by both backend validation and slots
+    const stableSessionPlayerId = resolveSessionPlayerId(player);
+    if (!stableSessionPlayerId) {
+      console.error(
+        "Could not resolve valid sessionPlayerId from dragged payload",
+        player,
+      );
+      return;
+    }
 
-      const previousSessionData = structuredClone(sessionData);
+    const dropTarget = over.data.current || {};
+    const targetType = dropTarget.courtType;
+    const courtId = dropTarget.courtId;
+    const position = Number(dropTarget.position);
 
-      let sourceCourtId = null;
-      let sourcePosition = null;
-      let sourceSlotId = null;
+    if (
+      !["match", "queue"].includes(targetType) ||
+      !courtId ||
+      !Number.isInteger(position) ||
+      position < 0 ||
+      position > 3
+    ) {
+      console.error("Invalid court slot drop target", {
+        overId: over.id,
+        dropTarget,
+      });
+      return;
+    }
 
-      const locateSource = (courtObj) => {
-        courtObj?.courts?.forEach((c) => {
-          c.slots?.forEach((s) => {
-            if (s.sessionPlayerId === player.id) {
-              sourceCourtId = c.id;
-              sourcePosition = s.position;
-              sourceSlotId = s.id;
-            }
-          });
-        });
-      };
-      locateSource(sessionData.matchCourts);
-      locateSource(sessionData.queueCourts);
+    const previousSessionData = structuredClone(sessionData);
 
-      let displacedPlayer = null;
-      let displacedSlotId = null;
+    // Extract the username string cleanly from the dragged item
+    const resolvedUsername =
+      player?.sessionPlayer?.communityPlayer?.username ||
+      player?.communityPlayer?.username ||
+      player?.username ||
+      "Unknown Player";
 
-      const locateTarget = (courtObj) => {
-        courtObj?.courts?.forEach((c) => {
-          if (c.id === courtId) {
-            const targetSlot = c.slots?.find((s) => s.position === position);
-            if (targetSlot?.sessionPlayerId) {
-              displacedSlotId = targetSlot.id;
-              displacedPlayer =
-                sessionData.players.find(
-                  (p) => p.id === targetSlot.sessionPlayerId,
-                ) || targetSlot.sessionPlayer;
-            }
-          }
-        });
-      };
-      locateTarget(sessionData.matchCourts);
-      locateTarget(sessionData.queueCourts);
-
+    // 2. Perform optimistic UI updates
+    setSessionData((prev) => {
       const updateCourtsListOptimistically = (currentCourtsObj) => {
         if (!currentCourtsObj?.courts) return currentCourtsObj;
 
-        const updatedCourts = currentCourtsObj.courts.map((court) => {
-          let updatedSlots = court.slots ? [...court.slots] : [];
+        return {
+          ...currentCourtsObj,
+          courts: currentCourtsObj.courts.map((court) => {
+            if (court.id !== courtId) return court;
 
-          if (court.id === sourceCourtId && sourcePosition !== null) {
-            updatedSlots = updatedSlots.map((slot) => {
-              if (slot.position === sourcePosition) {
-                if (displacedPlayer && courtId === sourceCourtId) {
-                  return {
-                    ...slot,
-                    sessionPlayerId: displacedPlayer.id,
-                    sessionPlayer: displacedPlayer,
-                  };
-                } else {
-                  return {
-                    ...slot,
-                    sessionPlayerId: null,
-                    sessionPlayer: null,
-                  };
-                }
-              }
-              return slot;
-            });
-          }
-
-          if (
-            court.id === sourceCourtId &&
-            sourcePosition !== null &&
-            courtId !== sourceCourtId &&
-            displacedPlayer
-          ) {
-            const matchingSlotIdx = updatedSlots.findIndex(
-              (s) => s.position === sourcePosition,
+            // Remove player from any existing position on this court layout
+            const cleanedSlots = (court.slots || []).filter(
+              (s) =>
+                (s?.sessionPlayerId || s?.sessionPlayer?.id) !==
+                stableSessionPlayerId,
             );
-            const feedbackStructure = {
-              id: sourceSlotId || `opt-${sourcePosition}`,
-              position: sourcePosition,
-              sessionPlayerId: displacedPlayer.id,
-              sessionPlayer: displacedPlayer,
-            };
-            if (matchingSlotIdx !== -1)
-              updatedSlots[matchingSlotIdx] = feedbackStructure;
-            else updatedSlots.push(feedbackStructure);
-          }
 
-          updatedSlots = updatedSlots.map((slot) => {
-            if (
-              slot.position !== position &&
-              court.id === courtId &&
-              slot.sessionPlayerId === player.id
-            ) {
-              return { ...slot, sessionPlayerId: null, sessionPlayer: null };
-            }
-            if (
-              displacedPlayer &&
-              slot.position !== sourcePosition &&
-              court.id === sourceCourtId &&
-              slot.sessionPlayerId === displacedPlayer.id
-            ) {
-              return { ...slot, sessionPlayerId: null, sessionPlayer: null };
-            }
-            return slot;
-          });
-
-          if (court.id === courtId) {
-            const targetSlotIndex = updatedSlots.findIndex(
-              (s) => s.position === position,
-            );
+            // 🟢 THE FIX: Nest the object structure so the component's username check succeeds
             const targetSlotStructure = {
-              id:
-                displacedSlotId ||
-                updatedSlots[targetSlotIndex]?.id ||
-                `opt-${position}`,
+              id: `opt-${position}`, // Temporary UI key string
               position: position,
-              sessionPlayerId: player.id,
-              sessionPlayer: player,
+              team: position % 2 === 0 ? "a" : "b",
+              courtId: courtId,
+              sessionPlayerId: stableSessionPlayerId,
+              sessionPlayer: {
+                id: stableSessionPlayerId,
+                // MatchCourt reads: matchedPoolPlayer.sessionPlayer.communityPlayer.username
+                sessionPlayer: {
+                  communityPlayer: {
+                    username: resolvedUsername,
+                  },
+                },
+                communityPlayer: {
+                  username: resolvedUsername,
+                },
+                username: resolvedUsername,
+              },
             };
 
-            if (targetSlotIndex !== -1) {
-              updatedSlots[targetSlotIndex] = targetSlotStructure;
-            } else {
-              updatedSlots.push(targetSlotStructure);
-            }
-          }
-
-          return {
-            ...court,
-            slots: updatedSlots.filter(
-              (s) => s.sessionPlayerId !== null || court.id === courtId,
-            ),
-          };
-        });
-
-        return { ...currentCourtsObj, courts: updatedCourts };
+            return {
+              ...court,
+              slots: [...cleanedSlots, targetSlotStructure],
+            };
+          }),
+        };
       };
 
-      setSessionData((prev) => ({
+      return {
         ...prev,
-        matchCourts: updateCourtsListOptimistically(prev.matchCourts),
-        queueCourts: updateCourtsListOptimistically(prev.queueCourts),
-      }));
+        matchCourts:
+          targetType === "match"
+            ? updateCourtsListOptimistically(prev.matchCourts)
+            : prev.matchCourts,
+        queueCourts:
+          targetType === "queue"
+            ? updateCourtsListOptimistically(prev.queueCourts)
+            : prev.queueCourts,
 
-      try {
-        const syncedPayload = await assignPlayerToSlot(
-          courtId,
-          player.id,
-          position,
-        );
+        // Update status tag flags in the roster view panel safely
+        players: prev.players.map((player) =>
+          setPlayerGameStatus(player, stableSessionPlayerId, "queued"),
+        ),
+      };
+    });
 
-        if (syncedPayload?.id || syncedPayload?.slot?.id) {
-          const realSlotId = syncedPayload.id || syncedPayload.slot?.id;
-          setSessionData((prev) => {
-            const updateId = (obj) => ({
-              ...obj,
-              courts: obj.courts.map((c) =>
-                c.id !== courtId
-                  ? c
-                  : {
-                      ...c,
-                      slots: c.slots.map((s) =>
-                        s.position === position ? { ...s, id: realSlotId } : s,
-                      ),
-                    },
-              ),
-            });
-            return {
-              ...prev,
-              matchCourts: updateId(prev.matchCourts),
-              queueCourts: updateId(prev.queueCourts),
-            };
-          });
-        }
-      } catch (error) {
-        setSessionData(previousSessionData);
-      }
+    // 3. Send request to the backend service
+    try {
+      await assignPlayerToSlot(
+        courtId,
+        stableSessionPlayerId, // Sends valid SessionPlayer ID string
+        position,
+      );
+
+      await fetchDashboardContext(true);
+    } catch (error) {
+      console.error("Backend slot assignment synchronization failed:", error);
+      setSessionData(previousSessionData); // Fallback transaction rollback if server errors out
     }
   };
 
@@ -486,6 +502,38 @@ const Game = () => {
     }));
   }, []);
 
+  const handleTransferQueue = useCallback(
+    async (queueCourtId) => {
+      if (!communityId || !sessionId || !queueCourtId) return;
+
+      try {
+        const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/transfer-queue`;
+
+        const response = await fetchWithAuth(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ queueCourtId }), // 👈 Sends the selected queue court ID in the payload
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(
+            errData.message || "Failed to transfer queue players",
+          );
+        }
+
+        // 2. Silently refetch court slots configurations to render the migration updates
+        await fetchDashboardContext(true);
+      } catch (error) {
+        console.error("Transfer Error:", error);
+        alert(error.message || "Something went wrong during the transfer.");
+      }
+    },
+    [communityId, sessionId, fetchWithAuth, fetchDashboardContext],
+  );
+
   if (isLoading) {
     return (
       <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
@@ -520,6 +568,7 @@ const Game = () => {
             onAddCourt={handleAddQueueCourt}
             onUpdateCourtName={handleUpdateCourtName}
             onDeleteCourt={handleDeleteCourt}
+            onTransferQueue={handleTransferQueue}
           />
         </div>
       </div>

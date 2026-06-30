@@ -1,11 +1,10 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Plus } from "lucide-react";
-import React, { useState, useRef } from "react";
+import { useState } from "react";
 import CourtSettings from "./CourtSettings";
 
 const DraggableSlotPlayer = ({
-  matchedPoolPlayer,
   username,
   onRemovePlayer,
   isDragging,
@@ -59,10 +58,16 @@ const CourtSlot = ({
   slotData,
   matchedPoolPlayer,
   courtId,
+  courtType,
   onRemovePlayer,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
+    data: {
+      courtId,
+      courtType,
+      position,
+    },
   });
 
   const handleRemoveClick = () => {
@@ -90,13 +95,12 @@ const CourtSlot = ({
       }`}
     >
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
-        Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
+        Player {position % 2 === 0 ? "A" : "B"}-{position <= 1 ? "1" : "2"}
       </span>
 
       {hasPlayer && (
         <>
           <DraggableSlotPlayer
-            matchedPoolPlayer={matchedPoolPlayer}
             username={username}
             onRemovePlayer={handleRemoveClick}
             isDragging={draggableProps.isDragging}
@@ -138,8 +142,7 @@ const MatchCourt = ({
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
   const [activeCourtSettingsId, setActiveCourtSettingsId] = useState(null);
-
-  const toggleButtonRefs = useRef({});
+  const [settingsAnchor, setSettingsAnchor] = useState(null);
 
   return (
     <div>
@@ -150,6 +153,16 @@ const MatchCourt = ({
         {courtsList.map((matchCourt) => {
           const stableKey = matchCourt?.id;
           const isSettingsOpen = activeCourtSettingsId === matchCourt.id;
+
+          const occupiedSlots =
+            matchCourt.slots?.filter((slot) => slot.sessionPlayerId) || [];
+          const hasTeamAPlayer = occupiedSlots.some(
+            (slot) => slot.position % 2 === 0,
+          );
+          const hasTeamBPlayer = occupiedSlots.some(
+            (slot) => slot.position % 2 === 1,
+          );
+          const canStartGame = hasTeamAPlayer && hasTeamBPlayer;
 
           return (
             <div
@@ -229,18 +242,18 @@ const MatchCourt = ({
                     {matchCourt?.name}
                   </span>
                   <div className="flex items-center gap-x-1 relative">
-                    <button className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full">
-                      Start game
-                    </button>
+                    {canStartGame && (
+                      <button className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors">
+                        Start game
+                      </button>
+                    )}
                     <button
-                      ref={(el) =>
-                        (toggleButtonRefs.current[matchCourt.id] = el)
-                      }
-                      onClick={() =>
+                      onClick={(event) => {
+                        setSettingsAnchor(event.currentTarget);
                         setActiveCourtSettingsId((prev) =>
                           prev === matchCourt.id ? null : matchCourt.id,
-                        )
-                      }
+                        );
+                      }}
                       className="cursor-pointer hover:bg-white/10 rounded-full p-1"
                     >
                       <EllipsisVertical size={16} />
@@ -249,9 +262,7 @@ const MatchCourt = ({
                     {isSettingsOpen && (
                       <CourtSettings
                         court={matchCourt}
-                        toggleButtonRef={
-                          toggleButtonRefs.current[matchCourt.id]
-                        }
+                        toggleButtonRef={settingsAnchor}
                         onClose={() => setActiveCourtSettingsId(null)}
                         onUpdateCourtName={onUpdateCourtName}
                         onDeleteCourt={onDeleteCourt}
@@ -294,6 +305,7 @@ const MatchCourt = ({
                       slotData={slotData}
                       matchedPoolPlayer={matchedPoolPlayer}
                       courtId={matchCourt.id}
+                      courtType="match"
                       onRemovePlayer={onRemovePlayer}
                     />
                   );
