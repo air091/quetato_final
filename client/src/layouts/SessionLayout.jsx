@@ -1,14 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Header from "../components/home_comp/Header";
 import Sidebar from "../components/session_comp/Sidebar";
 
 const SessionLayout = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Function to toggle open/closed
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
+  // Function specifically to close it
+  const closeSidebar = () => setIsSidebarOpen(false);
   return (
     <div className="grid grid-rows-[auto_1fr] w-full max-w-[1920px] mx-auto h-screen overflow-hidden">
-      <Header />
+      <Header onMenuClick={toggleSidebar} />
       <main className="flex min-h-0">
-        <Sidebar />
+        <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
         <div className="flex-1 w-full overflow-y-auto">
           <Outlet />
         </div>
