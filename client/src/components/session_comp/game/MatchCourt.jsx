@@ -277,11 +277,6 @@ const MatchCourt = ({
               <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-x-2">
-                    {isMatchLive && (
-                      <span className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded animate-pulse font-bold flex items-center gap-x-1">
-                        LIVE <CourtTimer timestamp={matchCourt.startedAt} />
-                      </span>
-                    )}
                     <span className="text-[14px] font-semibold">
                       {matchCourt?.name}
                     </span>
@@ -328,10 +323,24 @@ const MatchCourt = ({
                   </div>
                 </div>
                 <div className="flex w-full gap-x-2 mt-1">
-                  <button className="cursor-pointer bg-orange-600 hover:bg-orange-700 w-full rounded-full text-[14px] text-stone-300 hover:text-stone-50">
+                  <button
+                    disabled={!isMatchLive}
+                    className={`w-full rounded-full text-[14px] transition-all duration-200 ${
+                      isMatchLive
+                        ? "cursor-pointer bg-orange-600 hover:bg-orange-700 text-stone-300 hover:text-stone-50 shadow-xs"
+                        : "cursor-not-allowed bg-orange-600/40 text-stone-400 opacity-60"
+                    }`}
+                  >
                     Team A
                   </button>
-                  <button className="cursor-pointer bg-stone-600 hover:bg-stone-700 w-full rounded-full text-[14px] text-stone-300 hover:text-stone-50">
+                  <button
+                    disabled={!isMatchLive}
+                    className={`w-full rounded-full text-[14px] transition-all duration-200 ${
+                      isMatchLive
+                        ? "cursor-pointer bg-stone-600 hover:bg-stone-700 text-stone-300 hover:text-stone-50 shadow-xs"
+                        : "cursor-not-allowed bg-stone-600/40 text-stone-400 opacity-60"
+                    }`}
+                  >
                     Team B
                   </button>
                 </div>
