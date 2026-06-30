@@ -1105,10 +1105,19 @@ export const endMatchCourt = async (
   sessionId,
   courtId,
   authorizedId,
+  winningTeam, // Expecting "a" or "b" (matches your lowercase Team enum format)
 ) => {
   if (!communityId || !sessionId || !courtId || !authorizedId) {
     throw new AppError(
       "Community ID, Session ID, Court ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  const normalizedWinningTeam = winningTeam.toLowerCase();
+  if (!["a", "b"].includes(normalizedWinningTeam)) {
+    throw new AppError(
+      "A valid winning team ('a' or 'b') must be specified",
       400,
     );
   }
@@ -1141,7 +1150,7 @@ export const endMatchCourt = async (
       }),
     ]);
 
-    // 2. Auth & Existence Guards
+    // 2. Safeguards
     if (!authorizingAttendee) {
       throw new AppError(
         "Forbidden: You are not part of this session's roster",
@@ -1161,7 +1170,6 @@ export const endMatchCourt = async (
       throw new AppError("Match court not found in this session", 404);
     }
 
-    // 3. Game State Guard
     if (targetCourt.status !== "started") {
       throw new AppError(
         "Bad Request: This match court is not currently active",
@@ -1169,21 +1177,38 @@ export const endMatchCourt = async (
       );
     }
 
-    // 4. Extract player IDs currently sitting on this court
-    const playerIdsInMatch = targetCourt.slots
-      .map((slot) => slot.sessionPlayerId)
+    // 3. Extract player snapshot items sitting on this court
+    const currentSlots = targetCourt.slots || [];
+    const playerIdsInMatch = currentSlots
+      .map((s) => s.sessionPlayerId)
       .filter(Boolean);
 
-    // 5. Execute sequential updates to clear relations cleanly
+    // 4. Create MatchHistory Log & Nested Players Log
+    if (currentSlots.length > 0) {
+      await tx.matchHistory.create({
+        data: {
+          sessionId: sessionId,
+          courtId: courtId,
+          courtName: targetCourt.name,
+          winningTeam: normalizedWinningTeam,
+          startedAt: targetCourt.startedAt || new Date(),
+          players: {
+            create: currentSlots.map((slot) => ({
+              sessionPlayerId: slot.sessionPlayerId,
+              team: slot.team,
+              isWin: slot.team === normalizedWinningTeam,
+            })),
+          },
+        },
+      });
+    }
 
-    // 🌟 CHANGED: Delete all the court slot rows completely from the database table
+    // 5. Delete active transient layout slots from live display view
     await tx.courtSlot.deleteMany({
-      where: {
-        courtId: courtId,
-      },
+      where: { courtId: courtId },
     });
 
-    // Free the players back to the 'waiting' lobby pool concurrently
+    // 6. Free players back to lobby
     if (playerIdsInMatch.length > 0) {
       await tx.sessionPlayer.updateMany({
         where: {
@@ -1196,16 +1221,17 @@ export const endMatchCourt = async (
       });
     }
 
-    // Reset court layout metrics back to idle state
+    // 7. Revert court container status back to idle
     const updatedCourt = await tx.court.update({
       where: { id: courtId },
       data: {
         status: "idle",
         startedAt: null,
+        endedAt: new Date(),
         updatedBy: authorizingAttendee.id,
       },
       include: {
-        slots: true, // This will now return an empty array [] because of the deleteMany above
+        slots: true, // Returns [] so the court visual clears out cleanly
       },
     });
 
