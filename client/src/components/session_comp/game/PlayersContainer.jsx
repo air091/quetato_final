@@ -43,7 +43,7 @@ const DraggableSlotPlayer = ({
       style={style}
       {...listeners}
       {...attributes}
-      className="w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
+      className="player w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
     >
       <PlayerCard username={username} isDragging={isDragging} />
     </div>

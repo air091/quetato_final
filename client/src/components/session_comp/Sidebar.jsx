@@ -23,7 +23,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         clickedElement.closest("button") ||
         clickedElement.closest("a") ||
         clickedElement.closest("input") ||
-        clickedElement.closest("select");
+        clickedElement.closest("select") ||
+        clickedElement.closest(".player");
 
       // If they clicked a button (like the Menu button!) or a link, do absolutely nothing
       if (isInteractive) {
