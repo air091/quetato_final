@@ -1,11 +1,33 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CourtSettings from "./CourtSettings";
+import { formatElapsedTime, PlayerTimer } from "./PlayersContainer";
+
+const CourtTimer = ({ timestamp }) => {
+  const [displayTime, setDisplayTime] = useState(() =>
+    formatElapsedTime(timestamp),
+  );
+
+  useEffect(() => {
+    setDisplayTime(formatElapsedTime(timestamp));
+    const intervalId = setInterval(() => {
+      setDisplayTime(formatElapsedTime(timestamp));
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [timestamp]);
+
+  return (
+    <span className="font-mono text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-medium">
+      {displayTime}
+    </span>
+  );
+};
 
 const DraggableSlotPlayer = ({
   username,
+  timer,
   onRemovePlayer,
   isDragging,
   attributes,
@@ -35,6 +57,7 @@ const DraggableSlotPlayer = ({
         {username}
       </span>
       <div className="flex items-center gap-x-1">
+        {timer}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -85,6 +108,14 @@ const CourtSlot = ({
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
 
+  const LiveTimerNode = hasPlayer ? (
+    <PlayerTimer
+      timestamp={
+        matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt
+      }
+    />
+  ) : null;
+
   return (
     <div
       ref={setNodeRef}
@@ -102,6 +133,7 @@ const CourtSlot = ({
         <>
           <DraggableSlotPlayer
             username={username}
+            timer={LiveTimerNode}
             onRemovePlayer={handleRemoveClick}
             isDragging={draggableProps.isDragging}
             attributes={draggableProps.attributes}
@@ -116,6 +148,7 @@ const CourtSlot = ({
                 {username}
               </span>
               <div className="flex items-center gap-x-1">
+                {LiveTimerNode}
                 <button className="text-gray-400 p-0.5">
                   <CornerDownLeft size={14} />
                 </button>
@@ -139,6 +172,7 @@ const MatchCourt = ({
   onUpdateCourtName,
   onDeleteCourt,
   onStartMatchCourt,
+  onEndMatchCourt,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
@@ -163,7 +197,10 @@ const MatchCourt = ({
           const hasTeamBPlayer = occupiedSlots.some(
             (slot) => slot.position % 2 === 1,
           );
-          const canStartGame = hasTeamAPlayer && hasTeamBPlayer;
+          const canStartGame =
+            hasTeamAPlayer && hasTeamBPlayer && matchCourt.startedAt === null;
+          const isMatchLive =
+            matchCourt.status === "started" || matchCourt.startedAt !== null;
 
           return (
             <div
@@ -239,9 +276,16 @@ const MatchCourt = ({
 
               <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-[14px] font-semibold">
-                    {matchCourt?.name}
-                  </span>
+                  <div className="flex items-center gap-x-2">
+                    {isMatchLive && (
+                      <span className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded animate-pulse font-bold flex items-center gap-x-1">
+                        LIVE <CourtTimer timestamp={matchCourt.startedAt} />
+                      </span>
+                    )}
+                    <span className="text-[14px] font-semibold">
+                      {matchCourt?.name}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-x-1 relative">
                     {canStartGame && (
                       <button
@@ -249,6 +293,14 @@ const MatchCourt = ({
                         className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors"
                       >
                         Start game
+                      </button>
+                    )}
+                    {isMatchLive && (
+                      <button
+                        onClick={() => onEndMatchCourt?.(matchCourt.id)}
+                        className="cursor-pointer bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[12px] py-0.5 px-2 rounded-full transition-colors shadow-xs"
+                      >
+                        End match
                       </button>
                     )}
                     <button

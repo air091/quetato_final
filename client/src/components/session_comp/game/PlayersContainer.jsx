@@ -1,20 +1,89 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EllipsisVertical } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
-// Presentation-only card component (Unmodified)
-export const PlayerCard = ({ username, isDragging }) => {
+// NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
+export const formatElapsedTime = (pastIsoString) => {
+  if (!pastIsoString) return "00:00:00";
+
+  const past = new Date(pastIsoString).getTime();
+  const now = Date.now();
+  const diffInSeconds = Math.max(0, Math.floor((now - past) / 1000));
+
+  const hours = Math.floor(diffInSeconds / 3600);
+  const minutes = Math.floor((diffInSeconds % 3600) / 60);
+  const seconds = diffInSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((v) => String(v).padStart(2, "0"))
+    .join(":");
+};
+
+export const PlayerTimer = ({ timestamp }) => {
+  const [displayTime, setDisplayTime] = useState(() =>
+    formatElapsedTime(timestamp),
+  );
+  const [colorClass, setColorClass] = useState("text-gray-500");
+
+  useEffect(() => {
+    const updateTimer = () => {
+      // 1. Update the display text
+      setDisplayTime(formatElapsedTime(timestamp));
+
+      // 2. Calculate raw minutes elapsed to determine color thresholds
+      if (!timestamp) {
+        setColorClass("text-gray-500");
+        return;
+      }
+
+      const startTime = new Date(timestamp).getTime();
+      const now = Date.now();
+      const elapsedMinutes = (now - startTime) / 1000 / 60;
+
+      // 3. Set the appropriate threshold color
+      if (elapsedMinutes >= 20) {
+        setColorClass("text-red-500 font-semibold animate-pulse"); // Optional: added pulse for high urgency
+      } else if (elapsedMinutes >= 15) {
+        setColorClass("text-yellow-500 font-semibold");
+      } else {
+        setColorClass("text-gray-500");
+      }
+    };
+
+    // Run immediately on mount/timestamp change
+    updateTimer();
+
+    const intervalId = setInterval(updateTimer, 1000);
+    return () => clearInterval(intervalId);
+  }, [timestamp]);
+
+  return (
+    <span
+      className={`text-[10px] tabular-nums font-mono transition-colors duration-300 ${colorClass}`}
+    >
+      {displayTime}
+    </span>
+  );
+};
+
+// Presentation-only card component
+export const PlayerCard = ({ username, timer, isDragging }) => {
   return (
     <div
       className={`w-full cursor-grab flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
         isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
       }`}
     >
-      <span className="truncate text-black font-semibold">{username}</span>{" "}
-      <button className="text-gray-400 p-0.5 cursor-pointer">
-        <EllipsisVertical size={14} />
-      </button>
+      <span className="truncate text-black font-semibold max-w-[90px]">
+        {username}
+      </span>{" "}
+      <div className="flex items-center gap-x-1">
+        {timer}
+        <button className="text-gray-400 p-0.5 cursor-pointer">
+          <EllipsisVertical size={14} />
+        </button>
+      </div>
     </div>
   );
 };
@@ -22,14 +91,19 @@ export const PlayerCard = ({ username, isDragging }) => {
 // Internal Draggable Component mirroring MatchCourt's structure
 const DraggableSlotPlayer = ({
   username,
+  timer,
   isDragging,
   attributes,
   listeners,
   setNodeRef,
   transform,
 }) => {
+  // 🌟 FIXED CRITICAL FIX HERE:
+  // If we are not actively dragging, do not apply any transform matrix calculations at all.
+  // This locks the dropped component cleanly back to 0,0 relative flow space inside your UI container pools.
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform:
+      isDragging && transform ? CSS.Translate.toString(transform) : undefined,
     position: isDragging ? "fixed" : "relative",
     zIndex: isDragging ? 9999 : 20,
     width: isDragging ? "150px" : "100%",
@@ -45,7 +119,7 @@ const DraggableSlotPlayer = ({
       {...attributes}
       className="player w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
     >
-      <PlayerCard username={username} isDragging={isDragging} />
+      <PlayerCard username={username} timer={timer} isDragging={isDragging} />
     </div>
   );
 };
@@ -56,14 +130,17 @@ const DraggablePlayer = ({ player, username }) => {
     data: { player },
   });
 
+  const LiveTimerNode = (
+    <PlayerTimer timestamp={player.updateStatus || player.updatedAt} />
+  );
+
   return (
-    // FIXED: The outer grid slot item now has structural layout boundaries (w-[132px] h-[41px])
-    // to preserve positions within 'flex flex-wrap' layout pools.
     <div className="w-[164px] h-[41px] relative shrink-0">
       {/* 1. THE ACTUALLY DRAGGABLE ITEM */}
       <div className="absolute inset-0 z-100">
         <DraggableSlotPlayer
           username={username}
+          timer={LiveTimerNode}
           isDragging={draggableProps.isDragging}
           attributes={draggableProps.attributes}
           listeners={draggableProps.listeners}
@@ -78,8 +155,11 @@ const DraggablePlayer = ({ player, username }) => {
           <span className="truncate flex-1 text-black font-semibold opacity-40">
             {username}
           </span>
-          <div className="opacity-30">
-            <EllipsisVertical size={14} />
+          <div className="flex items-center gap-x-1 opacity-30">
+            {LiveTimerNode}
+            <button>
+              <EllipsisVertical size={14} />
+            </button>
           </div>
         </div>
       )}
@@ -120,7 +200,6 @@ const PlayersContainer = ({ players = [] }) => {
         </div>
       </header>
 
-      {/* FIXED: Added 'justify-start' so row alignments remain uniform as elements wrap */}
       <main className="flex flex-wrap gap-2 p-2 justify-center overflow-y-auto border mx-2 rounded-md border-dashed">
         {filteredPlayers.length === 0 ? (
           <div className="text-center text-xs text-gray-400 font-medium w-full py-4">

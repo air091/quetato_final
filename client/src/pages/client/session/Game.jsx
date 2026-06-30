@@ -316,6 +316,79 @@ const Game = () => {
     [communityId, sessionId, sessionData, fetchWithAuth, fetchDashboardContext],
   );
 
+  const handleEndMatchCourt = useCallback(
+    async (courtId) => {
+      if (!communityId || !sessionId || !courtId) return;
+
+      // Save previous state for rollbacks on failure
+      const previousSessionData = structuredClone(sessionData);
+
+      try {
+        // 1. Optimistic UI update: Instantly move court status back to "idle",
+        // clear its timer values, and empty out its slots array.
+        setSessionData((prev) => {
+          if (!prev.matchCourts?.courts) return prev;
+
+          // Collect player IDs currently attached to this court before clearing them
+          let playerIdsToFree = [];
+          const targetedCourt = prev.matchCourts.courts.find(
+            (c) => c.id === courtId,
+          );
+          if (targetedCourt) {
+            playerIdsToFree = (targetedCourt.slots || [])
+              .map((s) => s.sessionPlayerId)
+              .filter(Boolean);
+          }
+
+          const updatedCourts = prev.matchCourts.courts.map((court) => {
+            if (court.id !== courtId) return court;
+            return {
+              ...court,
+              status: "idle",
+              startedAt: null,
+              slots: [], // Empty the court slots immediately matching deleteMany
+            };
+          });
+
+          // Set the players who were on this court back to "waiting" state
+          const updatedPlayers = prev.players.map((player) => {
+            const pId = player.id || player.sessionPlayerId;
+            if (playerIdsToFree.includes(pId)) {
+              return { ...player, gameStatus: "waiting" };
+            }
+            return player;
+          });
+
+          return {
+            ...prev,
+            matchCourts: { ...prev.matchCourts, courts: updatedCourts },
+            players: updatedPlayers,
+          };
+        });
+
+        // 2. HTTP Request matching your route structure
+        const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/end`;
+        const response = await fetchWithAuth(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to end the match court.");
+        }
+
+        // 3. Sync completely with the server database state
+        await fetchDashboardContext(true);
+      } catch (error) {
+        console.error("Match teardown failure:", error);
+        alert(error.message || "Could not end the match.");
+        setSessionData(previousSessionData); // Rollback state on network error
+      }
+    },
+    [communityId, sessionId, sessionData, fetchWithAuth, fetchDashboardContext],
+  );
+
   // Cache data block parameters right when node is selected
   const handleDragStart = (event) => {
     const { active } = event;
@@ -630,6 +703,7 @@ const Game = () => {
             onUpdateCourtName={handleUpdateCourtName}
             onDeleteCourt={handleDeleteCourt}
             onStartMatchCourt={handleStartMatchCourt}
+            onEndMatchCourt={handleEndMatchCourt}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}

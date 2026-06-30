@@ -51,7 +51,6 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
         },
       },
 
-      // 🌟 FIXED: Changed from 'updatedBy' scalar to 'adminUpdate' relation
       adminUpdate: {
         select: {
           id: true,
@@ -60,6 +59,30 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
         },
       },
     },
+  });
+
+  // 🌟 4. Define Custom Priority Weight Matrix for gameStatus
+  const statusPriority = {
+    waiting: 1,
+    queued: 2,
+    playing: 3, // Your 3rd and last requirements are both playing, which means playing comes 3rd overall
+  };
+
+  // 🌟 5. Sort the array
+  sessionPlayers.sort((a, b) => {
+    const priorityA = statusPriority[a.gameStatus] || 99;
+    const priorityB = statusPriority[b.gameStatus] || 99;
+
+    // First: Sort by gameStatus priority (ascending category value: 1, then 2, then 3)
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+
+    // Second: Sort by time descending (More time elapsed = earlier timestamp comes first)
+    const timeA = new Date(a.updateStatus || a.acceptedAt || 0).getTime();
+    const timeB = new Date(b.updateStatus || b.acceptedAt || 0).getTime();
+
+    return timeA - timeB;
   });
 
   return sessionPlayers;

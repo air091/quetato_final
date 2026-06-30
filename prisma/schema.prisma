@@ -137,7 +137,7 @@ model SessionPlayer {
   requestedAt       DateTime?
   acceptedAt        DateTime?
   acceptedBy        String?
-  updateStatus      DateTime @default(now())
+  updateStatus      DateTime @default(now()) // game status updates
   updatedAt         DateTime @updatedAt
   updatedBy         String?
   session           Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
