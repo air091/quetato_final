@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Plus } from "lucide-react";
+import CourtSettings from "./CourtSettings";
 
 const DraggableSlotPlayer = ({
   matchedPoolPlayer,
@@ -131,9 +132,14 @@ const QueueCourt = ({
   players = [],
   onRemovePlayer,
   onAddCourt,
+  onUpdateCourtName,
 }) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
+
+  // Track open dropdown menu panel settings exactly like MatchCourt
+  const [activeCourtSettingsId, setActiveCourtSettingsId] = useState(null);
+  const toggleButtonRefs = useRef({});
 
   return (
     <div>
@@ -143,11 +149,15 @@ const QueueCourt = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {courtsList.map((queueCourt) => {
           const stableKey = queueCourt?.id;
+          const isSettingsOpen = activeCourtSettingsId === queueCourt.id;
 
           return (
             <div
               key={stableKey}
-              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
+              /* Elevates z-index context while configurations panel overlay is rendering */
+              className={`relative p-2 rounded-md bg-white shadow-sm transition-all ${
+                isSettingsOpen ? "z-40" : "z-10"
+              }`}
             >
               {/* Neutral Stone/Gray themed background court canvas */}
               <svg
@@ -212,18 +222,40 @@ const QueueCourt = ({
                 />
               </svg>
 
-              <header className="relative z-20 flex flex-col items-center justify-between text-white mb-2">
+              <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
                 <div className="flex items-center justify-between w-full">
                   <span className="text-[14px] font-semibold">
                     {queueCourt?.name}
                   </span>
-                  <div className="flex items-center gap-x-1">
+                  <div className="flex items-center gap-x-1 relative">
                     <button className="cursor-pointer bg-stone-700 hover:bg-stone-600 text-stone-200 text-[12px] py-0.5 px-2 rounded-full transition-colors">
                       Transfer to court
                     </button>
-                    <button className="cursor-pointer hover:bg-white/10 rounded-full p-1">
+                    <button
+                      ref={(el) =>
+                        (toggleButtonRefs.current[queueCourt.id] = el)
+                      }
+                      onClick={() =>
+                        setActiveCourtSettingsId((prev) =>
+                          prev === queueCourt.id ? null : queueCourt.id,
+                        )
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded-full p-1"
+                    >
                       <EllipsisVertical size={16} />
                     </button>
+
+                    {isSettingsOpen && (
+                      <CourtSettings
+                        court={queueCourt}
+                        toggleButtonRef={
+                          toggleButtonRefs.current[queueCourt.id]
+                        }
+                        onClose={() => setActiveCourtSettingsId(null)}
+                        onUpdateCourtName={onUpdateCourtName}
+                        courtType="queue"
+                      />
+                    )}
                   </div>
                 </div>
               </header>

@@ -452,6 +452,24 @@ const Game = () => {
     }
   };
 
+  const handleUpdateCourtName = useCallback((courtId, newName) => {
+    const updateNameInList = (currentCourtsObj) => {
+      if (!currentCourtsObj?.courts) return currentCourtsObj;
+      return {
+        ...currentCourtsObj,
+        courts: currentCourtsObj.courts.map((court) =>
+          court.id === courtId ? { ...court, name: newName } : court,
+        ),
+      };
+    };
+
+    setSessionData((prev) => ({
+      ...prev,
+      matchCourts: updateNameInList(prev.matchCourts),
+      queueCourts: updateNameInList(prev.queueCourts), // Handles queue courts if they use it too
+    }));
+  }, []);
+
   if (isLoading) {
     return (
       <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
@@ -476,12 +494,14 @@ const Game = () => {
             players={sessionData.players}
             onRemovePlayer={handleRemovePlayer}
             onAddCourt={handleAddMatchCourt}
+            onUpdateCourtName={handleUpdateCourtName}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
             players={sessionData.players}
             onRemovePlayer={handleRemovePlayer}
             onAddCourt={handleAddQueueCourt}
+            onUpdateCourtName={handleUpdateCourtName}
           />
         </div>
       </div>

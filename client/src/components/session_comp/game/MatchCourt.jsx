@@ -1,12 +1,8 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  CornerDownLeft,
-  EllipsisVertical,
-  IterationCw,
-  Plus,
-} from "lucide-react";
-import React from "react";
+import { CornerDownLeft, EllipsisVertical, Plus } from "lucide-react";
+import React, { useState, useRef } from "react";
+import CourtSettings from "./CourtSettings";
 
 const DraggableSlotPlayer = ({
   matchedPoolPlayer,
@@ -20,12 +16,9 @@ const DraggableSlotPlayer = ({
 }) => {
   const style = {
     transform: CSS.Translate.toString(transform),
-    // REMOVED position: fixed logic causing the scrolling offset glitch
     zIndex: isDragging ? 9999 : 20,
     width: "100%",
     height: "100%",
-    // Lower opacity or hide the source item slightly while dragging,
-    // since the global DragOverlay is representing it visually.
     opacity: isDragging ? 0.4 : 1,
   };
 
@@ -45,7 +38,7 @@ const DraggableSlotPlayer = ({
       <div className="flex items-center gap-x-1">
         <button
           onClick={(e) => {
-            e.stopPropagation(); // Prevents dnd-kit from intercepting click actions
+            e.stopPropagation();
             onRemovePlayer();
           }}
           className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full z-30"
@@ -74,7 +67,6 @@ const CourtSlot = ({
 
   const handleRemoveClick = () => {
     if (onRemovePlayer && slotData) {
-      // FIX: Use fallback identifier paths if slotData.id isn't present yet
       const targetIdentifier =
         slotData.id || slotData.sessionPlayerId || `opt-${position}`;
       onRemovePlayer(courtId, targetIdentifier);
@@ -97,7 +89,7 @@ const CourtSlot = ({
           : "border-white/30 bg-transparent"
       }`}
     >
-      <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none z-0">
+      <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
       </span>
 
@@ -140,9 +132,13 @@ const MatchCourt = ({
   players = [],
   onRemovePlayer,
   onAddCourt,
+  onUpdateCourtName,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
+  const [activeCourtSettingsId, setActiveCourtSettingsId] = useState(null);
+
+  const toggleButtonRefs = useRef({});
 
   return (
     <div>
@@ -152,11 +148,17 @@ const MatchCourt = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {courtsList.map((matchCourt) => {
           const stableKey = matchCourt?.id;
+          const isSettingsOpen = activeCourtSettingsId === matchCourt.id;
 
           return (
             <div
               key={stableKey}
-              className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
+              /* FIX: If this court's settings panel is open, we dynamically force 
+                its container to z-40 so it stays above all neighboring court panels.
+              */
+              className={`relative p-2 rounded-md bg-white shadow-sm transition-all ${
+                isSettingsOpen ? "z-40" : "z-10"
+              }`}
             >
               <svg
                 width="100%"
@@ -220,18 +222,40 @@ const MatchCourt = ({
                 />
               </svg>
 
-              <header className="relative z-20 flex flex-col items-center justify-between text-white mb-2">
+              <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
                 <div className="flex items-center justify-between w-full">
                   <span className="text-[14px] font-semibold">
                     {matchCourt?.name}
                   </span>
-                  <div className="flex items-center gap-x-1">
+                  <div className="flex items-center gap-x-1 relative">
                     <button className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full">
                       Start game
                     </button>
-                    <button className="cursor-pointer hover:bg-white/10 rounded-full p-1">
+                    <button
+                      ref={(el) =>
+                        (toggleButtonRefs.current[matchCourt.id] = el)
+                      }
+                      onClick={() =>
+                        setActiveCourtSettingsId((prev) =>
+                          prev === matchCourt.id ? null : matchCourt.id,
+                        )
+                      }
+                      className="cursor-pointer hover:bg-white/10 rounded-full p-1"
+                    >
                       <EllipsisVertical size={16} />
                     </button>
+
+                    {isSettingsOpen && (
+                      <CourtSettings
+                        court={matchCourt}
+                        toggleButtonRef={
+                          toggleButtonRefs.current[matchCourt.id]
+                        }
+                        onClose={() => setActiveCourtSettingsId(null)}
+                        onUpdateCourtName={onUpdateCourtName}
+                        courtType="match"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="flex w-full gap-x-2 mt-1">
@@ -249,13 +273,11 @@ const MatchCourt = ({
                   const slotData = matchCourt?.slots?.find(
                     (s) => s.position === position,
                   );
-
                   const matchedPoolPlayer = slotData
                     ? slotData.sessionPlayer ||
                       players.find((p) => p.id === slotData.sessionPlayerId)
                     : null;
 
-                  // SAFE MULTI-TIER USERNAME RESOLUTION
                   const username =
                     matchedPoolPlayer?.sessionPlayer?.communityPlayer
                       ?.username ||
@@ -278,6 +300,7 @@ const MatchCourt = ({
             </div>
           );
         })}
+
         <button
           onClick={onAddCourt}
           className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-blue-900 border-dashed gap-x-2 min-h-[179px]"
