@@ -80,7 +80,6 @@ const Game = () => {
             ? { courts: extractedQueue, counts: queueData.counts }
             : extractedQueue,
         });
-
       } catch (error) {
         console.error("Dashboard engine data loading error:", error.message);
       } finally {
@@ -246,6 +245,76 @@ const Game = () => {
       setSessionData(previousSessionData);
     }
   };
+
+  const handleStartMatchCourt = useCallback(
+    async (courtId) => {
+      if (!communityId || !sessionId || !courtId) return;
+
+      // Save previous state for rollbacks on failure
+      const previousSessionData = structuredClone(sessionData);
+
+      try {
+        // 1. Optimistic UI update: Instantly move court status to "started"
+        // and match court players' status tags to "playing"
+        setSessionData((prev) => {
+          if (!prev.matchCourts?.courts) return prev;
+
+          let playerIdsToUpdate = [];
+
+          const updatedCourts = prev.matchCourts.courts.map((court) => {
+            if (court.id !== courtId) return court;
+
+            // Gather player IDs attached to this court
+            playerIdsToUpdate = (court.slots || [])
+              .map((s) => s.sessionPlayerId)
+              .filter(Boolean);
+
+            return {
+              ...court,
+              status: "started",
+              startedAt: new Date().toISOString(),
+            };
+          });
+
+          const updatedPlayers = prev.players.map((player) => {
+            const pId = player.id || player.sessionPlayerId;
+            if (playerIdsToUpdate.includes(pId)) {
+              return { ...player, gameStatus: "playing" };
+            }
+            return player;
+          });
+
+          return {
+            ...prev,
+            matchCourts: { ...prev.matchCourts, courts: updatedCourts },
+            players: updatedPlayers,
+          };
+        });
+
+        // 2. HTTP Request matching your patch endpoint structure
+        const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/start`;
+        const response = await fetchWithAuth(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(
+            errData.message || "Failed to start match court setup.",
+          );
+        }
+
+        // 3. Verify real state seamlessly from the database payload
+        await fetchDashboardContext(true);
+      } catch (error) {
+        console.error("Match startup failure:", error);
+        alert(error.message || "Could not start the match.");
+        setSessionData(previousSessionData); // Rollback
+      }
+    },
+    [communityId, sessionId, sessionData, fetchWithAuth, fetchDashboardContext],
+  );
 
   // Cache data block parameters right when node is selected
   const handleDragStart = (event) => {
@@ -560,6 +629,7 @@ const Game = () => {
             onAddCourt={handleAddMatchCourt}
             onUpdateCourtName={handleUpdateCourtName}
             onDeleteCourt={handleDeleteCourt}
+            onStartMatchCourt={handleStartMatchCourt}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}

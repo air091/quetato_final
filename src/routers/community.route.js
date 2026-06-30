@@ -16,6 +16,7 @@ import {
   deleteMatchCourtController,
   deleteQueueCourtController,
   deleteSessionController,
+  endMatchCourtController,
   endSessionController,
   getAllCourtsController,
   getAllPublicSessionsController,
@@ -23,6 +24,7 @@ import {
   getSessionByIdController,
   removePlayerFromSlotController,
   sessionDashboardController,
+  startMatchCourtController,
   startSessionController,
   transferQueueToMatchController,
   updateMatchCourtNameController,
@@ -150,6 +152,16 @@ router.delete(
 router.post(
   "/:communityId/sessions/:sessionId/courts/transfer-queue",
   transferQueueToMatchController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/start",
+  startMatchCourtController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/end",
+  endMatchCourtController,
 );
 
 export default router;

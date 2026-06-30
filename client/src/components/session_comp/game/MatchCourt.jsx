@@ -138,6 +138,7 @@ const MatchCourt = ({
   onAddCourt,
   onUpdateCourtName,
   onDeleteCourt,
+  onStartMatchCourt,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
@@ -243,7 +244,10 @@ const MatchCourt = ({
                   </span>
                   <div className="flex items-center gap-x-1 relative">
                     {canStartGame && (
-                      <button className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors">
+                      <button
+                        onClick={() => onStartMatchCourt?.(matchCourt.id)}
+                        className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors"
+                      >
                         Start game
                       </button>
                     )}

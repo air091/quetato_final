@@ -827,7 +827,7 @@ export const removePlayerFromSlot = async (
     if (existingSlot.sessionPlayerId) {
       await tx.sessionPlayer.update({
         where: { id: existingSlot.sessionPlayerId },
-        data: { gameStatus: "waiting", updateStatus: new Date() }, // 👈 Status reset
+        data: { gameStatus: "waiting" }, // 👈 Status reset
       });
     }
 
@@ -960,7 +960,7 @@ export const transferQueueToMatch = async (
       // Step B: Set player status to "queued"
       await tx.sessionPlayer.update({
         where: { id: sourceSlot.sessionPlayerId },
-        data: { gameStatus: "queued", updateStatus: new Date() },
+        data: { gameStatus: "queued" },
       });
 
       // Step C: Place player in the Match Court slot
@@ -981,5 +981,234 @@ export const transferQueueToMatch = async (
       targetCourtId: availableMatchCourt.id,
       transferredCount: movedSlotsLog.length,
     };
+  });
+};
+
+export const startMatchCourt = async (
+  communityId,
+  sessionId,
+  courtId,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !courtId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch user authorization context and the target match court concurrently
+    const [authorizingAttendee, targetCourt] = await Promise.all([
+      tx.sessionPlayer.findFirst({
+        where: {
+          sessionId: sessionId,
+          sessionPlayer: {
+            communityId: communityId,
+            userId: authorizedId,
+          },
+        },
+        select: {
+          id: true,
+          sessionPlayer: { select: { role: true } },
+        },
+      }),
+      tx.court.findFirst({
+        where: {
+          id: courtId,
+          sessionId: sessionId,
+          type: "match",
+        },
+        include: {
+          slots: true,
+        },
+      }),
+    ]);
+
+    // 2. Auth & Existence Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can start matches",
+        403,
+      );
+    }
+
+    if (!targetCourt) {
+      throw new AppError("Match court not found in this session", 404);
+    }
+
+    // 3. Game State Guards
+    if (targetCourt.startedAt !== null || targetCourt.status !== "idle") {
+      throw new AppError(
+        "Forbidden: This match court has already started or concluded",
+        400,
+      );
+    }
+
+    // 🌟 FIX: Calculate occupied teams based on position integers (Even = Team A, Odd = Team B)
+    const occupiedSlots = targetCourt.slots.filter(
+      (slot) => slot.sessionPlayerId,
+    );
+    const hasTeamAPlayer = occupiedSlots.some(
+      (slot) => slot.position % 2 === 0,
+    );
+    const hasTeamBPlayer = occupiedSlots.some(
+      (slot) => slot.position % 2 === 1,
+    );
+
+    if (!hasTeamAPlayer || !hasTeamBPlayer) {
+      throw new AppError(
+        `Cannot start match: "${targetCourt.name}" requires at least one player on both Team A and Team B to start`,
+        400,
+      );
+    }
+
+    // 4. Extract all player IDs sitting in this court's slots
+    const playerIdsInMatch = occupiedSlots.map((slot) => slot.sessionPlayerId);
+
+    // 5. Update court information and shift players' game status atomically
+    const [updatedCourt] = await Promise.all([
+      tx.court.update({
+        where: { id: courtId },
+        data: {
+          status: "started",
+          startedAt: new Date(),
+          updatedBy: authorizingAttendee.id,
+        },
+        include: { slots: true },
+      }),
+      tx.sessionPlayer.updateMany({
+        where: {
+          id: { in: playerIdsInMatch },
+        },
+        data: {
+          gameStatus: "playing",
+          updateStatus: new Date(),
+        },
+      }),
+    ]);
+
+    return updatedCourt;
+  });
+};
+
+export const endMatchCourt = async (
+  communityId,
+  sessionId,
+  courtId,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !courtId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch authorization context and target match court concurrently
+    const [authorizingAttendee, targetCourt] = await Promise.all([
+      tx.sessionPlayer.findFirst({
+        where: {
+          sessionId: sessionId,
+          sessionPlayer: {
+            communityId: communityId,
+            userId: authorizedId,
+          },
+        },
+        select: {
+          id: true,
+          sessionPlayer: { select: { role: true } },
+        },
+      }),
+      tx.court.findFirst({
+        where: {
+          id: courtId,
+          sessionId: sessionId,
+          type: "match",
+        },
+        include: {
+          slots: true,
+        },
+      }),
+    ]);
+
+    // 2. Auth & Existence Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can end matches",
+        403,
+      );
+    }
+
+    if (!targetCourt) {
+      throw new AppError("Match court not found in this session", 404);
+    }
+
+    // 3. Game State Guard
+    if (targetCourt.status !== "started") {
+      throw new AppError(
+        "Bad Request: This match court is not currently active",
+        400,
+      );
+    }
+
+    // 4. Extract player IDs currently sitting on this court
+    const playerIdsInMatch = targetCourt.slots
+      .map((slot) => slot.sessionPlayerId)
+      .filter(Boolean);
+
+    // 5. Execute sequential updates to clear relations cleanly
+
+    // 🌟 CHANGED: Delete all the court slot rows completely from the database table
+    await tx.courtSlot.deleteMany({
+      where: {
+        courtId: courtId,
+      },
+    });
+
+    // Free the players back to the 'waiting' lobby pool concurrently
+    if (playerIdsInMatch.length > 0) {
+      await tx.sessionPlayer.updateMany({
+        where: {
+          id: { in: playerIdsInMatch },
+        },
+        data: {
+          gameStatus: "waiting",
+          updateStatus: new Date(),
+        },
+      });
+    }
+
+    // Reset court layout metrics back to idle state
+    const updatedCourt = await tx.court.update({
+      where: { id: courtId },
+      data: {
+        status: "idle",
+        startedAt: null,
+        updatedBy: authorizingAttendee.id,
+      },
+      include: {
+        slots: true, // This will now return an empty array [] because of the deleteMany above
+      },
+    });
+
+    return updatedCourt;
   });
 };

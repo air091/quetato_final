@@ -129,7 +129,6 @@ const PlayersContainer = ({ players = [] }) => {
         ) : (
           filteredPlayers.map((player) => {
             const stableId = player?.sessionPlayer?.id || player?.id;
-
             const username =
               player?.sessionPlayer?.communityPlayer?.username ||
               player?.communityPlayer?.username ||

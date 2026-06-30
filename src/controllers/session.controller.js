@@ -17,8 +17,10 @@ import {
   createQueueCourt,
   deleteMatchCourt,
   deleteQueueCourt,
+  endMatchCourt,
   getAllCourts,
   removePlayerFromSlot,
+  startMatchCourt,
   transferQueueToMatch,
   updateMatchCourtName,
   updateQueueCourtName,
@@ -559,6 +561,68 @@ export const transferQueueToMatchController = async (request, response) => {
     });
   } catch (error) {
     console.error("Remove player from slot failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const startMatchCourtController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+
+    const result = await startMatchCourt(
+      communityId,
+      sessionId,
+      courtId,
+      request.user.sub,
+    );
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Start match court failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const endMatchCourtController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+
+    const result = await endMatchCourt(
+      communityId,
+      sessionId,
+      courtId,
+      request.user.sub,
+    );
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("End match court failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
