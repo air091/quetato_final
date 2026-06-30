@@ -1187,16 +1187,16 @@ export const endMatchCourt = async (
     if (currentSlots.length > 0) {
       await tx.matchHistory.create({
         data: {
-          sessionId: sessionId,
+          session: sessionId ? { connect: { id: sessionId } } : undefined,
           courtId: courtId,
           courtName: targetCourt.name,
           winningTeam: normalizedWinningTeam,
           startedAt: targetCourt.startedAt || new Date(),
-          players: {
+          matchHistoryPlayer: {
             create: currentSlots.map((slot) => ({
               sessionPlayerId: slot.sessionPlayerId,
               team: slot.team,
-              isWin: slot.team === normalizedWinningTeam,
+              iswin: slot.team === normalizedWinningTeam, // 🌟 FIX: changed from isWin to iswin
             })),
           },
         },

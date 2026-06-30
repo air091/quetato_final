@@ -42,6 +42,7 @@ import {
   acceptPlayerController,
   getAllSessionPlayersController,
 } from "../controllers/sessionPlayer.controller.js";
+import { getPlayerGameHistoryController } from "../controllers/gameHistory.controller.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -162,6 +163,13 @@ router.patch(
 router.patch(
   "/:communityId/sessions/:sessionId/courts/:courtId/end",
   endMatchCourtController,
+);
+
+// HISTORY
+
+router.get(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/history",
+  getPlayerGameHistoryController,
 );
 
 export default router;

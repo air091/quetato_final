@@ -609,12 +609,14 @@ export const startMatchCourtController = async (request, response) => {
 export const endMatchCourtController = async (request, response) => {
   try {
     const { communityId, sessionId, courtId } = request.params;
+    const { winningTeam } = request.body;
 
     const result = await endMatchCourt(
       communityId,
       sessionId,
       courtId,
       request.user.sub,
+      winningTeam,
     );
 
     return response.status(200).json({
