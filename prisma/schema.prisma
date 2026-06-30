@@ -137,6 +137,7 @@ model SessionPlayer {
   requestedAt       DateTime?
   acceptedAt        DateTime?
   acceptedBy        String?
+  updateStatus      DateTime @default(now())
   updatedAt         DateTime @updatedAt
   updatedBy         String?
   session           Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)

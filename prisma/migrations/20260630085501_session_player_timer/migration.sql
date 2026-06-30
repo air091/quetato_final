@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "SessionPlayer" ADD COLUMN     "updateStatus" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

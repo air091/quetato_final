@@ -501,7 +501,7 @@ const Game = () => {
       onDragStart={handleDragStart} // <-- Captures item configuration data
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-x-2 border h-full">
+      <div className="flex gap-x-2 h-full">
         <PlayersContainer players={sessionData.players} />
 
         <div className="flex-1 flex flex-col gap-y-2 overflow-y-auto py-2">
