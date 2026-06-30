@@ -15,11 +15,10 @@ const DraggableSlotPlayer = ({
 }) => {
   const style = {
     transform: CSS.Translate.toString(transform),
-    position: isDragging ? "fixed" : "relative",
     zIndex: isDragging ? 9999 : 20,
-    width: isDragging ? "132px" : "100%",
-    height: isDragging ? "41px" : "100%",
-    pointerEvents: isDragging ? "none" : "auto",
+    width: "100%",
+    height: "100%",
+    opacity: isDragging ? 0.4 : 1,
   };
 
   return (
@@ -28,8 +27,8 @@ const DraggableSlotPlayer = ({
       style={style}
       {...listeners}
       {...attributes}
-      className={`w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
-        isDragging ? "h-[41px] border-gray-500 shadow-md" : "h-full"
+      className={`w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${
+        isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
       <span className="truncate flex-1 text-black font-semibold">
@@ -53,11 +52,10 @@ const DraggableSlotPlayer = ({
   );
 };
 
-const QueueSlot = ({
+const CourtSlot = ({
   position,
   username,
   slotData,
-  hasPlayer,
   matchedPoolPlayer,
   courtId,
   onRemovePlayer,
@@ -68,7 +66,6 @@ const QueueSlot = ({
 
   const handleRemoveClick = () => {
     if (onRemovePlayer && slotData) {
-      // SAFE FALLBACK IDENTIFIERS FOR DELETION PATHWAYS
       const targetIdentifier =
         slotData.id || slotData.sessionPlayerId || `opt-${position}`;
       onRemovePlayer(courtId, targetIdentifier);
@@ -79,6 +76,8 @@ const QueueSlot = ({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id}`,
     data: { player: matchedPoolPlayer },
   });
+
+  const hasPlayer = slotData && matchedPoolPlayer && username;
 
   return (
     <div
@@ -93,7 +92,7 @@ const QueueSlot = ({
         Player {position <= 1 ? "A" : "B"}-{position % 2 === 0 ? "1" : "2"}
       </span>
 
-      {hasPlayer && username && (
+      {hasPlayer && (
         <>
           <DraggableSlotPlayer
             matchedPoolPlayer={matchedPoolPlayer}
@@ -127,16 +126,20 @@ const QueueSlot = ({
   );
 };
 
-const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
+const QueueCourt = ({
+  queueCourts,
+  players = [],
+  onRemovePlayer,
+  onAddCourt,
+}) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
 
   return (
-    <div className="">
+    <div>
       <h4 className="font-semibold text-gray-700 mb-2">
         Queues ({countDisplay})
       </h4>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {courtsList.map((queueCourt) => {
           const stableKey = queueCourt?.id;
@@ -146,6 +149,7 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
               key={stableKey}
               className="relative p-2 rounded-md bg-white shadow-sm overflow-hidden"
             >
+              {/* Neutral Stone/Gray themed background court canvas */}
               <svg
                 width="100%"
                 height="100%"
@@ -154,7 +158,7 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
                 stroke="rgba(200, 200, 200, 0.8)"
                 strokeWidth="2"
                 preserveAspectRatio="none"
-                className="bg-gray-800/80 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+                className="bg-stone-800/95 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
               >
                 <rect
                   x="25"
@@ -208,17 +212,19 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
                 />
               </svg>
 
-              <header className="relative z-20 flex items-center justify-between text-white mb-2">
-                <span className="text-[14px] font-semibold">
-                  {queueCourt?.name}
-                </span>
-                <div className="flex items-center gap-x-1">
-                  <button className="cursor-pointer bg-stone-800 hover:text-stone-50 px-2 py-1 rounded-full transition-colors text-stone-300 text-[12px]">
-                    Transfer to court
-                  </button>
-                  <button className="cursor-pointer hover:bg-white/10 p-1 rounded-full transition-colors text-white">
-                    <EllipsisVertical size={16} />
-                  </button>
+              <header className="relative z-20 flex flex-col items-center justify-between text-white mb-2">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[14px] font-semibold">
+                    {queueCourt?.name}
+                  </span>
+                  <div className="flex items-center gap-x-1">
+                    <button className="cursor-pointer bg-stone-700 hover:bg-stone-600 text-stone-200 text-[12px] py-0.5 px-2 rounded-full transition-colors">
+                      Transfer to court
+                    </button>
+                    <button className="cursor-pointer hover:bg-white/10 rounded-full p-1">
+                      <EllipsisVertical size={16} />
+                    </button>
+                  </div>
                 </div>
               </header>
 
@@ -228,37 +234,24 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
                     (s) => s.position === position,
                   );
 
-                  const player = slotData
+                  const matchedPoolPlayer = slotData
                     ? slotData.sessionPlayer ||
-                      players.find(
-                        (p) =>
-                          slotData.sessionPlayerId &&
-                          p.id === slotData.sessionPlayerId,
-                      )
+                      players.find((p) => p.id === slotData.sessionPlayerId)
                     : null;
 
-                  // SAFE MULTI-TIER USERNAME RESOLUTION
-                  const resolvedName =
-                    player?.sessionPlayer?.communityPlayer?.username ||
-                    player?.communityPlayer?.username ||
-                    player?.username ||
-                    "Unknown player";
-
-                  // CHECK EXISTENCE OF COMPONENT SAFELY
-                  const slotHasPlayer = !!(
-                    slotData &&
-                    player &&
-                    resolvedName !== "Unknown player"
-                  );
+                  const username =
+                    matchedPoolPlayer?.sessionPlayer?.communityPlayer
+                      ?.username ||
+                    matchedPoolPlayer?.communityPlayer?.username ||
+                    matchedPoolPlayer?.username;
 
                   return (
-                    <QueueSlot
+                    <CourtSlot
                       key={position}
                       position={position}
-                      username={resolvedName}
+                      username={username || "Unknown player"}
                       slotData={slotData}
-                      hasPlayer={slotHasPlayer}
-                      matchedPoolPlayer={player}
+                      matchedPoolPlayer={matchedPoolPlayer}
                       courtId={queueCourt.id}
                       onRemovePlayer={onRemovePlayer}
                     />
@@ -268,7 +261,12 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
             </div>
           );
         })}
-        <button className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-gray-900 border-dashed gap-x-2">
+
+        {/* Add Queue Placeholder Button */}
+        <button
+          onClick={onAddCourt}
+          className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-stone-800 border-dashed gap-x-2 min-h-[142px]"
+        >
           <div className="absolute backdrop-blur-xs rounded-md z-11 h-full w-full bg-white opacity-70 hover:opacity-40"></div>
           <svg
             width="100%"
@@ -278,7 +276,7 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
             stroke="rgba(200, 200, 200, 0.8)"
             strokeWidth="2"
             preserveAspectRatio="none"
-            className="bg-gray-900/90 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+            className="bg-stone-800/95 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
           >
             <rect
               x="25"
@@ -331,10 +329,10 @@ const QueueCourt = ({ queueCourts, players = [], onRemovePlayer }) => {
               strokeWidth="1.5"
             />
           </svg>
-          <span className="block text-gray-900 z-12">
+          <span className="block text-stone-800 z-12">
             <Plus size={20} />
           </span>
-          <span className="block font-medium text-gray-900 z-12">
+          <span className="block font-medium text-stone-800 z-12">
             Add Queue
           </span>
         </button>

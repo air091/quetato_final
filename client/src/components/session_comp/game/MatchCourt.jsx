@@ -20,11 +20,13 @@ const DraggableSlotPlayer = ({
 }) => {
   const style = {
     transform: CSS.Translate.toString(transform),
-    position: isDragging ? "fixed" : "relative",
+    // REMOVED position: fixed logic causing the scrolling offset glitch
     zIndex: isDragging ? 9999 : 20,
-    width: isDragging ? "132px" : "100%",
-    height: isDragging ? "41px" : "100%",
-    pointerEvents: isDragging ? "none" : "auto",
+    width: "100%",
+    height: "100%",
+    // Lower opacity or hide the source item slightly while dragging,
+    // since the global DragOverlay is representing it visually.
+    opacity: isDragging ? 0.4 : 1,
   };
 
   return (
@@ -33,8 +35,8 @@ const DraggableSlotPlayer = ({
       style={style}
       {...listeners}
       {...attributes}
-      className={`w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
-        isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
+      className={`w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${
+        isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
       <span className="truncate flex-1 text-black font-semibold">
@@ -133,7 +135,12 @@ const CourtSlot = ({
   );
 };
 
-const MatchCourt = ({ matchCourts, players = [], onRemovePlayer }) => {
+const MatchCourt = ({
+  matchCourts,
+  players = [],
+  onRemovePlayer,
+  onAddCourt,
+}) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
 
@@ -271,7 +278,10 @@ const MatchCourt = ({ matchCourts, players = [], onRemovePlayer }) => {
             </div>
           );
         })}
-        <button className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-blue-900 border-dashed gap-x-2">
+        <button
+          onClick={onAddCourt}
+          className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-blue-900 border-dashed gap-x-2 min-h-[179px]"
+        >
           <div className="absolute backdrop-blur-xs rounded-md z-11 h-full w-full bg-white opacity-70 hover:opacity-40"></div>
           <svg
             width="100%"

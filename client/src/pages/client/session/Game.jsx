@@ -10,6 +10,7 @@ import {
   pointerWithin,
   useSensor,
   useSensors,
+  DragOverlay, // <-- Added tracking overlay context wrapper
 } from "@dnd-kit/core";
 
 const Game = () => {
@@ -21,6 +22,9 @@ const Game = () => {
     queueCourts: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Track currently dragged node to project clean mirror overlays
+  const [activePlayerData, setActivePlayerData] = useState(null);
 
   const fetchDashboardContext = useCallback(
     async (isSilentRefetch = false) => {
@@ -129,7 +133,6 @@ const Game = () => {
         if (court.id !== courtId) return court;
 
         const updatedSlots = (court.slots || []).map((slot) => {
-          // SAFE MATCH: If the unique string ID matches, OR if a freshly dragged player matching slotId matches
           if (
             slot.id === slotId ||
             slot.sessionPlayerId === slotId ||
@@ -146,7 +149,6 @@ const Game = () => {
       return { ...currentCourtsObj, courts: updatedCourts };
     };
 
-    // 1. Force state wipe on frontend instantly
     setSessionData((prev) => ({
       ...prev,
       matchCourts: removeFromCourtsList(prev.matchCourts),
@@ -154,21 +156,32 @@ const Game = () => {
     }));
 
     try {
-      // If it's a completely temporary client-side ID, we don't dispatch it to the backend yet
       if (typeof slotId === "string" && slotId.startsWith("opt-")) {
-        console.log("⚡ Success: Cleared an unsaved optimistic slot wrapper.");
         return;
       }
-
       await removePlayerToSlot(courtId, slotId);
     } catch (error) {
-      console.error("❌ Deletion dropped! Restoring state context...", error);
       setSessionData(previousSessionData);
+    }
+  };
+
+  // Cache data block parameters right when node is selected
+  const handleDragStart = (event) => {
+    const { active } = event;
+    const player = active.data.current?.player;
+    if (player) {
+      const username =
+        player?.sessionPlayer?.communityPlayer?.username ||
+        player?.communityPlayer?.username ||
+        player?.username ||
+        "Unknown Player";
+      setActivePlayerData({ ...player, resolvedUsername: username });
     }
   };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
+    setActivePlayerData(null); // Wipe tracking pointer cleanly
 
     if (!over) return;
 
@@ -181,7 +194,6 @@ const Game = () => {
 
       const previousSessionData = structuredClone(sessionData);
 
-      // --- STEP A: FIND DRAGGED PLAYER'S ORIGINAL POSITION ---
       let sourceCourtId = null;
       let sourcePosition = null;
       let sourceSlotId = null;
@@ -200,7 +212,6 @@ const Game = () => {
       locateSource(sessionData.matchCourts);
       locateSource(sessionData.queueCourts);
 
-      // --- STEP B: FIND DISPLACED PLAYER AT TARGET POSITION ---
       let displacedPlayer = null;
       let displacedSlotId = null;
 
@@ -210,7 +221,6 @@ const Game = () => {
             const targetSlot = c.slots?.find((s) => s.position === position);
             if (targetSlot?.sessionPlayerId) {
               displacedSlotId = targetSlot.id;
-              // Lookup player object references securely from master list
               displacedPlayer =
                 sessionData.players.find(
                   (p) => p.id === targetSlot.sessionPlayerId,
@@ -222,26 +232,22 @@ const Game = () => {
       locateTarget(sessionData.matchCourts);
       locateTarget(sessionData.queueCourts);
 
-      // --- STEP C: EXECUTE THE OPTIMISTIC SWAP ---
       const updateCourtsListOptimistically = (currentCourtsObj) => {
         if (!currentCourtsObj?.courts) return currentCourtsObj;
 
         const updatedCourts = currentCourtsObj.courts.map((court) => {
           let updatedSlots = court.slots ? [...court.slots] : [];
 
-          // 1. If this is the SOURCE court, handle the slot being vacated
           if (court.id === sourceCourtId && sourcePosition !== null) {
             updatedSlots = updatedSlots.map((slot) => {
               if (slot.position === sourcePosition) {
                 if (displacedPlayer && courtId === sourceCourtId) {
-                  // Perfect intra-court swap: Place displaced player here
                   return {
                     ...slot,
                     sessionPlayerId: displacedPlayer.id,
                     sessionPlayer: displacedPlayer,
                   };
                 } else {
-                  // Player left this court entirely: Empty out slot cleanly
                   return {
                     ...slot,
                     sessionPlayerId: null,
@@ -253,7 +259,6 @@ const Game = () => {
             });
           }
 
-          // 2. If this is a CROSS-COURT swap, place the displaced player in the source court's old slot position
           if (
             court.id === sourceCourtId &&
             sourcePosition !== null &&
@@ -274,7 +279,6 @@ const Game = () => {
             else updatedSlots.push(feedbackStructure);
           }
 
-          // 3. Clear out accidental remaining duplicates across the grid loop
           updatedSlots = updatedSlots.map((slot) => {
             if (
               slot.position !== position &&
@@ -294,7 +298,6 @@ const Game = () => {
             return slot;
           });
 
-          // 4. Handle the TARGET court landing location
           if (court.id === courtId) {
             const targetSlotIndex = updatedSlots.findIndex(
               (s) => s.position === position,
@@ -316,7 +319,6 @@ const Game = () => {
             }
           }
 
-          // Filter out completely dead slots that hold absolutely zero player records
           return {
             ...court,
             slots: updatedSlots.filter(
@@ -328,14 +330,12 @@ const Game = () => {
         return { ...currentCourtsObj, courts: updatedCourts };
       };
 
-      // Commit changes immediately to state context
       setSessionData((prev) => ({
         ...prev,
         matchCourts: updateCourtsListOptimistically(prev.matchCourts),
         queueCourts: updateCourtsListOptimistically(prev.queueCourts),
       }));
 
-      // --- STEP D: ASYNC API TRANSMISSION ---
       try {
         const syncedPayload = await assignPlayerToSlot(
           courtId,
@@ -367,7 +367,6 @@ const Game = () => {
           });
         }
       } catch (error) {
-        console.error("❌ API Sync failed! Reverting view changes...", error);
         setSessionData(previousSessionData);
       }
     }
@@ -376,12 +375,82 @@ const Game = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        // Requires moving the cursor at least 1 pixel to start a drag.
-        // This lets pure static button clicks bypass dnd-kit entirely!
         distance: 1,
       },
     }),
   );
+
+  const createMatchCourtOnBackend = useCallback(async () => {
+    const response = await fetchWithAuth(
+      `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/match`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+    if (!response.ok) throw new Error("Failed to add new match court");
+    return await response.json();
+  }, [communityId, sessionId, fetchWithAuth]);
+
+  const createQueueCourtOnBackend = useCallback(async () => {
+    const response = await fetchWithAuth(
+      `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/queue`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+    if (!response.ok) throw new Error("Failed to add new queue court");
+    return await response.json();
+  }, [communityId, sessionId, fetchWithAuth]);
+
+  const handleAddMatchCourt = async () => {
+    try {
+      const newCourtData = await createMatchCourtOnBackend();
+      const finalizedCourt = newCourtData.court || newCourtData;
+      setSessionData((prev) => {
+        const currentMatchObj = prev.matchCourts || {
+          courts: [],
+          counts: { match: 0 },
+        };
+        const fallbackCourtsList = currentMatchObj.courts || [];
+        return {
+          ...prev,
+          matchCourts: {
+            ...currentMatchObj,
+            courts: [...fallbackCourtsList, finalizedCourt],
+            counts: {
+              ...currentMatchObj.counts,
+              match: (currentMatchObj.counts?.match || 0) + 1,
+            },
+          },
+        };
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleAddQueueCourt = async () => {
+    try {
+      const newCourtData = await createQueueCourtOnBackend();
+      const finalizedCourt = newCourtData.court || newCourtData;
+      setSessionData((prev) => {
+        const currentMatchObj = prev.queueCourts || {
+          courts: [],
+          counts: { queue: 0 },
+        };
+        const fallbackCourtsList = currentMatchObj.courts || [];
+        return {
+          ...prev,
+          queueCourts: {
+            ...currentMatchObj,
+            courts: [...fallbackCourtsList, finalizedCourt],
+            counts: {
+              ...currentMatchObj.counts,
+              queue: (currentMatchObj.counts?.queue || 0) + 1,
+            },
+          },
+        };
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -395,6 +464,7 @@ const Game = () => {
     <DndContext
       sensors={sensors}
       collisionDetection={pointerWithin}
+      onDragStart={handleDragStart} // <-- Captures item configuration data
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-x-2 border h-full">
@@ -405,14 +475,27 @@ const Game = () => {
             matchCourts={sessionData.matchCourts}
             players={sessionData.players}
             onRemovePlayer={handleRemovePlayer}
+            onAddCourt={handleAddMatchCourt}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
             players={sessionData.players}
             onRemovePlayer={handleRemovePlayer}
+            onAddCourt={handleAddQueueCourt}
           />
         </div>
       </div>
+
+      {/* GLOBAL DRAG OVERLAY PORTAL CONTAINER */}
+      <DragOverlay dropAnimation={null}>
+        {activePlayerData ? (
+          <div className="w-[164px] h-[41px] flex items-center justify-between p-2 bg-white rounded-md border border-blue-500 shadow-md text-sm font-medium select-none text-gray-800 opacity-95 architecture-dragged-active">
+            <span className="truncate flex-1 text-black font-semibold">
+              {activePlayerData.resolvedUsername}
+            </span>
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };
