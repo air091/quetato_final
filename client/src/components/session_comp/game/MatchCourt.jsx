@@ -1,6 +1,11 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { CornerDownLeft, EllipsisVertical, IterationCw } from "lucide-react";
+import {
+  CornerDownLeft,
+  EllipsisVertical,
+  IterationCw,
+  Plus,
+} from "lucide-react";
 import React from "react";
 
 const DraggableSlotPlayer = ({
@@ -137,7 +142,7 @@ const MatchCourt = ({ matchCourts, players = [], onRemovePlayer }) => {
       <h4 className="font-semibold text-gray-700 mb-2">
         Match ({countDisplay})
       </h4>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {courtsList.map((matchCourt) => {
           const stableKey = matchCourt?.id;
 
@@ -266,6 +271,76 @@ const MatchCourt = ({ matchCourts, players = [], onRemovePlayer }) => {
             </div>
           );
         })}
+        <button className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-blue-900 border-dashed gap-x-2">
+          <div className="absolute backdrop-blur-xs rounded-md z-11 h-full w-full bg-white opacity-70 hover:opacity-40"></div>
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 300 150"
+            fill="none"
+            stroke="rgba(200, 200, 200, 0.8)"
+            strokeWidth="2"
+            preserveAspectRatio="none"
+            className="bg-blue-900/90 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+          >
+            <rect
+              x="25"
+              y="25"
+              width="250"
+              height="100"
+              fill="none"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="2"
+            />
+            <line
+              x1="150"
+              y1="25"
+              x2="150"
+              y2="125"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+            />
+            <line
+              x1="25"
+              y1="50"
+              x2="275"
+              y2="50"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="25"
+              y1="100"
+              x2="275"
+              y2="100"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="50"
+              y1="25"
+              x2="50"
+              y2="125"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+            <line
+              x1="250"
+              y1="25"
+              x2="250"
+              y2="125"
+              stroke="rgba(200, 200, 200, 0.8)"
+              strokeWidth="1.5"
+            />
+          </svg>
+          <span className="block text-blue-900 z-12">
+            <Plus size={20} />
+          </span>
+          <span className="block font-medium text-blue-900 z-12">
+            Add Court
+          </span>
+        </button>
       </div>
     </div>
   );

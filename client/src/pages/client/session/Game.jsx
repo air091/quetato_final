@@ -400,7 +400,7 @@ const Game = () => {
       <div className="flex gap-x-2 border h-full">
         <PlayersContainer players={sessionData.players} />
 
-        <div className="flex-1 flex flex-col gap-y-2">
+        <div className="flex-1 flex flex-col gap-y-2 overflow-y-auto py-2">
           <MatchCourt
             matchCourts={sessionData.matchCourts}
             players={sessionData.players}

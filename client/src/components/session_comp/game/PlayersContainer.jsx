@@ -32,7 +32,7 @@ const DraggableSlotPlayer = ({
     transform: CSS.Translate.toString(transform),
     position: isDragging ? "fixed" : "relative",
     zIndex: isDragging ? 9999 : 20,
-    width: isDragging ? "132px" : "100%",
+    width: isDragging ? "150px" : "100%",
     height: isDragging ? "41px" : "100%",
     pointerEvents: isDragging ? "none" : "auto",
   };
@@ -59,7 +59,7 @@ const DraggablePlayer = ({ player, username }) => {
   return (
     // FIXED: The outer grid slot item now has structural layout boundaries (w-[132px] h-[41px])
     // to preserve positions within 'flex flex-wrap' layout pools.
-    <div className="w-[132px] h-[41px] relative shrink-0">
+    <div className="w-[164px] h-[41px] relative shrink-0">
       {/* 1. THE ACTUALLY DRAGGABLE ITEM */}
       <div className="absolute inset-0 z-100">
         <DraggableSlotPlayer
@@ -98,7 +98,7 @@ const PlayersContainer = ({ players = [] }) => {
   });
 
   return (
-    <div className="w-full md:w-[320px] bg-white rounded-lg flex flex-col shadow-sm h-full">
+    <div className="w-full md:w-[400px] bg-white rounded-lg flex flex-col h-full">
       <header className="flex-shrink-0 border-b border-gray-100 p-2">
         <h4 className="font-semibold text-gray-800 mb-2">
           Players ({filteredPlayers.length})
@@ -121,7 +121,7 @@ const PlayersContainer = ({ players = [] }) => {
       </header>
 
       {/* FIXED: Added 'justify-start' so row alignments remain uniform as elements wrap */}
-      <main className="flex flex-wrap gap-2 p-2 justify-center overflow-y-auto h-full content-start">
+      <main className="flex flex-wrap gap-2 p-2 justify-center overflow-y-auto border mx-2 rounded-md border-dashed">
         {filteredPlayers.length === 0 ? (
           <div className="text-center text-xs text-gray-400 font-medium w-full py-4">
             No players found in this category.
