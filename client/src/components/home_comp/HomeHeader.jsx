@@ -12,7 +12,7 @@ const HomeHeader = () => {
         <ul className="flex items-center justify-center gap-x-16 py-8 border rounded-xl">
           <li>
             <NavLink
-              to="/find-community"
+              to="/community/find"
               className="flex flex-col justify-center items-center border p-4 gap-y-2 font-medium rounded-lg hover:bg-gray-300"
             >
               <span>
