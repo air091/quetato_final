@@ -51,10 +51,12 @@ const DraggableSlotPlayer = ({
             {username}
           </span>
           <div className="flex items-center gap-x-1">
-            <span className="flex items-center gap-x-1">
+            <span title="Games" className="flex items-center gap-x-1">
               <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
             </span>
-            <span className="text-[11px]">BEG</span>
+            <span title="Skill Level" className="text-[11px]">
+              BEG
+            </span>
           </div>
         </div>
       </div>
@@ -62,6 +64,7 @@ const DraggableSlotPlayer = ({
       <div className="flex items-center gap-x-1 relative">
         {timer}
         <button
+          title={`Remove ${username} from slot`}
           onClick={(e) => {
             e.stopPropagation();
             onRemovePlayer();
@@ -71,6 +74,7 @@ const DraggableSlotPlayer = ({
           <CornerDownLeft size={14} />
         </button>
         <button
+          title="Settings"
           ref={playerButtonRef} // 🌟 Attach the position layout tracking anchor
           onClick={(e) => {
             e.stopPropagation(); // 🌟 Stop drag hooks from interrupting layout click toggles
@@ -310,6 +314,7 @@ const MatchCourtCard = ({
               </button>
             )}
             <button
+              title="Settings"
               ref={buttonRef}
               onClick={(e) => {
                 e.stopPropagation();
@@ -335,6 +340,7 @@ const MatchCourtCard = ({
         <div className="flex w-full gap-x-2 mt-1">
           <button
             disabled={!isMatchLive}
+            title="End Game (Team A win)"
             onClick={() => onEndMatchCourt?.(matchCourt.id, "a")}
             className={`w-full rounded-full text-[14px] transition-all duration-200 ${
               isMatchLive
@@ -346,6 +352,7 @@ const MatchCourtCard = ({
           </button>
           <button
             disabled={!isMatchLive}
+            title="End Game (Team B win)"
             onClick={() => onEndMatchCourt?.(matchCourt.id, "b")}
             className={`w-full rounded-full text-[14px] transition-all duration-200 ${
               isMatchLive

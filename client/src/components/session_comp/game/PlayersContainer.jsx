@@ -97,10 +97,12 @@ export const PlayerCard = ({
             {username}
           </span>
           <div className="flex items-center gap-x-1">
-            <span className="flex items-center gap-x-1">
+            <span title="Games" className="flex items-center gap-x-1">
               <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
             </span>
-            <span className="text-[11px]">BEG</span>
+            <span title="Skill Level" className="text-[11px]">
+              BEG
+            </span>
           </div>
         </div>
       </div>
@@ -108,6 +110,7 @@ export const PlayerCard = ({
       <div className="flex items-center gap-x-1">
         {timer}
         <button
+          title="Settings"
           ref={toggleButtonRef}
           onClick={(e) => {
             e.stopPropagation(); // Stop drag hooks from fighting click toggles

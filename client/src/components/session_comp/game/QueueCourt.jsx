@@ -51,10 +51,12 @@ const DraggableSlotPlayer = ({
             {username}
           </span>
           <div className="flex items-center gap-x-1">
-            <span className="flex items-center gap-x-1">
+            <span title="Games" className="flex items-center gap-x-1">
               <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
             </span>
-            <span className="text-[11px]">BEG</span>
+            <span title="Skill Level" className="text-[11px]">
+              BEG
+            </span>
           </div>
         </div>
       </div>
@@ -62,6 +64,7 @@ const DraggableSlotPlayer = ({
       <div className="flex items-center gap-x-1 relative">
         {timer}
         <button
+          title={`Remove ${username} from slot`}
           onClick={(e) => {
             e.stopPropagation(); // Prevents dnd-kit from intercepting click actions
             onRemovePlayer();
@@ -71,6 +74,7 @@ const DraggableSlotPlayer = ({
           <CornerDownLeft size={14} />
         </button>
         <button
+          title="Settings"
           ref={playerButtonRef} // 🌟 Attach positioning ref to options anchor element
           onClick={(e) => {
             e.stopPropagation(); // 🌟 Intercept dnd-kit drag layer loops
@@ -298,6 +302,7 @@ const QueueCourtCard = ({
             )}
             <button
               ref={buttonRef}
+              title="Settings"
               onClick={(event) => {
                 event.stopPropagation();
                 setIsSettingsOpen((prev) => !prev);
