@@ -290,14 +290,6 @@ const MatchCourt = ({
                         Start game
                       </button>
                     )}
-                    {isMatchLive && (
-                      <button
-                        onClick={() => onEndMatchCourt?.(matchCourt.id)}
-                        className="cursor-pointer bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[12px] py-0.5 px-2 rounded-full transition-colors shadow-xs"
-                      >
-                        End match
-                      </button>
-                    )}
                     <button
                       onClick={(event) => {
                         setSettingsAnchor(event.currentTarget);
@@ -325,23 +317,25 @@ const MatchCourt = ({
                 <div className="flex w-full gap-x-2 mt-1">
                   <button
                     disabled={!isMatchLive}
+                    onClick={() => onEndMatchCourt?.(matchCourt.id, "a")} // 🌟 ADDED: call with "a"
                     className={`w-full rounded-full text-[14px] transition-all duration-200 ${
                       isMatchLive
-                        ? "cursor-pointer bg-orange-600 hover:bg-orange-700 text-stone-300 hover:text-stone-50 shadow-xs"
+                        ? "cursor-pointer bg-orange-600 hover:bg-orange-700 text-stone-300 hover:text-stone-50 shadow-xs font-semibold"
                         : "cursor-not-allowed bg-orange-600/40 text-stone-400 opacity-60"
                     }`}
                   >
-                    Team A
+                    Team A Won
                   </button>
                   <button
                     disabled={!isMatchLive}
+                    onClick={() => onEndMatchCourt?.(matchCourt.id, "b")} // 🌟 ADDED: call with "b"
                     className={`w-full rounded-full text-[14px] transition-all duration-200 ${
                       isMatchLive
-                        ? "cursor-pointer bg-stone-600 hover:bg-stone-700 text-stone-300 hover:text-stone-50 shadow-xs"
+                        ? "cursor-pointer bg-stone-600 hover:bg-stone-700 text-stone-300 hover:text-stone-50 shadow-xs font-semibold"
                         : "cursor-not-allowed bg-stone-600/40 text-stone-400 opacity-60"
                     }`}
                   >
-                    Team B
+                    Team B Won
                   </button>
                 </div>
               </header>

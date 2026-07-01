@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
-import PlayersContainer from "../../../components/session_comp/game/PlayersContainer";
+import PlayersContainer, {
+  PlayerTimer,
+} from "../../../components/session_comp/game/PlayersContainer";
 import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
 import {
@@ -12,6 +14,7 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
+import { Gamepad2 } from "lucide-react";
 
 const resolveSessionPlayerId = (player) =>
   player?.id || player?.sessionPlayerId || null;
@@ -317,8 +320,17 @@ const Game = () => {
   );
 
   const handleEndMatchCourt = useCallback(
-    async (courtId) => {
+    async (courtId, winningTeam) => {
+      // 🌟 UPDATED: Accept winningTeam argument
       if (!communityId || !sessionId || !courtId) return;
+
+      // Ensure a team selection is valid before sending
+      if (!winningTeam || !["a", "b"].includes(winningTeam.toLowerCase())) {
+        alert(
+          "Please select a valid winning team ('a' or 'b') to end the match.",
+        );
+        return;
+      }
 
       // Save previous state for rollbacks on failure
       const previousSessionData = structuredClone(sessionData);
@@ -366,11 +378,12 @@ const Game = () => {
           };
         });
 
-        // 2. HTTP Request matching your route structure
+        // 2. HTTP Request matching your route structure and body expectation
         const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/end`;
         const response = await fetchWithAuth(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ winningTeam: winningTeam.toLowerCase() }), // 🌟 ADDED: Send winningTeam in body
         });
 
         if (!response.ok) {
@@ -684,6 +697,8 @@ const Game = () => {
     );
   }
 
+  console.log(activePlayerData);
+
   return (
     <DndContext
       sensors={sensors}
@@ -721,9 +736,20 @@ const Game = () => {
       <DragOverlay dropAnimation={null}>
         {activePlayerData ? (
           <div className="w-[164px] h-[41px] flex items-center justify-between p-2 bg-white rounded-md border border-blue-500 shadow-md text-sm font-medium select-none text-gray-800 opacity-95 architecture-dragged-active">
-            <span className="truncate flex-1 text-black font-semibold">
-              {activePlayerData.resolvedUsername}
-            </span>
+            <div>
+              <span className="truncate text-black font-semibold max-w-[90px]">
+                {activePlayerData.sessionPlayer.communityPlayer.username}
+              </span>
+              <div className="flex items-center gap-x-2">
+                <span className="flex items-center gap-x-1">
+                  <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+                </span>
+                <span className="text-[11px]">BEG</span>
+              </div>
+            </div>
+            <div>
+              <PlayerTimer timestamp={activePlayerData.updateStatus} />
+            </div>
           </div>
         ) : null}
       </DragOverlay>

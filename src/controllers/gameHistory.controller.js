@@ -21,3 +21,5 @@ export const getPlayerGameHistoryController = async (request, response) => {
       .json({ success: false, message: errMessage });
   }
 };
+
+// TODO: IMPLEMENT PLAYER GAME HISTORY IN CLIENT

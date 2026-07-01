@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { EllipsisVertical } from "lucide-react";
+import { EllipsisVertical, Gamepad2 } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -75,9 +75,18 @@ export const PlayerCard = ({ username, timer, isDragging }) => {
         isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
       }`}
     >
-      <span className="truncate text-black font-semibold max-w-[90px]">
-        {username}
-      </span>{" "}
+      <div>
+        <span className="truncate text-black font-semibold max-w-[90px]">
+          {username}
+        </span>
+        <div className="flex items-center gap-x-2">
+          <span className="flex items-center gap-x-1">
+            <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+          </span>
+          <span className="text-[11px]">BEG</span>
+        </div>
+      </div>
+
       <div className="flex items-center gap-x-1">
         {timer}
         <button className="text-gray-400 p-0.5 cursor-pointer">
@@ -151,10 +160,20 @@ const DraggablePlayer = ({ player, username }) => {
 
       {/* 2. THE BACKGROUND PLACEHOLDER */}
       {draggableProps.isDragging && (
-        <div className="absolute inset-0 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
-          <span className="truncate flex-1 text-black font-semibold opacity-40">
-            {username}
-          </span>
+        <div className="absolute inset-0 flex items-center justify-between p-2 bg-gray-500/40 rounded-md border border-blue-500 text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
+          <div>
+            <span className="truncate text-black font-semibold max-w-[90px]">
+              {username}
+            </span>
+            <div className="flex items-center gap-x-2">
+              <span className="flex items-center gap-x-1">
+                <Gamepad2 size={12} /> <span className="text-[10px]">0</span>{" "}
+                {/* TOTAL GAMES OF PLAYER */}
+              </span>
+              <span className="text-[11px]">BEG</span>{" "}
+              {/* USER SKILL DO NOT TOUCH */}
+            </div>
+          </div>
           <div className="flex items-center gap-x-1 opacity-30">
             {LiveTimerNode}
             <button>
@@ -184,7 +203,7 @@ const PlayersContainer = ({ players = [] }) => {
           Players ({filteredPlayers.length})
         </h4>
         <div className="flex items-center bg-gray-100 p-0.5 rounded-md">
-          {["all", "waiting", "queued", "paid"].map((tab) => (
+          {["all", "waiting", "queued", "playing", "paid"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
