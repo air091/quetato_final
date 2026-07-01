@@ -751,7 +751,7 @@ const Game = () => {
                 size="sm"
               />
               <div>
-                <span className="truncate text-black font-semibold max-w-[74px] block">
+                <span className="truncate text-black font-semibold max-w-[74px] block text-[12px]">
                   {activePlayerData.sessionPlayer.communityPlayer.username}
                 </span>
                 <div className="flex items-center gap-x-1">

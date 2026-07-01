@@ -36,7 +36,7 @@ const DraggableSlotPlayer = ({
       style={style}
       {...listeners}
       {...attributes}
-      className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${
+      className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-1 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
@@ -47,7 +47,7 @@ const DraggableSlotPlayer = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[60px] block">
+          <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -165,7 +165,7 @@ const CourtSlot = ({
           />
 
           {draggableProps.isDragging && (
-            <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
+            <div className="absolute inset-1 flex items-center justify-between p-1 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
               <div className="flex items-center gap-x-2">
                 <PlayerAvatar
                   username={username}
@@ -173,7 +173,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-w-[60px] block">
+                  <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
