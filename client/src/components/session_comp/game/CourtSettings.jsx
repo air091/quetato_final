@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 
@@ -17,13 +18,33 @@ const CourtSettings = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 🌟 Coordinates and ready state to mirror PlayerSettings behavior
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [isReady, setIsReady] = useState(false);
+
+  // Dynamic endpoint suffixes for API endpoints
+  const endpointSuffix = courtType === "queue" ? "queue-name" : "match-name";
+
+  // 🌟 Calculate position BEFORE browser paint to eliminate shifting/flickering
+  useLayoutEffect(() => {
+    if (toggleButtonRef?.current) {
+      const rect = toggleButtonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.right + window.scrollX - 210, // Matches min-w of court settings menu (210px)
+      });
+      setIsReady(true);
+    }
+  }, [toggleButtonRef]);
+
+  // Handle click outside to close
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target) &&
-        toggleButtonRef &&
-        !toggleButtonRef.contains(event.target)
+        toggleButtonRef?.current &&
+        !toggleButtonRef.current.contains(event.target)
       ) {
         onClose();
       }
@@ -40,9 +61,6 @@ const CourtSettings = ({
     if (!courtName.trim()) return;
 
     setIsSaving(true);
-    console.log(
-      `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${endpointSuffix}`,
-    );
     try {
       const response = await fetchWithAuth(
         `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${endpointSuffix}`,
@@ -59,7 +77,6 @@ const CourtSettings = ({
         throw new Error("Failed to update court name");
       }
 
-      // Call the parent update function to instantly sync the UI state
       if (onUpdateCourtName) {
         onUpdateCourtName(court.id, courtName.trim());
       }
@@ -83,8 +100,6 @@ const CourtSettings = ({
     }
 
     setIsDeleting(true);
-    // Dynamic endpoint suffixes for delete: 'queue' or 'match'
-    const endpointSuffix = courtType === "queue" ? "queue" : "match";
 
     try {
       const response = await fetchWithAuth(
@@ -108,13 +123,21 @@ const CourtSettings = ({
     }
   };
 
-  return (
+  // 🌟 Render into document.body portal
+  return createPortal(
     <div
       ref={containerRef}
-      className="absolute top-8 right-0 border bg-white rounded-lg text-black z-[60] p-2 shadow-lg min-w-[210px]"
+      style={{
+        position: "absolute",
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+      }}
+      className={`border bg-white rounded-lg text-black z-[9999] p-2 shadow-lg min-w-[210px] transition-opacity duration-70 ${
+        isReady ? "opacity-100" : "opacity-0 pointer-events-none"
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
-      <h6 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2">
+      <h6 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">
         Court settings
       </h6>
       <form onSubmit={handleSave}>
@@ -135,11 +158,11 @@ const CourtSettings = ({
             disabled={isSaving}
           />
         </div>
-        <div>
+        <div className="flex flex-col gap-y-1">
           <button
             type="submit"
             disabled={isSaving || isDeleting}
-            className="cursor-pointer bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white text-[14px] py-1 rounded w-full mt-1 transition-colors"
+            className="cursor-pointer bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white text-[14px] py-1 rounded w-full transition-colors"
           >
             {isSaving ? "Saving..." : "Save"}
           </button>
@@ -148,7 +171,7 @@ const CourtSettings = ({
             type="button"
             onClick={handleDelete}
             disabled={isSaving || isDeleting}
-            className="cursor-pointer bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white text-[14px] py-1 rounded w-full mt-1 transition-colors"
+            className="cursor-pointer bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white text-[14px] py-1 rounded w-full transition-colors"
           >
             {isDeleting ? "Deleting..." : "Delete Court"}
           </button>
@@ -157,13 +180,14 @@ const CourtSettings = ({
             type="button"
             onClick={onClose}
             disabled={isSaving || isDeleting}
-            className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] py-1 rounded w-full mt-1 transition-colors"
+            className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 text-[14px] py-1 rounded w-full transition-colors"
           >
             Cancel
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

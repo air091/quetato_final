@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EllipsisVertical, Gamepad2 } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import PlayerSettings from "./PlayerSettings";
+import PlayerAvatar from "../../PlayerAvatar";
 
 // NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
 export const formatElapsedTime = (pastIsoString) => {
@@ -60,7 +62,7 @@ export const PlayerTimer = ({ timestamp }) => {
 
   return (
     <span
-      className={`text-[10px] tabular-nums font-mono transition-colors duration-300 ${colorClass}`}
+      className={`text-[12px] tabular-nums font-mono transition-colors duration-300 ${colorClass}`}
     >
       {displayTime}
     </span>
@@ -68,30 +70,60 @@ export const PlayerTimer = ({ timestamp }) => {
 };
 
 // Presentation-only card component
-export const PlayerCard = ({ username, timer, isDragging }) => {
+export const PlayerCard = ({
+  username,
+  timer,
+  isDragging,
+  onToggleSettings,
+  toggleButtonRef,
+  isSettingsOpen,
+  player,
+}) => {
   return (
     <div
-      className={`w-full cursor-grab flex items-center justify-between p-2 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
+      className={`w-full flex items-center justify-between p-1 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
         isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
       }`}
     >
-      <div>
-        <span className="truncate text-black font-semibold max-w-[90px]">
-          {username}
-        </span>
-        <div className="flex items-center gap-x-2">
-          <span className="flex items-center gap-x-1">
-            <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+      <div className="flex items-center gap-x-2">
+        <PlayerAvatar
+          username={username}
+          customImageUrl={player?.avatarUrl}
+          size="sm"
+        />
+        <div>
+          <span className="truncate text-black font-semibold max-w-[90px] block">
+            {username}
           </span>
-          <span className="text-[11px]">BEG</span>
+          <div className="flex items-center gap-x-1">
+            <span className="flex items-center gap-x-1">
+              <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+            </span>
+            <span className="text-[11px]">BEG</span>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center gap-x-1">
         {timer}
-        <button className="text-gray-400 p-0.5 cursor-pointer">
+        <button
+          ref={toggleButtonRef}
+          onClick={(e) => {
+            e.stopPropagation(); // Stop drag hooks from fighting click toggles
+            onToggleSettings();
+          }}
+          className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-100 rounded-full"
+        >
           <EllipsisVertical size={14} />
         </button>
+
+        {isSettingsOpen && (
+          <PlayerSettings
+            player={player}
+            toggleButtonRef={toggleButtonRef}
+            onClose={onToggleSettings}
+          />
+        )}
       </div>
     </div>
   );
@@ -106,16 +138,17 @@ const DraggableSlotPlayer = ({
   listeners,
   setNodeRef,
   transform,
+  onToggleSettings,
+  toggleButtonRef,
+  isSettingsOpen,
+  player,
 }) => {
-  // 🌟 FIXED CRITICAL FIX HERE:
-  // If we are not actively dragging, do not apply any transform matrix calculations at all.
-  // This locks the dropped component cleanly back to 0,0 relative flow space inside your UI container pools.
   const style = {
     transform:
       isDragging && transform ? CSS.Translate.toString(transform) : undefined,
     position: isDragging ? "fixed" : "relative",
     zIndex: isDragging ? 9999 : 20,
-    width: isDragging ? "150px" : "100%",
+    width: isDragging ? "178px" : "100%",
     height: isDragging ? "41px" : "100%",
     pointerEvents: isDragging ? "none" : "auto",
   };
@@ -128,7 +161,15 @@ const DraggableSlotPlayer = ({
       {...attributes}
       className="player w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
     >
-      <PlayerCard username={username} timer={timer} isDragging={isDragging} />
+      <PlayerCard
+        username={username}
+        timer={timer}
+        isDragging={isDragging}
+        onToggleSettings={onToggleSettings}
+        toggleButtonRef={toggleButtonRef}
+        isSettingsOpen={isSettingsOpen}
+        player={player}
+      />
     </div>
   );
 };
@@ -139,13 +180,22 @@ const DraggablePlayer = ({ player, username }) => {
     data: { player },
   });
 
+  // 🌟 FIX: Keep this state local to the card so it doesn't rely on parent props!
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const buttonRef = useRef(null);
+
   const LiveTimerNode = (
     <PlayerTimer timestamp={player.updateStatus || player.updatedAt} />
   );
 
+  const handleToggleSettings = () => {
+    setIsSettingsOpen((prev) => !prev);
+  };
+
   return (
-    <div className="w-[164px] h-[41px] relative shrink-0">
-      {/* 1. THE ACTUALLY DRAGGABLE ITEM */}
+    <div
+      className={`w-[178px] h-[41px] relative shrink-0 ${isSettingsOpen ? "z-40" : "z-10"}`}
+    >
       <div className="absolute inset-0 z-100">
         <DraggableSlotPlayer
           username={username}
@@ -155,25 +205,34 @@ const DraggablePlayer = ({ player, username }) => {
           listeners={draggableProps.listeners}
           setNodeRef={draggableProps.setNodeRef}
           transform={draggableProps.transform}
+          onToggleSettings={handleToggleSettings}
+          toggleButtonRef={buttonRef}
+          isSettingsOpen={isSettingsOpen}
+          player={player}
         />
       </div>
 
-      {/* 2. THE BACKGROUND PLACEHOLDER */}
       {draggableProps.isDragging && (
-        <div className="absolute inset-0 flex items-center justify-between p-2 bg-gray-500/40 rounded-md border border-blue-500 text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
-          <div>
-            <span className="truncate text-black font-semibold max-w-[90px]">
-              {username}
-            </span>
-            <div className="flex items-center gap-x-2">
-              <span className="flex items-center gap-x-1">
-                <Gamepad2 size={12} /> <span className="text-[10px]">0</span>{" "}
-                {/* TOTAL GAMES OF PLAYER */}
+        <div className="absolute inset-0 flex items-center justify-between p-2 bg-gray-500/40 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
+          <div className="flex items-center gap-x-2">
+            <PlayerAvatar
+              username={username}
+              customImageUrl={player?.avatarUrl}
+              size="sm"
+            />
+            <div>
+              <span className="truncate text-black font-semibold max-w-[90px] block">
+                {username}
               </span>
-              <span className="text-[11px]">BEG</span>{" "}
-              {/* USER SKILL DO NOT TOUCH */}
+              <div className="flex items-center gap-x-1">
+                <span className="flex items-center gap-x-1">
+                  <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+                </span>
+                <span className="text-[11px]">BEG</span>
+              </div>
             </div>
           </div>
+
           <div className="flex items-center gap-x-1 opacity-30">
             {LiveTimerNode}
             <button>
@@ -240,6 +299,7 @@ const PlayersContainer = ({ players = [] }) => {
                 key={stableId}
                 player={player}
                 username={username}
+                // 🌟 REMOVED the top-level parameters that were causing the crash
               />
             );
           })

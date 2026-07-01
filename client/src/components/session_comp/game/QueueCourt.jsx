@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { CornerDownLeft, EllipsisVertical, Plus } from "lucide-react";
+import { CornerDownLeft, EllipsisVertical, Gamepad2, Plus } from "lucide-react";
 import CourtSettings from "./CourtSettings";
+import PlayerAvatar from "../../PlayerAvatar";
 
 const DraggableSlotPlayer = ({
   username,
@@ -12,6 +13,7 @@ const DraggableSlotPlayer = ({
   listeners,
   setNodeRef,
   transform,
+  player,
 }) => {
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -31,9 +33,25 @@ const DraggableSlotPlayer = ({
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
-      <span className="truncate flex-1 text-black font-semibold">
-        {username}
-      </span>
+      <div className="flex items-center gap-x-2">
+        <PlayerAvatar
+          username={username}
+          customImageUrl={player?.avatarUrl}
+          size="sm"
+        />
+        <div>
+          <span className="truncate text-black font-semibold max-w-[90px] block">
+            {username}
+          </span>
+          <div className="flex items-center gap-x-1">
+            <span className="flex items-center gap-x-1">
+              <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+            </span>
+            <span className="text-[11px]">BEG</span>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center gap-x-1">
         <button
           onClick={(e) => {
@@ -108,13 +126,30 @@ const CourtSlot = ({
             listeners={draggableProps.listeners}
             setNodeRef={draggableProps.setNodeRef}
             transform={draggableProps.transform}
+            player={matchedPoolPlayer}
           />
 
           {draggableProps.isDragging && (
             <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
-              <span className="truncate flex-1 text-black font-semibold">
-                {username}
-              </span>
+              <div className="flex items-center gap-x-2">
+                <PlayerAvatar
+                  username={username}
+                  customImageUrl={matchedPoolPlayer?.avatarUrl}
+                  size="sm"
+                />
+                <div>
+                  <span className="truncate text-black font-semibold max-w-[90px] block">
+                    {username}
+                  </span>
+                  <div className="flex items-center gap-x-1">
+                    <span className="flex items-center gap-x-1">
+                      <Gamepad2 size={12} />{" "}
+                      <span className="text-[10px]">0</span>
+                    </span>
+                    <span className="text-[11px]">BEG</span>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-x-1">
                 <button className="text-gray-400 p-0.5">
                   <CornerDownLeft size={14} />
@@ -131,6 +166,158 @@ const CourtSlot = ({
   );
 };
 
+const QueueCourtCard = ({
+  queueCourt,
+  players,
+  onRemovePlayer,
+  onUpdateCourtName,
+  onDeleteCourt,
+  onTransferQueue,
+}) => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const buttonRef = useRef(null); // 🌟 Persistent unique DOM ref for positioning
+
+  return (
+    <div
+      className={`relative p-2 rounded-md bg-white shadow-sm transition-all ${
+        isSettingsOpen ? "z-40" : "z-10"
+      }`}
+    >
+      {/* Neutral Stone/Gray themed background court canvas */}
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 300 150"
+        fill="none"
+        stroke="rgba(200, 200, 200, 0.8)"
+        strokeWidth="2"
+        preserveAspectRatio="none"
+        className="bg-stone-800/95 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
+      >
+        <rect
+          x="25"
+          y="25"
+          width="250"
+          height="100"
+          fill="none"
+          stroke="rgba(200, 200, 200, 0.8)"
+          strokeWidth="2"
+        />
+        <line
+          x1="150"
+          y1="25"
+          x2="150"
+          y2="125"
+          stroke="rgba(200, 200, 200, 0.8)"
+          strokeWidth="2"
+          strokeDasharray="5,5"
+        />
+        <line
+          x1="25"
+          y1="50"
+          x2="275"
+          y2="50"
+          stroke="rgba(200, 200, 200, 0.8)"
+          strokeWidth="1.5"
+        />
+        <line
+          x1="25"
+          y1="100"
+          x2="275"
+          y2="100"
+          stroke="rgba(200, 200, 200, 0.8)"
+          strokeWidth="1.5"
+        />
+        <line
+          x1="50"
+          y1="25"
+          x2="50"
+          y2="125"
+          stroke="rgba(200, 200, 200, 0.8)"
+          strokeWidth="1.5"
+        />
+        <line
+          x1="250"
+          y1="25"
+          x2="250"
+          y2="125"
+          stroke="rgba(200, 200, 200, 0.8)"
+          strokeWidth="1.5"
+        />
+      </svg>
+
+      <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
+        <div className="flex items-center justify-between w-full">
+          <span className="text-[14px] font-semibold">{queueCourt?.name}</span>
+          <div className="flex items-center gap-x-1 relative">
+            {queueCourt.slots.length > 0 && (
+              <button
+                onClick={() => onTransferQueue(queueCourt.id)}
+                title="Transfer players to first open Match Court"
+                className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full"
+              >
+                Transfer to Court
+              </button>
+            )}
+            <button
+              ref={buttonRef} // 🌟 Attach the layout positioning anchor reference
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsSettingsOpen((prev) => !prev);
+              }}
+              className="cursor-pointer hover:bg-white/10 rounded-full p-1"
+            >
+              <EllipsisVertical size={16} />
+            </button>
+
+            {isSettingsOpen && (
+              <CourtSettings
+                court={queueCourt}
+                toggleButtonRef={buttonRef} // 🌟 Pass down structural reference
+                onClose={() => setIsSettingsOpen(false)}
+                onUpdateCourtName={onUpdateCourtName}
+                onDeleteCourt={onDeleteCourt}
+                courtType="queue"
+              />
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="relative z-20 grid grid-cols-2 gap-2">
+        {[0, 1, 2, 3].map((position) => {
+          const slotData = queueCourt?.slots?.find(
+            (s) => s.position === position,
+          );
+
+          const matchedPoolPlayer = slotData
+            ? slotData.sessionPlayer ||
+              players.find((p) => p.id === slotData.sessionPlayerId)
+            : null;
+
+          const username =
+            matchedPoolPlayer?.sessionPlayer?.communityPlayer?.username ||
+            matchedPoolPlayer?.communityPlayer?.username ||
+            matchedPoolPlayer?.username;
+
+          return (
+            <CourtSlot
+              key={position}
+              position={position}
+              username={username || "Unknown player"}
+              slotData={slotData}
+              matchedPoolPlayer={matchedPoolPlayer}
+              courtId={queueCourt.id}
+              courtType="queue"
+              onRemovePlayer={onRemovePlayer}
+            />
+          );
+        })}
+      </main>
+    </div>
+  );
+};
+
 const QueueCourt = ({
   queueCourts,
   players = [],
@@ -143,166 +330,23 @@ const QueueCourt = ({
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
 
-  // Track open dropdown menu panel settings exactly like MatchCourt
-  const [activeCourtSettingsId, setActiveCourtSettingsId] = useState(null);
-  const [settingsAnchor, setSettingsAnchor] = useState(null);
-
   return (
     <div>
       <h4 className="font-semibold text-gray-700 mb-2">
         Queues ({countDisplay})
       </h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {courtsList.map((queueCourt) => {
-          const stableKey = queueCourt?.id;
-          const isSettingsOpen = activeCourtSettingsId === queueCourt.id;
-
-          return (
-            <div
-              key={stableKey}
-              /* Elevates z-index context while configurations panel overlay is rendering */
-              className={`relative p-2 rounded-md bg-white shadow-sm transition-all ${
-                isSettingsOpen ? "z-40" : "z-10"
-              }`}
-            >
-              {/* Neutral Stone/Gray themed background court canvas */}
-              <svg
-                width="100%"
-                height="100%"
-                viewBox="0 0 300 150"
-                fill="none"
-                stroke="rgba(200, 200, 200, 0.8)"
-                strokeWidth="2"
-                preserveAspectRatio="none"
-                className="bg-stone-800/95 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
-              >
-                <rect
-                  x="25"
-                  y="25"
-                  width="250"
-                  height="100"
-                  fill="none"
-                  stroke="rgba(200, 200, 200, 0.8)"
-                  strokeWidth="2"
-                />
-                <line
-                  x1="150"
-                  y1="25"
-                  x2="150"
-                  y2="125"
-                  stroke="rgba(200, 200, 200, 0.8)"
-                  strokeWidth="2"
-                  strokeDasharray="5,5"
-                />
-                <line
-                  x1="25"
-                  y1="50"
-                  x2="275"
-                  y2="50"
-                  stroke="rgba(200, 200, 200, 0.8)"
-                  strokeWidth="1.5"
-                />
-                <line
-                  x1="25"
-                  y1="100"
-                  x2="275"
-                  y2="100"
-                  stroke="rgba(200, 200, 200, 0.8)"
-                  strokeWidth="1.5"
-                />
-                <line
-                  x1="50"
-                  y1="25"
-                  x2="50"
-                  y2="125"
-                  stroke="rgba(200, 200, 200, 0.8)"
-                  strokeWidth="1.5"
-                />
-                <line
-                  x1="250"
-                  y1="25"
-                  x2="250"
-                  y2="125"
-                  stroke="rgba(200, 200, 200, 0.8)"
-                  strokeWidth="1.5"
-                />
-              </svg>
-
-              <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
-                <div className="flex items-center justify-between w-full">
-                  <span className="text-[14px] font-semibold">
-                    {queueCourt?.name}
-                  </span>
-                  <div className="flex items-center gap-x-1 relative">
-                    {queueCourt.slots.length > 0 && (
-                      <button
-                        onClick={() => onTransferQueue(queueCourt.id)} // 👈 3. Triggers transfer with this court's ID
-                        title="Transfer players to first open Match Court"
-                        className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full"
-                      >
-                        Transfer to Court
-                      </button>
-                    )}
-                    <button
-                      onClick={(event) => {
-                        setSettingsAnchor(event.currentTarget);
-                        setActiveCourtSettingsId((prev) =>
-                          prev === queueCourt.id ? null : queueCourt.id,
-                        );
-                      }}
-                      className="cursor-pointer hover:bg-white/10 rounded-full p-1"
-                    >
-                      <EllipsisVertical size={16} />
-                    </button>
-
-                    {isSettingsOpen && (
-                      <CourtSettings
-                        court={queueCourt}
-                        toggleButtonRef={settingsAnchor}
-                        onClose={() => setActiveCourtSettingsId(null)}
-                        onUpdateCourtName={onUpdateCourtName}
-                        onDeleteCourt={onDeleteCourt}
-                        courtType="queue"
-                      />
-                    )}
-                  </div>
-                </div>
-              </header>
-
-              <main className="relative z-20 grid grid-cols-2 gap-2">
-                {[0, 1, 2, 3].map((position) => {
-                  const slotData = queueCourt?.slots?.find(
-                    (s) => s.position === position,
-                  );
-
-                  const matchedPoolPlayer = slotData
-                    ? slotData.sessionPlayer ||
-                      players.find((p) => p.id === slotData.sessionPlayerId)
-                    : null;
-
-                  const username =
-                    matchedPoolPlayer?.sessionPlayer?.communityPlayer
-                      ?.username ||
-                    matchedPoolPlayer?.communityPlayer?.username ||
-                    matchedPoolPlayer?.username;
-
-                  return (
-                    <CourtSlot
-                      key={position}
-                      position={position}
-                      username={username || "Unknown player"}
-                      slotData={slotData}
-                      matchedPoolPlayer={matchedPoolPlayer}
-                      courtId={queueCourt.id}
-                      courtType="queue"
-                      onRemovePlayer={onRemovePlayer}
-                    />
-                  );
-                })}
-              </main>
-            </div>
-          );
-        })}
+        {courtsList.map((queueCourt) => (
+          <QueueCourtCard
+            key={queueCourt.id}
+            queueCourt={queueCourt}
+            players={players}
+            onRemovePlayer={onRemovePlayer}
+            onUpdateCourtName={onUpdateCourtName}
+            onDeleteCourt={onDeleteCourt}
+            onTransferQueue={onTransferQueue}
+          />
+        ))}
 
         {/* Add Queue Placeholder Button */}
         <button

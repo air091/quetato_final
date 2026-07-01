@@ -15,6 +15,7 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import { Gamepad2 } from "lucide-react";
+import PlayerAvatar from "../../../components/PlayerAvatar";
 
 const resolveSessionPlayerId = (player) =>
   player?.id || player?.sessionPlayerId || null;
@@ -697,8 +698,6 @@ const Game = () => {
     );
   }
 
-  console.log(activePlayerData);
-
   return (
     <DndContext
       sensors={sensors}
@@ -735,18 +734,31 @@ const Game = () => {
       {/* GLOBAL DRAG OVERLAY PORTAL CONTAINER */}
       <DragOverlay dropAnimation={null}>
         {activePlayerData ? (
-          <div className="w-[164px] h-[41px] flex items-center justify-between p-2 bg-white rounded-md border border-blue-500 shadow-md text-sm font-medium select-none text-gray-800 opacity-95 architecture-dragged-active">
-            <div>
-              <span className="truncate text-black font-semibold max-w-[90px]">
-                {activePlayerData.sessionPlayer.communityPlayer.username}
-              </span>
-              <div className="flex items-center gap-x-2">
-                <span className="flex items-center gap-x-1">
-                  <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+          <div className="w-[178px] h-[41px] flex items-center justify-between p-2 bg-white rounded-md border border-blue-500 shadow-md text-sm font-medium select-none text-gray-800 opacity-95 architecture-dragged-active">
+            <div className="flex items-center gap-x-2">
+              <PlayerAvatar
+                username={
+                  activePlayerData.sessionPlayer.communityPlayer.username
+                }
+                customImageUrl={
+                  activePlayerData.sessionPlayer.communityPlayer?.avatarUrl
+                }
+                size="sm"
+              />
+              <div>
+                <span className="truncate text-black font-semibold max-w-[90px] block">
+                  {activePlayerData.sessionPlayer.communityPlayer.username}
                 </span>
-                <span className="text-[11px]">BEG</span>
+                <div className="flex items-center gap-x-1">
+                  <span className="flex items-center gap-x-1">
+                    <Gamepad2 size={12} />{" "}
+                    <span className="text-[10px]">0</span>
+                  </span>
+                  <span className="text-[11px]">BEG</span>
+                </div>
               </div>
             </div>
+
             <div>
               <PlayerTimer timestamp={activePlayerData.updateStatus} />
             </div>
