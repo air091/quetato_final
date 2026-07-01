@@ -82,13 +82,24 @@ export const PlayerCard = ({
   onRefreshData,
   totalGames,
 }) => {
+  // 🌟 Dynamic background mapping based on required gameStatuses rules
+  const statusBgClasses = {
+    waiting: "bg-white border-gray-500 text-gray-800",
+    queued: "bg-amber-200 border-amber-500 text-amber-900",
+    playing: "bg-emerald-200 border-emerald-500 text-emerald-950",
+    paid: "bg-rose-200 border-rose-500 text-rose-950",
+  };
+
+  const currentStatus = player?.gameStatus || "waiting";
+  const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+
   return (
     <div
-      className={`w-full flex items-center justify-between p-1 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${
+      className={`w-full flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${bgTheme} ${
         isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
       }`}
     >
-      <div className="flex items-center gap-x-2">
+      <div className="flex items-center gap-x-1">
         <PlayerAvatar
           username={username}
           customImageUrl={player?.avatarUrl}
@@ -103,7 +114,10 @@ export const PlayerCard = ({
               <Gamepad2 size={12} />{" "}
               <span className="text-[10px]">{totalGames}</span>
             </span>
-            <span title="Skill Level" className="text-[8px]">
+            <span
+              title="Skill Level"
+              className="text-[9px] bg-white px-0.5 rounded-full"
+            >
               BEG
             </span>
           </div>
@@ -270,7 +284,7 @@ const DraggablePlayer = ({
 
       {draggableProps.isDragging && (
         <div className="absolute inset-0 flex items-center justify-between p-2 bg-gray-500/40 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
-          <div className="flex items-center gap-x-2">
+          <div className="flex items-center gap-x-1">
             <PlayerAvatar
               username={username}
               customImageUrl={player?.avatarUrl}
@@ -285,7 +299,9 @@ const DraggablePlayer = ({
                   <Gamepad2 size={12} />
                   <span className="text-[10px]">{totalGames}</span>
                 </span>
-                <span className="text-[8px]">BEG</span>
+                <span className="text-[9px] bg-white px-0.5 rounded-full">
+                  BEG
+                </span>
               </div>
             </div>
           </div>

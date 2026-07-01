@@ -698,6 +698,17 @@ const Game = () => {
     );
   }
 
+  // 🌟 Dynamic background mapping based on required gameStatuses rules
+  const statusBgClasses = {
+    waiting: "bg-stone-200 border-gray-500 text-gray-800",
+    queued: "bg-amber-200 border-amber-500 text-amber-900",
+    playing: "bg-emerald-200 border-emerald-500 text-emerald-950",
+    paid: "bg-rose-200 border-rose-500 text-rose-950",
+  };
+
+  const currentStatus = activePlayerData?.gameStatus || "waiting";
+  const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+
   return (
     <DndContext
       sensors={sensors}
@@ -745,7 +756,9 @@ const Game = () => {
       {/* GLOBAL DRAG OVERLAY PORTAL CONTAINER */}
       <DragOverlay dropAnimation={null}>
         {activePlayerData ? (
-          <div className="w-[178px] h-[41px] flex items-center justify-between p-2 bg-white rounded-md border border-blue-500 shadow-md text-sm font-medium select-none text-gray-800 opacity-95 architecture-dragged-active">
+          <div
+            className={`w-[178px] h-[41px] flex items-center justify-between p-2 ${bgTheme} rounded-md border shadow-md text-sm font-medium select-none text-gray-800 opacity-95 architecture-dragged-active`}
+          >
             <div className="flex items-center gap-x-2">
               <PlayerAvatar
                 username={
@@ -767,7 +780,9 @@ const Game = () => {
                       {activePlayerData.totalGames}
                     </span>
                   </span>
-                  <span className="text-[8px]">BEG</span>
+                  <span className="text-[9px] bg-white px-0.5 rounded-full">
+                    BEG
+                  </span>
                 </div>
               </div>
             </div>

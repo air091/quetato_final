@@ -32,13 +32,24 @@ const DraggableSlotPlayer = ({
     opacity: isDragging ? 0.4 : 1,
   };
 
+  // 🌟 Dynamic background mapping based on required gameStatuses rules
+  const statusBgClasses = {
+    waiting: "bg-white border-gray-500 text-gray-800",
+    queued: "bg-amber-200 border-amber-500 text-amber-900",
+    playing: "bg-emerald-200 border-emerald-500 text-emerald-950",
+    paid: "bg-rose-200 border-rose-500 text-rose-950",
+  };
+
+  const currentStatus = player?.gameStatus || "waiting";
+  const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
-      className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-1 bg-white rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${
+      className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
@@ -57,7 +68,10 @@ const DraggableSlotPlayer = ({
               <Gamepad2 size={12} />
               <span className="text-[10px]">{totalGames}</span>
             </span>
-            <span title="Skill Level" className="text-[11px]">
+            <span
+              title="Skill Level"
+              className="text-[9px] bg-white px-0.5 rounded-full"
+            >
               BEG
             </span>
           </div>
@@ -124,6 +138,17 @@ const CourtSlot = ({
       position,
     },
   });
+
+  // 🌟 Dynamic background mapping based on required gameStatuses rules
+  const statusBgClasses = {
+    waiting: "bg-stone-100 border-gray-500 text-gray-800",
+    queued: "bg-amber-100 border-amber-500 text-amber-900",
+    playing: "bg-emerald-100 border-emerald-500 text-emerald-950",
+    paid: "bg-rose-100 border-rose-500 text-rose-950",
+  };
+
+  const currentStatus = matchedPoolPlayer?.gameStatus || "waiting";
+  const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   const stablePlayerId =
     matchedPoolPlayer?.id ||
@@ -214,7 +239,9 @@ const CourtSlot = ({
           />
 
           {draggableProps.isDragging && (
-            <div className="absolute inset-1 flex items-center justify-between p-2 bg-white/80 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10">
+            <div
+              className={`absolute inset-1 flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10 ${bgTheme}`}
+            >
               <div className="flex items-center gap-x-2">
                 <PlayerAvatar
                   username={username}
@@ -228,9 +255,11 @@ const CourtSlot = ({
                   <div className="flex items-center gap-x-1">
                     <span className="flex items-center gap-x-1">
                       <Gamepad2 size={12} />{" "}
-                      <span className="text-[10px]">0</span>
+                      <span className="text-[10px]">{totalGames}</span>
                     </span>
-                    <span className="text-[11px]">BEG</span>
+                    <span className="text-[9px] bg-white px-0.5 rounded-full">
+                      BEG
+                    </span>
                   </div>
                 </div>
               </div>
