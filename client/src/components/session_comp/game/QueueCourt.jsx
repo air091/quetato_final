@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Gamepad2, Plus } from "lucide-react";
 import CourtSettings from "./CourtSettings";
 import PlayerAvatar from "../../PlayerAvatar";
+import PlayerSettings from "./PlayerSettings"; // 🌟 Imported
 import { PlayerTimer } from "./PlayersContainer";
 
 const DraggableSlotPlayer = ({
@@ -17,9 +18,12 @@ const DraggableSlotPlayer = ({
   transform,
   player,
 }) => {
+  const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false); // 🌟 Settings toggle state
+  const playerButtonRef = useRef(null); // 🌟 Structural tracking anchor ref
+
   const style = {
     transform: CSS.Translate.toString(transform),
-    zIndex: isDragging ? 9999 : 20,
+    zIndex: isDragging ? 9999 : isPlayerSettingsOpen ? 40 : 20, // 🌟 Elevate zIndex layer when portal is open
     width: "100%",
     height: "100%",
     opacity: isDragging ? 0.4 : 1,
@@ -42,7 +46,7 @@ const DraggableSlotPlayer = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[90px] block">
+          <span className="truncate text-black font-semibold max-w-[60px] block">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -54,7 +58,7 @@ const DraggableSlotPlayer = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-x-1">
+      <div className="flex items-center gap-x-1 relative">
         {timer}
         <button
           onClick={(e) => {
@@ -65,9 +69,25 @@ const DraggableSlotPlayer = ({
         >
           <CornerDownLeft size={14} />
         </button>
-        <button className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full">
+        <button
+          ref={playerButtonRef} // 🌟 Attach positioning ref to options anchor element
+          onClick={(e) => {
+            e.stopPropagation(); // 🌟 Intercept dnd-kit drag layer loops
+            setIsPlayerSettingsOpen((prev) => !prev);
+          }}
+          className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full"
+        >
           <EllipsisVertical size={14} />
         </button>
+
+        {/* 🌟 PlayerSettings Modal Trigger Portal */}
+        {isPlayerSettingsOpen && (
+          <PlayerSettings
+            player={player}
+            toggleButtonRef={playerButtonRef}
+            onClose={() => setIsPlayerSettingsOpen(false)}
+          />
+        )}
       </div>
     </div>
   );
@@ -149,7 +169,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-w-[90px] block">
+                  <span className="truncate text-black font-semibold max-w-[60px] block">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
@@ -188,7 +208,7 @@ const QueueCourtCard = ({
   onTransferQueue,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const buttonRef = useRef(null); // 🌟 Persistent unique DOM ref for positioning
+  const buttonRef = useRef(null);
 
   return (
     <div
@@ -196,7 +216,6 @@ const QueueCourtCard = ({
         isSettingsOpen ? "z-40" : "z-10"
       }`}
     >
-      {/* Neutral Stone/Gray themed background court canvas */}
       <svg
         width="100%"
         height="100%"
@@ -273,7 +292,7 @@ const QueueCourtCard = ({
               </button>
             )}
             <button
-              ref={buttonRef} // 🌟 Attach the layout positioning anchor reference
+              ref={buttonRef}
               onClick={(event) => {
                 event.stopPropagation();
                 setIsSettingsOpen((prev) => !prev);
@@ -286,7 +305,7 @@ const QueueCourtCard = ({
             {isSettingsOpen && (
               <CourtSettings
                 court={queueCourt}
-                toggleButtonRef={buttonRef} // 🌟 Pass down structural reference
+                toggleButtonRef={buttonRef}
                 onClose={() => setIsSettingsOpen(false)}
                 onUpdateCourtName={onUpdateCourtName}
                 onDeleteCourt={onDeleteCourt}
@@ -302,7 +321,6 @@ const QueueCourtCard = ({
           const slotData = queueCourt?.slots?.find(
             (s) => s.position === position,
           );
-
           const matchedPoolPlayer = slotData
             ? slotData.sessionPlayer ||
               players.find((p) => p.id === slotData.sessionPlayerId)
@@ -361,7 +379,6 @@ const QueueCourt = ({
           />
         ))}
 
-        {/* Add Queue Placeholder Button */}
         <button
           onClick={onAddCourt}
           className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-stone-800 border-dashed gap-x-2 min-h-[142px]"

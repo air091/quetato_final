@@ -92,7 +92,7 @@ export const PlayerCard = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[90px] block">
+          <span className="truncate text-black font-semibold max-w-[60px] block">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -221,7 +221,7 @@ const DraggablePlayer = ({ player, username }) => {
               size="sm"
             />
             <div>
-              <span className="truncate text-black font-semibold max-w-[90px] block">
+              <span className="truncate text-black font-semibold max-w-[60px] block">
                 {username}
               </span>
               <div className="flex items-center gap-x-1">

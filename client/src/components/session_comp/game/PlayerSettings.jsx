@@ -7,18 +7,36 @@ const PlayerSettings = ({
   player,
   onClose,
   toggleButtonRef,
-  onUpdatePlayerStatus,
+  onUpdatePlayerStatus, // Pass an updated state list function here if needed
 }) => {
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 🌟 Start with standard layout null coordinates and ready flag set to false
+  // 🌟 Safely resolve username from multiple possible nested locations
+  const initialUsername =
+    player?.sessionPlayer?.communityPlayer?.username ||
+    player?.communityPlayer?.username ||
+    player?.username ||
+    "";
+
+  // 🌟 Extract the primary player ID needed for the endpoint parameter routing
+  const playerId = player?.sessionPlayer.communityPlayer.id;
+
+  // Local form state control management
+  const [username, setUsername] = useState(initialUsername);
+
+  // Layout positioning state flags
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [isReady, setIsReady] = useState(false);
 
-  // 🌟 FIX: useLayoutEffect runs BEFORE the browser paints to prevent flickering
+  // Track state syncing if the prop updates while the menu is open
+  useEffect(() => {
+    setUsername(initialUsername);
+  }, [initialUsername]);
+
+  // Handle setting layout dynamic positioning bounds prior to component mount repaint
   useLayoutEffect(() => {
     if (toggleButtonRef?.current) {
       const rect = toggleButtonRef.current.getBoundingClientRect();
@@ -26,11 +44,11 @@ const PlayerSettings = ({
         top: rect.bottom + window.scrollY + 4,
         left: rect.right + window.scrollX - 160, // Matches min-w of menu
       });
-      setIsReady(true); // Reveal menu only after position is locked
+      setIsReady(true);
     }
   }, [toggleButtonRef]);
 
-  // Handle click-away events outside the menu
+  // Handle click-away viewport boundaries cleanups
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (
@@ -49,31 +67,39 @@ const PlayerSettings = ({
     };
   }, [onClose, toggleButtonRef]);
 
-  const handleStatusChange = async (newStatus) => {
-    setIsUpdating(true);
-    const stablePlayerId = player?.sessionPlayer?.id || player?.id;
+  // Handle API PUT data submission action hooks
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!playerId)
+      return alert("Missing structural player identifier context.");
+    if (!username.trim()) return alert("Username field cannot be left empty.");
 
+    setIsUpdating(true);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/status`,
+        `http://localhost:8000/api/players/${playerId}/static`,
         {
-          method: "PATCH",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ gameStatus: newStatus }),
+          body: JSON.stringify({ username }),
         },
       );
 
-      if (!response.ok) throw new Error("Failed to update status");
-
-      if (onUpdatePlayerStatus) {
-        onUpdatePlayerStatus(stablePlayerId, newStatus);
+      if (!response.ok) {
+        throw new Error("Failed to update static player configuration profile");
       }
-      onClose();
+
+      // 🌟 If you have an upper layout context handler function, call it to trigger update states
+      if (onUpdatePlayerStatus) {
+        onUpdatePlayerStatus();
+      }
+
+      onClose(); // Shut the dropdown menu container overlay seamlessly
     } catch (error) {
-      console.error("Error updating player status:", error);
-      alert("Failed to update player status.");
+      console.error("Profile Edit Error:", error);
+      alert(error.message || "Something went wrong updating user attributes.");
     } finally {
       setIsUpdating(false);
     }
@@ -87,40 +113,65 @@ const PlayerSettings = ({
         top: `${coords.top}px`,
         left: `${coords.left}px`,
       }}
-      /* 🌟 Added transition-opacity and conditional opacity to guarantee smooth rendering */
-      className={`border bg-white rounded-lg text-black z-[9999] p-2 shadow-lg min-w-[160px] transition-opacity duration-70 *:${
+      className={`border bg-white rounded-lg text-black z-[9999] p-3 shadow-lg min-w-[180px] transition-opacity duration-70 ${
         isReady ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
       onClick={(e) => e.stopPropagation()}
     >
-      <h6 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">
-        Player Settings
-      </h6>
-      <div className="flex flex-col gap-y-0.5">
-        {["waiting", "queued", "playing", "paid"].map((status) => (
+      <div>
+        <header className="mb-2 pb-1.5 border-b">
+          <h6 className="text-[12px] font-bold text-gray-400 uppercase tracking-wider">
+            Player Settings
+          </h6>
+          <span className="text-sm font-semibold truncate block text-gray-700">
+            {initialUsername || "Unknown"}
+          </span>
+        </header>
+
+        <form onSubmit={handleSubmit} className="space-y-2.5">
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-[11px] font-medium text-gray-500 mb-0.5"
+            >
+              Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isUpdating}
+              className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
+            />
+          </div>
+
           <button
-            key={status}
             type="button"
-            disabled={isUpdating}
-            onClick={() => handleStatusChange(status)}
-            className={`text-left hover:bg-gray-100 text-[13px] py-1 px-2 rounded capitalize transition-colors cursor-pointer ${
-              player?.gameStatus === status
-                ? "font-bold text-blue-600 bg-blue-50/50"
-                : "text-gray-700"
-            }`}
+            className="w-full text-left text-xs text-blue-600 hover:underline py-0.5 font-medium"
           >
-            Move to {status}
+            Game History
           </button>
-        ))}
-        <hr className="border-gray-100 my-1" />
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isUpdating}
-          className="cursor-pointer bg-gray-50 hover:bg-gray-100 text-gray-500 text-[12px] py-1 rounded w-full transition-colors font-medium text-center"
-        >
-          Cancel
-        </button>
+
+          <div className="flex gap-x-1.5 pt-1">
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded flex-1 transition-colors font-semibold text-center"
+            >
+              {isUpdating ? "Saving..." : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isUpdating}
+              className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] py-1 rounded flex-1 transition-colors font-medium text-center"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       </div>
     </div>,
     document.body,
