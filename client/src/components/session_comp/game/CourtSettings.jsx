@@ -23,7 +23,9 @@ const CourtSettings = ({
   const [isReady, setIsReady] = useState(false);
 
   // Dynamic endpoint suffixes for API endpoints
-  const endpointSuffix = courtType === "queue" ? "queue-name" : "match-name";
+  const updateCourtEndpoint =
+    courtType === "queue" ? "queue-name" : "match-name";
+  const deleteCourtEndpoint = courtType === "queue" ? "queue" : "match";
 
   // 🌟 FIX: Refactored positioning logic into a reusable function
   const updatePosition = () => {
@@ -80,7 +82,7 @@ const CourtSettings = ({
     setIsSaving(true);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${endpointSuffix}`,
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${updateCourtEndpoint}`,
         {
           method: "PATCH",
           headers: {
@@ -117,10 +119,10 @@ const CourtSettings = ({
     }
 
     setIsDeleting(true);
-
+    console.log(court.id);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${endpointSuffix}`,
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${deleteCourtEndpoint}`,
         {
           method: "DELETE",
         },
