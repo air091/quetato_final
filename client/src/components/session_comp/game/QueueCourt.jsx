@@ -4,9 +4,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Gamepad2, Plus } from "lucide-react";
 import CourtSettings from "./CourtSettings";
 import PlayerAvatar from "../../PlayerAvatar";
+import { PlayerTimer } from "./PlayersContainer";
 
 const DraggableSlotPlayer = ({
   username,
+  timer,
   onRemovePlayer,
   isDragging,
   attributes,
@@ -53,6 +55,7 @@ const DraggableSlotPlayer = ({
       </div>
 
       <div className="flex items-center gap-x-1">
+        {timer}
         <button
           onClick={(e) => {
             e.stopPropagation(); // Prevents dnd-kit from intercepting click actions
@@ -102,6 +105,13 @@ const CourtSlot = ({
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
+  const LiveTimerNode = hasPlayer ? (
+    <PlayerTimer
+      timestamp={
+        matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt
+      }
+    />
+  ) : null;
 
   return (
     <div
@@ -120,6 +130,7 @@ const CourtSlot = ({
         <>
           <DraggableSlotPlayer
             username={username}
+            timer={LiveTimerNode}
             onRemovePlayer={handleRemoveClick}
             isDragging={draggableProps.isDragging}
             attributes={draggableProps.attributes}
@@ -150,7 +161,9 @@ const CourtSlot = ({
                   </div>
                 </div>
               </div>
+
               <div className="flex items-center gap-x-1">
+                {LiveTimerNode}
                 <button className="text-gray-400 p-0.5">
                   <CornerDownLeft size={14} />
                 </button>

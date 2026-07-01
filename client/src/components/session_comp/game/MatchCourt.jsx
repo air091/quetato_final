@@ -7,26 +7,6 @@ import PlayerSettings from "./PlayerSettings"; // 🌟 Import PlayerSettings com
 import { formatElapsedTime, PlayerTimer } from "./PlayersContainer";
 import PlayerAvatar from "../../PlayerAvatar";
 
-const CourtTimer = ({ timestamp }) => {
-  const [displayTime, setDisplayTime] = useState(() =>
-    formatElapsedTime(timestamp),
-  );
-
-  useEffect(() => {
-    setDisplayTime(formatElapsedTime(timestamp));
-    const intervalId = setInterval(() => {
-      setDisplayTime(formatElapsedTime(timestamp));
-    }, 1000);
-    return () => clearInterval(intervalId);
-  }, [timestamp]);
-
-  return (
-    <span className="font-mono text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-medium">
-      {displayTime}
-    </span>
-  );
-};
-
 const DraggableSlotPlayer = ({
   username,
   timer,
