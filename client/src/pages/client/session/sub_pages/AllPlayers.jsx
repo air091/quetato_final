@@ -1,7 +1,8 @@
-import { ArrowDown, EllipsisVertical } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
+import PlayerCard from "../../../../components/session_comp/players/PlayerCard";
 
 const AllPlayers = () => {
   const { communityId, sessionId } = useParams();
@@ -57,7 +58,7 @@ const AllPlayers = () => {
       </header>
 
       <main>
-        {/* ADMIN */}
+        {/* OWNER / ADMIN / HOST */}
         <div className="p-2 flex flex-col gap-y-2 border-t">
           <h4 className="font-semibold">Creator, admins, & hosts</h4>
           <div className="flex flex-wrap gap-2">
@@ -73,30 +74,13 @@ const AllPlayers = () => {
                   key={player.id}
                   className="relative flex items-center justify-between border min-w-[182px] px-2 py-1 rounded"
                 >
-                  <div className="flex flex-col">
-                    <span className="font-semibold leading-6">
-                      {player.sessionPlayer?.communityPlayer?.username}
-                    </span>
-                    <div className="flex items-center gap-x-1 font-medium">
-                      <span className="text-[12px] bg-gray-500/30 text-black rounded px-1 w-fit">
-                        {player.sessionPlayer?.communityPlayer.type}
-                      </span>
-                      <span className="text-[12px] bg-blue-500/80 text-blue-100 rounded px-1 w-fit">
-                        {player.sessionPlayer?.role}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-x-1">
-                    <span className="text-[12px]">00/00</span>
-                    <button className="hover:bg-gray-200 hover:text-gray-700 text-gray-400 p-1 font-medium text-[14px] cursor-pointer rounded-full">
-                      <EllipsisVertical size={16} />
-                    </button>
-                  </div>
+                  <PlayerCard player={player} />
                 </div>
               ))}
           </div>
         </div>
 
+        {/* PLAYER / STATIC */}
         <div className="p-2 flex flex-col gap-y-2 border-t">
           <h4 className="font-semibold">Players & Statics</h4>
           <div className="flex flex-wrap gap-2">
@@ -111,25 +95,7 @@ const AllPlayers = () => {
                   key={player.id}
                   className="relative flex items-center justify-between border min-w-[182px] px-2 py-1 rounded"
                 >
-                  <div className="flex flex-col">
-                    <span className="font-semibold leading-6">
-                      {player.sessionPlayer?.communityPlayer?.username}
-                    </span>
-                    <div className="flex items-center gap-x-1 font-medium">
-                      <span className="text-[12px] bg-gray-500/30 text-black rounded px-1 w-fit">
-                        {player.sessionPlayer?.communityPlayer.type}
-                      </span>
-                      <span className="text-[12px] bg-blue-500/80 text-blue-100 rounded px-1 w-fit">
-                        {player.sessionPlayer?.role}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-x-1">
-                    <span className="text-[12px]">00/00</span>
-                    <button className="hover:bg-gray-200 hover:text-gray-700 text-gray-400 p-1 font-medium text-[14px] cursor-pointer rounded-full">
-                      <EllipsisVertical size={16} />
-                    </button>
-                  </div>
+                  <PlayerCard player={player} />
                 </div>
               ))}
           </div>
