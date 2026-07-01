@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { EllipsisVertical, Gamepad2 } from "lucide-react";
+import { EllipsisVertical, Gamepad2, Search, X } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import PlayerSettings from "./PlayerSettings";
@@ -338,19 +338,65 @@ const PlayersContainer = ({
   sessionId,
 }) => {
   const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState(""); // 🌟 Added search query state
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // 🌟 Filter based on both the active status tab AND the text search string
   const filteredPlayers = players.filter((player) => {
-    if (activeTab === "all") return true;
-    const status = player?.gameStatus;
-    return status === activeTab;
+    // 1. Tab filtering
+    if (activeTab !== "all" && player?.gameStatus !== activeTab) {
+      return false;
+    }
+
+    // 2. Search query filtering
+    const username = (
+      player?.sessionPlayer?.communityPlayer?.username ||
+      player?.communityPlayer?.username ||
+      player?.username ||
+      ""
+    ).toLowerCase();
+
+    return username.includes(searchQuery.toLowerCase());
   });
 
   return (
     <div className="w-full md:w-[400px] bg-white rounded-lg flex flex-col h-full">
       <header className="flex-shrink-0 border-b border-gray-100 p-2">
-        <h4 className="font-semibold text-gray-800 mb-2">
+        <h4 className="font-semibold text-gray-800">
           Players ({filteredPlayers.length})
         </h4>
+        <div className="relative my-1 flex justify-center">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search player"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)} // 🌟 Handle live typing
+              className="border w-full max-w-[240px] text-xs text-gray-800 rounded-full pl-8 pr-8 py-1 focus:outline-none focus:border-gray-400"
+            />
+            <span className="absolute top-1.5 left-2.5 text-gray-400">
+              <Search size={14} />
+            </span>
+            {searchQuery && ( // 🌟 Clear button conditional visibility
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute top-1.5 right-2.5 text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
         <div className="flex items-center bg-gray-100 p-0.5 rounded-md">
           {["all", "waiting", "queued", "playing", "paid"].map((tab) => (
             <button
