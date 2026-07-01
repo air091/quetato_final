@@ -11,6 +11,9 @@ const PlayerGameHistory = ({ player, onClose }) => {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
 
+  // Ref to track the inner modal card container
+  const modalRef = useRef(null);
+
   const sessionPlayerId = player?.id;
   const username =
     player?.sessionPlayer?.communityPlayer?.username ||
@@ -37,9 +40,23 @@ const PlayerGameHistory = ({ player, onClose }) => {
         setLoading(false);
       }
     };
-    console.log(fetchHistory());
     fetchHistory();
   }, [communityId, sessionId, sessionPlayerId]);
+
+  // 🌟 Clean global click handler to detect true "clicks outside"
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    // Listen on document mousedown or click
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [onClose]);
 
   // Helper formatting utility for game durations
   const formatDuration = (start, end) => {
@@ -62,12 +79,14 @@ const PlayerGameHistory = ({ player, onClose }) => {
   };
 
   return createPortal(
-    <div
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4"
-    >
-      <div className="bg-white w-full max-w-md rounded-lg shadow-xl flex flex-col max-h-[85vh] border overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-9999 p-4">
+      <div
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onDragStart={(e) => e.preventDefault()}
+        ref={modalRef}
+        className="bg-white w-full max-w-md rounded-lg shadow-xl flex flex-col max-h-[85vh] border overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      >
         {/* Header section */}
         <header className="p-3 border-b flex items-center justify-between bg-gray-50">
           <div>

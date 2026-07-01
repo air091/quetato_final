@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { EllipsisVertical, Gamepad2 } from "lucide-react";
 import PlayerAvater from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
+import PlayerSettings from "../game/PlayerSettings";
 
 const PlayerCard = ({ player }) => {
   const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const toggleButtonRef = useRef(null);
 
   const stablePlayerId = player?.id;
 
@@ -76,9 +79,24 @@ const PlayerCard = ({ player }) => {
           </div>
         </div>
         <div>
-          <button className="cursor-pointer hover:bg-gray-200 rounded-full p-1">
+          <button
+            ref={toggleButtonRef}
+            onClick={() => setIsSettingsOpen((prev) => !prev)}
+            className="cursor-pointer hover:bg-gray-200 rounded-full p-1"
+          >
             <EllipsisVertical size={14} />
           </button>
+
+          {isSettingsOpen && (
+            <PlayerSettings
+              player={player}
+              toggleButtonRef={toggleButtonRef}
+              onClose={() => setIsSettingsOpen(false)}
+              onUpdatePlayerStatus={() => {
+                // If you want to trigger a parent list clear or layout refresh hook pass it here
+              }}
+            />
+          )}
         </div>
       </div>
     </>

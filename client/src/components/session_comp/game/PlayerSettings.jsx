@@ -10,17 +10,14 @@ const PlayerSettings = ({
   toggleButtonRef,
   onUpdatePlayerStatus,
 }) => {
+  console.log(player);
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isGameHistoryOpen, setIsGameHistoryOpen] = useState(false); // 🌟 Local sub-modal tracker
 
-  const initialUsername =
-    player?.sessionPlayer?.communityPlayer?.username ||
-    player?.communityPlayer?.username ||
-    player?.username ||
-    "";
+  const initialUsername = player?.sessionPlayer?.communityPlayer?.username;
 
   const [username, setUsername] = useState(initialUsername);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -70,18 +67,19 @@ const PlayerSettings = ({
     if (!username.trim() || isUpdating) return;
     try {
       setIsUpdating(true);
-      const targetId = player?.sessionPlayer?.id || player?.id;
+      const targetId = player?.sessionPlayer?.communityPlayer?.id;
       const res = await fetchWithAuth(
-        `/api/communities/${communityId}/sessions/${sessionId}/players/${targetId}`,
+        `http://localhost:8000/api/players/${targetId}/static`,
         {
           method: "PUT",
           body: JSON.stringify({ username: username.trim() }),
         },
       );
-      if (res && res.success) {
-        if (onUpdatePlayerStatus) onUpdatePlayerStatus();
-        onClose();
-      }
+      const resData = await res.json();
+      if (!resData.success) throw new Error(resData?.message);
+
+      if (onUpdatePlayerStatus) onUpdatePlayerStatus();
+      onClose();
     } catch (err) {
       console.error(err);
     } finally {
@@ -101,6 +99,9 @@ const PlayerSettings = ({
             top: `${coords.top}px`,
             left: `${coords.left}px`,
           }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onDragStart={(e) => e.preventDefault()}
           className="w-48 bg-white border rounded-md shadow-lg p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-100"
         >
           <form onSubmit={handleSubmit} className="space-y-2">
@@ -111,15 +112,21 @@ const PlayerSettings = ({
               >
                 Name
               </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={isUpdating}
-                className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
-              />
+              {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
+                <span className="w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
+                  {username}
+                </span>
+              ) : (
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isUpdating}
+                  className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
+                />
+              )}
             </div>
 
             {/* 🌟 Hooked click handler to open history modal overlay */}
