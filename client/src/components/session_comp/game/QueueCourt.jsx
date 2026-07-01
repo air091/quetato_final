@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CornerDownLeft, EllipsisVertical, Gamepad2, Plus } from "lucide-react";
@@ -6,6 +6,7 @@ import CourtSettings from "./CourtSettings";
 import PlayerAvatar from "../../PlayerAvatar";
 import PlayerSettings from "./PlayerSettings"; // 🌟 Imported
 import { PlayerTimer } from "./PlayersContainer";
+import { useAuth } from "../../../hooks/useAuth";
 
 const DraggableSlotPlayer = ({
   username,
@@ -18,6 +19,7 @@ const DraggableSlotPlayer = ({
   transform,
   player,
   onRefreshData,
+  totalGames,
 }) => {
   const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false); // 🌟 Settings toggle state
   const playerButtonRef = useRef(null); // 🌟 Structural tracking anchor ref
@@ -52,7 +54,8 @@ const DraggableSlotPlayer = ({
           </span>
           <div className="flex items-center gap-x-1">
             <span title="Games" className="flex items-center gap-x-1">
-              <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+              <Gamepad2 size={12} />
+              <span className="text-[10px]">{totalGames}</span>
             </span>
             <span title="Skill Level" className="text-[11px]">
               BEG
@@ -108,7 +111,11 @@ const CourtSlot = ({
   courtType,
   onRemovePlayer,
   onRefreshData,
+  communityId,
+  sessionId,
 }) => {
+  const { fetchWithAuth } = useAuth();
+  const [totalGames, setTotalGames] = useState(0);
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
     data: {
@@ -117,6 +124,43 @@ const CourtSlot = ({
       position,
     },
   });
+
+  const stablePlayerId =
+    matchedPoolPlayer?.id ||
+    matchedPoolPlayer?.sessionPlayer?.id ||
+    slotData?.sessionPlayerId;
+
+  useEffect(() => {
+    const fetchPlayerGamesCount = async () => {
+      if (!communityId || !sessionId || !stablePlayerId) return;
+      try {
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+        );
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson.success && resJson.results?.summary) {
+            setTotalGames(resJson.results.summary.totalGames || 0);
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching match history summary total counter:",
+          error,
+        );
+      }
+    };
+
+    fetchPlayerGamesCount();
+  }, [
+    communityId,
+    sessionId,
+    stablePlayerId,
+    fetchWithAuth,
+    matchedPoolPlayer?.gameStatus,
+    matchedPoolPlayer?.updatedAt,
+    matchedPoolPlayer?.updateStatus,
+  ]);
 
   const handleRemoveClick = () => {
     if (onRemovePlayer && slotData) {
@@ -127,8 +171,8 @@ const CourtSlot = ({
   };
 
   const draggableProps = useDraggable({
-    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id}`,
-    data: { player: matchedPoolPlayer },
+    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
+    data: { player: { ...matchedPoolPlayer, totalGames } },
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
@@ -166,6 +210,7 @@ const CourtSlot = ({
             transform={draggableProps.transform}
             player={matchedPoolPlayer}
             onRefreshData={onRefreshData}
+            totalGames={totalGames}
           />
 
           {draggableProps.isDragging && (
@@ -215,6 +260,8 @@ const QueueCourtCard = ({
   onDeleteCourt,
   onTransferQueue,
   onRefreshData,
+  communityId,
+  sessionId,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -352,6 +399,8 @@ const QueueCourtCard = ({
               courtType="queue"
               onRemovePlayer={onRemovePlayer}
               onRefreshData={onRefreshData}
+              communityId={communityId}
+              sessionId={sessionId}
             />
           );
         })}
@@ -369,6 +418,8 @@ const QueueCourt = ({
   onDeleteCourt,
   onTransferQueue,
   onRefreshData,
+  communityId,
+  sessionId,
 }) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
@@ -389,6 +440,8 @@ const QueueCourt = ({
             onDeleteCourt={onDeleteCourt}
             onTransferQueue={onTransferQueue}
             onRefreshData={onRefreshData}
+            communityId={communityId}
+            sessionId={sessionId}
           />
         ))}
 

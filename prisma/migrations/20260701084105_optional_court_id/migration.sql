@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "MatchHistory" ALTER COLUMN "courtId" DROP NOT NULL,
+ALTER COLUMN "courtName" DROP NOT NULL;

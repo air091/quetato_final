@@ -210,8 +210,8 @@ model CourtSlot {
 model MatchHistory {
   id                  String @id @default(cuid())
   sessionId           String?
-  courtId             String
-  courtName           String
+  courtId             String?
+  courtName           String?
   winningTeam         Team
   startedAt           DateTime
   endedAt             DateTime @default(now())

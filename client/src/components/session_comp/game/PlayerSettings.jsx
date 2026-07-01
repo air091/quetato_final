@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
+import PlayerGameHistory from "../PlayerGameHistory"; // 🌟 Import history modal
 import { useAuth } from "../../../hooks/useAuth";
 
 const PlayerSettings = ({
@@ -13,14 +14,13 @@ const PlayerSettings = ({
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isGameHistoryOpen, setIsGameHistoryOpen] = useState(false); // 🌟 Local sub-modal tracker
 
   const initialUsername =
     player?.sessionPlayer?.communityPlayer?.username ||
     player?.communityPlayer?.username ||
     player?.username ||
     "";
-
-  const playerId = player?.sessionPlayer?.communityPlayer?.id || player?.id;
 
   const [username, setUsername] = useState(initialUsername);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -30,164 +30,137 @@ const PlayerSettings = ({
     setUsername(initialUsername);
   }, [initialUsername]);
 
-  // 🌟 FIX: Refactored positioning logic into a reusable handler function
   const updatePosition = () => {
     if (toggleButtonRef?.current) {
       const rect = toggleButtonRef.current.getBoundingClientRect();
       setCoords({
-        // Uses view-relative bounding client measurements combined with live window scrolling offsets
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.right + window.scrollX - 160,
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX - 160,
       });
       setIsReady(true);
     }
   };
 
-  // Compute position initially before paint loops
   useLayoutEffect(() => {
     updatePosition();
-  }, [toggleButtonRef]);
-
-  // 🌟 FIX: Listen to all scrolling containers on the document to dynamically pin coordinates
-  useEffect(() => {
-    // True activates capture phase to intercept nested div scroll containers (like your container lists)
-    document.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
-
+    window.addEventListener("scroll", updatePosition, { passive: true });
     return () => {
-      document.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition);
     };
   }, [toggleButtonRef]);
 
-  // Handle click-away viewport boundaries cleanups
   useEffect(() => {
-    const handleOutsideClick = (event) => {
+    const handleClickOutside = (event) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target) &&
-        toggleButtonRef?.current &&
-        !toggleButtonRef.current.contains(event.target)
+        !toggleButtonRef?.current?.contains(event.target)
       ) {
         onClose();
       }
     };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose, toggleButtonRef]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!playerId)
-      return alert("Missing structural player identifier context.");
-    if (!username.trim()) return alert("Username field cannot be left empty.");
-
-    setIsUpdating(true);
+    if (!username.trim() || isUpdating) return;
     try {
-      const response = await fetchWithAuth(
-        `http://localhost:8000/api/players/${playerId}/static`,
+      setIsUpdating(true);
+      const targetId = player?.sessionPlayer?.id || player?.id;
+      const res = await fetchWithAuth(
+        `/api/communities/${communityId}/sessions/${sessionId}/players/${targetId}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ username }),
+          body: JSON.stringify({ username: username.trim() }),
         },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to update static player configuration profile");
+      if (res && res.success) {
+        if (onUpdatePlayerStatus) onUpdatePlayerStatus();
+        onClose();
       }
-
-      if (onUpdatePlayerStatus) {
-        onUpdatePlayerStatus();
-      }
-
-      onClose();
-    } catch (error) {
-      console.error("Profile Edit Error:", error);
-      alert(error.message || "Something went wrong updating user attributes.");
+    } catch (err) {
+      console.error(err);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  return createPortal(
-    <div
-      ref={containerRef}
-      data-no-dnd="true"
-      style={{
-        position: "absolute",
-        top: `${coords.top}px`,
-        left: `${coords.left}px`,
-      }}
-      className={`border bg-white rounded-lg text-black z-[9999] p-3 shadow-lg min-w-[180px] transition-opacity duration-70 ${
-        isReady ? "opacity-100" : "opacity-0 pointer-events-none"
-      }`}
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div>
-        <header className="mb-2 pb-1.5 border-b">
-          <h6 className="text-[12px] font-bold text-gray-400 uppercase tracking-wider">
-            Player Settings
-          </h6>
-          <span className="text-sm font-semibold truncate block text-gray-700">
-            {initialUsername || "Unknown"}
-          </span>
-        </header>
+  if (!isReady) return null;
 
-        <form onSubmit={handleSubmit} className="space-y-2.5">
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-[11px] font-medium text-gray-500 mb-0.5"
-            >
-              Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isUpdating}
-              className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
-            />
-          </div>
+  return (
+    <>
+      {createPortal(
+        <div
+          ref={containerRef}
+          style={{
+            position: "absolute",
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+          }}
+          className="w-48 bg-white border rounded-md shadow-lg p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-100"
+        >
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="flex flex-col gap-y-0.5">
+              <label
+                htmlFor="name"
+                className="text-[10px] font-bold uppercase tracking-wider text-gray-400"
+              >
+                Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isUpdating}
+                className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
+              />
+            </div>
 
-          <button
-            type="button"
-            className="w-full text-left text-xs text-blue-600 hover:underline py-0.5 font-medium"
-          >
-            Game History
-          </button>
-
-          <div className="flex gap-x-1.5 pt-1">
-            <button
-              type="submit"
-              disabled={isUpdating}
-              className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded flex-1 transition-colors font-semibold text-center"
-            >
-              {isUpdating ? "Saving..." : "Save"}
-            </button>
+            {/* 🌟 Hooked click handler to open history modal overlay */}
             <button
               type="button"
-              onClick={onClose}
-              disabled={isUpdating}
-              className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] py-1 rounded flex-1 transition-colors font-medium text-center"
+              onClick={() => setIsGameHistoryOpen(true)}
+              className="w-full text-left text-xs text-blue-600 py-0.5 font-medium cursor-pointer hover:underline"
             >
-              Cancel
+              Game History
             </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body,
+
+            <div className="flex gap-x-1.5 pt-1">
+              <button
+                type="submit"
+                disabled={isUpdating}
+                className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded flex-1 transition-colors font-semibold text-center"
+              >
+                {isUpdating ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isUpdating}
+                className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] py-1 rounded flex-1 transition-colors font-medium text-center"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body,
+      )}
+
+      {/* 🌟 Nested overlay conditional render for the Game History */}
+      {isGameHistoryOpen && (
+        <PlayerGameHistory
+          player={player}
+          onClose={() => setIsGameHistoryOpen(false)}
+        />
+      )}
+    </>
   );
 };
 

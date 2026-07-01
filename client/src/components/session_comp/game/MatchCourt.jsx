@@ -6,6 +6,7 @@ import CourtSettings from "./CourtSettings";
 import PlayerSettings from "./PlayerSettings"; // 🌟 Import PlayerSettings component
 import { formatElapsedTime, PlayerTimer } from "./PlayersContainer";
 import PlayerAvatar from "../../PlayerAvatar";
+import { useAuth } from "../../../hooks/useAuth";
 
 const DraggableSlotPlayer = ({
   username,
@@ -16,15 +17,16 @@ const DraggableSlotPlayer = ({
   listeners,
   setNodeRef,
   transform,
-  player, // 🌟 Pass player object to feed into settings portal
+  player,
   onRefreshData,
+  totalGames,
 }) => {
-  const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false); // 🌟 Local settings toggle state
-  const playerButtonRef = useRef(null); // 🌟 Layout position anchor element reference
+  const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false);
+  const playerButtonRef = useRef(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    zIndex: isDragging ? 9999 : isPlayerSettingsOpen ? 40 : 20, // 🌟 Elevate layers when settings are open
+    zIndex: isDragging ? 9999 : isPlayerSettingsOpen ? 40 : 20,
     width: "100%",
     height: "100%",
     opacity: isDragging ? 0.4 : 1,
@@ -43,7 +45,7 @@ const DraggableSlotPlayer = ({
       <div className="flex items-center gap-x-2">
         <PlayerAvatar
           username={username}
-          customImageUrl={player?.avatarUrl}
+          customImageUrl={player?.avatarUrl || player?.sessionPlayer?.avatarUrl}
           size="sm"
         />
         <div>
@@ -52,7 +54,8 @@ const DraggableSlotPlayer = ({
           </span>
           <div className="flex items-center gap-x-1">
             <span title="Games" className="flex items-center gap-x-1">
-              <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+              <Gamepad2 size={12} />{" "}
+              <span className="text-[10px]">{totalGames}</span>
             </span>
             <span title="Skill Level" className="text-[11px]">
               BEG
@@ -75,9 +78,9 @@ const DraggableSlotPlayer = ({
         </button>
         <button
           title="Settings"
-          ref={playerButtonRef} // 🌟 Attach the position layout tracking anchor
+          ref={playerButtonRef}
           onClick={(e) => {
-            e.stopPropagation(); // 🌟 Stop drag hooks from interrupting layout click toggles
+            e.stopPropagation();
             setIsPlayerSettingsOpen((prev) => !prev);
           }}
           className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full"
@@ -107,7 +110,12 @@ const CourtSlot = ({
   courtType,
   onRemovePlayer,
   onRefreshData,
+  communityId,
+  sessionId,
 }) => {
+  const { fetchWithAuth } = useAuth();
+  const [totalGames, setTotalGames] = useState(0);
+
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
     data: {
@@ -116,6 +124,44 @@ const CourtSlot = ({
       position,
     },
   });
+
+  // 🌟 FIX: Robust lookup fallback for nested target primary IDs
+  const stablePlayerId =
+    matchedPoolPlayer?.id ||
+    matchedPoolPlayer?.sessionPlayer?.id ||
+    slotData?.sessionPlayerId;
+
+  useEffect(() => {
+    const fetchPlayerGamesCount = async () => {
+      if (!communityId || !sessionId || !stablePlayerId) return;
+      try {
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+        );
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson.success && resJson.results?.summary) {
+            setTotalGames(resJson.results.summary.totalGames || 0);
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching match history summary total counter:",
+          error,
+        );
+      }
+    };
+
+    fetchPlayerGamesCount();
+  }, [
+    communityId,
+    sessionId,
+    stablePlayerId,
+    fetchWithAuth,
+    matchedPoolPlayer?.gameStatus,
+    matchedPoolPlayer?.updatedAt,
+    matchedPoolPlayer?.updateStatus,
+  ]);
 
   const handleRemoveClick = () => {
     if (onRemovePlayer && slotData) {
@@ -126,8 +172,8 @@ const CourtSlot = ({
   };
 
   const draggableProps = useDraggable({
-    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id}`,
-    data: { player: matchedPoolPlayer },
+    id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
+    data: { player: { ...matchedPoolPlayer, totalGames } },
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
@@ -164,8 +210,9 @@ const CourtSlot = ({
             listeners={draggableProps.listeners}
             setNodeRef={draggableProps.setNodeRef}
             transform={draggableProps.transform}
-            player={matchedPoolPlayer} // 🌟 Forward current player object context mapping
+            player={matchedPoolPlayer}
             onRefreshData={onRefreshData}
+            totalGames={totalGames}
           />
 
           {draggableProps.isDragging && (
@@ -183,7 +230,7 @@ const CourtSlot = ({
                   <div className="flex items-center gap-x-1">
                     <span className="flex items-center gap-x-1">
                       <Gamepad2 size={12} />{" "}
-                      <span className="text-[10px]">0</span>
+                      <span className="text-[10px]">{totalGames}</span>
                     </span>
                     <span className="text-[11px]">BEG</span>
                   </div>
@@ -216,6 +263,8 @@ const MatchCourtCard = ({
   onStartMatchCourt,
   onEndMatchCourt,
   onRefreshData,
+  communityId,
+  sessionId,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -391,6 +440,8 @@ const MatchCourtCard = ({
               courtType="match"
               onRemovePlayer={onRemovePlayer}
               onRefreshData={onRefreshData}
+              communityId={communityId}
+              sessionId={sessionId}
             />
           );
         })}
@@ -409,6 +460,8 @@ const MatchCourt = ({
   onStartMatchCourt,
   onEndMatchCourt,
   onRefreshData,
+  communityId,
+  sessionId,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
@@ -430,6 +483,8 @@ const MatchCourt = ({
             onStartMatchCourt={onStartMatchCourt}
             onEndMatchCourt={onEndMatchCourt}
             onRefreshData={onRefreshData}
+            communityId={communityId}
+            sessionId={sessionId}
           />
         ))}
 

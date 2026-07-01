@@ -709,6 +709,8 @@ const Game = () => {
         <PlayersContainer
           players={sessionData.players}
           onRefreshData={() => fetchDashboardContext(true)}
+          communityId={communityId}
+          sessionId={sessionId}
         />
 
         <div className="flex-1 flex flex-col gap-y-2 overflow-y-auto py-2">
@@ -722,6 +724,8 @@ const Game = () => {
             onStartMatchCourt={handleStartMatchCourt}
             onEndMatchCourt={handleEndMatchCourt}
             onRefreshData={() => fetchDashboardContext(true)}
+            communityId={communityId}
+            sessionId={sessionId}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
@@ -732,6 +736,8 @@ const Game = () => {
             onDeleteCourt={handleDeleteCourt}
             onTransferQueue={handleTransferQueue}
             onRefreshData={() => fetchDashboardContext(true)}
+            communityId={communityId}
+            sessionId={sessionId}
           />
         </div>
       </div>
@@ -756,10 +762,12 @@ const Game = () => {
                 </span>
                 <div className="flex items-center gap-x-1">
                   <span className="flex items-center gap-x-1">
-                    <Gamepad2 size={12} />{" "}
-                    <span className="text-[10px]">0</span>
+                    <Gamepad2 size={12} />
+                    <span className="text-[10px]">
+                      {activePlayerData.totalGames}
+                    </span>
                   </span>
-                  <span className="text-[11px]">BEG</span>
+                  <span className="text-[8px]">BEG</span>
                 </div>
               </div>
             </div>

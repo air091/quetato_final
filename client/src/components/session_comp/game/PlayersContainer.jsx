@@ -4,6 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import PlayerSettings from "./PlayerSettings";
 import PlayerAvatar from "../../PlayerAvatar";
+import { useAuth } from "../../../hooks/useAuth";
 
 // NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
 export const formatElapsedTime = (pastIsoString) => {
@@ -79,6 +80,7 @@ export const PlayerCard = ({
   isSettingsOpen,
   player,
   onRefreshData,
+  totalGames,
 }) => {
   return (
     <div
@@ -98,9 +100,10 @@ export const PlayerCard = ({
           </span>
           <div className="flex items-center gap-x-1">
             <span title="Games" className="flex items-center gap-x-1">
-              <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+              <Gamepad2 size={12} />{" "}
+              <span className="text-[10px]">{totalGames}</span>
             </span>
-            <span title="Skill Level" className="text-[11px]">
+            <span title="Skill Level" className="text-[8px]">
               BEG
             </span>
           </div>
@@ -148,6 +151,7 @@ const DraggableSlotPlayer = ({
   isSettingsOpen,
   player,
   onRefreshData,
+  totalGames,
 }) => {
   const style = {
     transform:
@@ -176,20 +180,63 @@ const DraggableSlotPlayer = ({
         isSettingsOpen={isSettingsOpen}
         player={player}
         onRefreshData={onRefreshData}
+        totalGames={totalGames}
       />
     </div>
   );
 };
 
-const DraggablePlayer = ({ player, username, onRefreshData }) => {
+const DraggablePlayer = ({
+  player,
+  username,
+  onRefreshData,
+  communityId,
+  sessionId,
+}) => {
+  const { fetchWithAuth } = useAuth();
+  const [totalGames, setTotalGames] = useState(0);
   const draggableProps = useDraggable({
     id: `draggable-player-container-${player.id}`,
-    data: { player },
+    data: { player: { ...player, totalGames } },
   });
+
+  const stablePlayerId = player?.id;
 
   // 🌟 FIX: Keep this state local to the card so it doesn't rely on parent props!
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
+
+  useEffect(() => {
+    const fetchPlayerGamesCount = async () => {
+      if (!communityId || !sessionId || !stablePlayerId) return;
+      try {
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+        );
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson.success && resJson.results?.summary) {
+            setTotalGames(resJson.results.summary.totalGames || 0);
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching match history summary total counter:",
+          error,
+        );
+      }
+    };
+
+    fetchPlayerGamesCount();
+  }, [
+    communityId,
+    sessionId,
+    stablePlayerId,
+    fetchWithAuth,
+    player.gameStatus,
+    player.updatedAt,
+    player.updateStatus,
+  ]);
 
   const LiveTimerNode = (
     <PlayerTimer timestamp={player.updateStatus || player.updatedAt} />
@@ -217,6 +264,7 @@ const DraggablePlayer = ({ player, username, onRefreshData }) => {
           isSettingsOpen={isSettingsOpen}
           player={player}
           onRefreshData={onRefreshData}
+          totalGames={totalGames}
         />
       </div>
 
@@ -234,9 +282,10 @@ const DraggablePlayer = ({ player, username, onRefreshData }) => {
               </span>
               <div className="flex items-center gap-x-1">
                 <span className="flex items-center gap-x-1">
-                  <Gamepad2 size={12} /> <span className="text-[10px]">0</span>
+                  <Gamepad2 size={12} />
+                  <span className="text-[10px]">{totalGames}</span>
                 </span>
-                <span className="text-[11px]">BEG</span>
+                <span className="text-[8px]">BEG</span>
               </div>
             </div>
           </div>
@@ -254,7 +303,12 @@ const DraggablePlayer = ({ player, username, onRefreshData }) => {
 };
 
 // Main Container List Component
-const PlayersContainer = ({ players = [], onRefreshData }) => {
+const PlayersContainer = ({
+  players = [],
+  onRefreshData,
+  communityId,
+  sessionId,
+}) => {
   const [activeTab, setActiveTab] = useState("all");
 
   const filteredPlayers = players.filter((player) => {
@@ -308,6 +362,8 @@ const PlayersContainer = ({ players = [], onRefreshData }) => {
                 player={player}
                 username={username}
                 onRefreshData={onRefreshData}
+                communityId={communityId}
+                sessionId={sessionId}
               />
             );
           })
