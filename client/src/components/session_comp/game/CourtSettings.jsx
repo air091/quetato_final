@@ -18,15 +18,15 @@ const CourtSettings = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 🌟 Coordinates and ready state to mirror PlayerSettings behavior
+  // Coordinates and ready state to mirror PlayerSettings behavior
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [isReady, setIsReady] = useState(false);
 
   // Dynamic endpoint suffixes for API endpoints
   const endpointSuffix = courtType === "queue" ? "queue-name" : "match-name";
 
-  // 🌟 Calculate position BEFORE browser paint to eliminate shifting/flickering
-  useLayoutEffect(() => {
+  // 🌟 FIX: Refactored positioning logic into a reusable function
+  const updatePosition = () => {
     if (toggleButtonRef?.current) {
       const rect = toggleButtonRef.current.getBoundingClientRect();
       setCoords({
@@ -35,6 +35,23 @@ const CourtSettings = ({
       });
       setIsReady(true);
     }
+  };
+
+  // Calculate position initially BEFORE browser paint to eliminate shifting/flickering
+  useLayoutEffect(() => {
+    updatePosition();
+  }, [toggleButtonRef]);
+
+  // 🌟 FIX: Listen to all scrolling containers on the document to dynamically pin coordinates
+  useEffect(() => {
+    // True activates capture phase to intercept nested div scroll containers
+    document.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      document.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
   }, [toggleButtonRef]);
 
   // Handle click outside to close
@@ -123,10 +140,11 @@ const CourtSettings = ({
     }
   };
 
-  // 🌟 Render into document.body portal
+  // Render into document.body portal
   return createPortal(
     <div
       ref={containerRef}
+      data-no-dnd="true" /* 🌟 FIX: Stops dnd-kit from tracking drag events here */
       style={{
         position: "absolute",
         top: `${coords.top}px`,
@@ -135,6 +153,9 @@ const CourtSettings = ({
       className={`border bg-white rounded-lg text-black z-[9999] p-2 shadow-lg min-w-[210px] transition-opacity duration-70 ${
         isReady ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
+      /* 🌟 FIX: Stop mouse and pointer drag actions from breaking or bubbling into dnd-kit cards */
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <h6 className="font-semibold text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">

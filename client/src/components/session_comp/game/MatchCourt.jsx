@@ -17,6 +17,7 @@ const DraggableSlotPlayer = ({
   setNodeRef,
   transform,
   player, // 🌟 Pass player object to feed into settings portal
+  onRefreshData,
 }) => {
   const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false); // 🌟 Local settings toggle state
   const playerButtonRef = useRef(null); // 🌟 Layout position anchor element reference
@@ -85,6 +86,7 @@ const DraggableSlotPlayer = ({
             player={player}
             toggleButtonRef={playerButtonRef}
             onClose={() => setIsPlayerSettingsOpen(false)}
+            onUpdatePlayerStatus={onRefreshData}
           />
         )}
       </div>
@@ -100,6 +102,7 @@ const CourtSlot = ({
   courtId,
   courtType,
   onRemovePlayer,
+  onRefreshData,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
@@ -158,6 +161,7 @@ const CourtSlot = ({
             setNodeRef={draggableProps.setNodeRef}
             transform={draggableProps.transform}
             player={matchedPoolPlayer} // 🌟 Forward current player object context mapping
+            onRefreshData={onRefreshData}
           />
 
           {draggableProps.isDragging && (
@@ -207,6 +211,7 @@ const MatchCourtCard = ({
   onDeleteCourt,
   onStartMatchCourt,
   onEndMatchCourt,
+  onRefreshData,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -378,6 +383,7 @@ const MatchCourtCard = ({
               courtId={matchCourt.id}
               courtType="match"
               onRemovePlayer={onRemovePlayer}
+              onRefreshData={onRefreshData}
             />
           );
         })}
@@ -395,6 +401,7 @@ const MatchCourt = ({
   onDeleteCourt,
   onStartMatchCourt,
   onEndMatchCourt,
+  onRefreshData,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
@@ -415,6 +422,7 @@ const MatchCourt = ({
             onDeleteCourt={onDeleteCourt}
             onStartMatchCourt={onStartMatchCourt}
             onEndMatchCourt={onEndMatchCourt}
+            onRefreshData={onRefreshData}
           />
         ))}
 

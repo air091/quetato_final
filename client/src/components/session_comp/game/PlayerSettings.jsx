@@ -7,45 +7,57 @@ const PlayerSettings = ({
   player,
   onClose,
   toggleButtonRef,
-  onUpdatePlayerStatus, // Pass an updated state list function here if needed
+  onUpdatePlayerStatus,
 }) => {
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 🌟 Safely resolve username from multiple possible nested locations
   const initialUsername =
     player?.sessionPlayer?.communityPlayer?.username ||
     player?.communityPlayer?.username ||
     player?.username ||
     "";
 
-  // 🌟 Extract the primary player ID needed for the endpoint parameter routing
-  const playerId = player?.sessionPlayer.communityPlayer.id;
+  const playerId = player?.sessionPlayer?.communityPlayer?.id || player?.id;
 
-  // Local form state control management
   const [username, setUsername] = useState(initialUsername);
-
-  // Layout positioning state flags
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [isReady, setIsReady] = useState(false);
 
-  // Track state syncing if the prop updates while the menu is open
   useEffect(() => {
     setUsername(initialUsername);
   }, [initialUsername]);
 
-  // Handle setting layout dynamic positioning bounds prior to component mount repaint
-  useLayoutEffect(() => {
+  // 🌟 FIX: Refactored positioning logic into a reusable handler function
+  const updatePosition = () => {
     if (toggleButtonRef?.current) {
       const rect = toggleButtonRef.current.getBoundingClientRect();
       setCoords({
+        // Uses view-relative bounding client measurements combined with live window scrolling offsets
         top: rect.bottom + window.scrollY + 4,
-        left: rect.right + window.scrollX - 160, // Matches min-w of menu
+        left: rect.right + window.scrollX - 160,
       });
       setIsReady(true);
     }
+  };
+
+  // Compute position initially before paint loops
+  useLayoutEffect(() => {
+    updatePosition();
+  }, [toggleButtonRef]);
+
+  // 🌟 FIX: Listen to all scrolling containers on the document to dynamically pin coordinates
+  useEffect(() => {
+    // True activates capture phase to intercept nested div scroll containers (like your container lists)
+    document.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      document.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
   }, [toggleButtonRef]);
 
   // Handle click-away viewport boundaries cleanups
@@ -67,7 +79,6 @@ const PlayerSettings = ({
     };
   }, [onClose, toggleButtonRef]);
 
-  // Handle API PUT data submission action hooks
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!playerId)
@@ -91,12 +102,11 @@ const PlayerSettings = ({
         throw new Error("Failed to update static player configuration profile");
       }
 
-      // 🌟 If you have an upper layout context handler function, call it to trigger update states
       if (onUpdatePlayerStatus) {
         onUpdatePlayerStatus();
       }
 
-      onClose(); // Shut the dropdown menu container overlay seamlessly
+      onClose();
     } catch (error) {
       console.error("Profile Edit Error:", error);
       alert(error.message || "Something went wrong updating user attributes.");
@@ -108,6 +118,7 @@ const PlayerSettings = ({
   return createPortal(
     <div
       ref={containerRef}
+      data-no-dnd="true"
       style={{
         position: "absolute",
         top: `${coords.top}px`,
@@ -116,6 +127,8 @@ const PlayerSettings = ({
       className={`border bg-white rounded-lg text-black z-[9999] p-3 shadow-lg min-w-[180px] transition-opacity duration-70 ${
         isReady ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <div>

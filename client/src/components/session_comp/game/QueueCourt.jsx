@@ -17,6 +17,7 @@ const DraggableSlotPlayer = ({
   setNodeRef,
   transform,
   player,
+  onRefreshData,
 }) => {
   const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false); // 🌟 Settings toggle state
   const playerButtonRef = useRef(null); // 🌟 Structural tracking anchor ref
@@ -86,6 +87,7 @@ const DraggableSlotPlayer = ({
             player={player}
             toggleButtonRef={playerButtonRef}
             onClose={() => setIsPlayerSettingsOpen(false)}
+            onUpdatePlayerStatus={onRefreshData}
           />
         )}
       </div>
@@ -101,6 +103,7 @@ const CourtSlot = ({
   courtId,
   courtType,
   onRemovePlayer,
+  onRefreshData,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
@@ -158,6 +161,7 @@ const CourtSlot = ({
             setNodeRef={draggableProps.setNodeRef}
             transform={draggableProps.transform}
             player={matchedPoolPlayer}
+            onRefreshData={onRefreshData}
           />
 
           {draggableProps.isDragging && (
@@ -206,6 +210,7 @@ const QueueCourtCard = ({
   onUpdateCourtName,
   onDeleteCourt,
   onTransferQueue,
+  onRefreshData,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -341,6 +346,7 @@ const QueueCourtCard = ({
               courtId={queueCourt.id}
               courtType="queue"
               onRemovePlayer={onRemovePlayer}
+              onRefreshData={onRefreshData}
             />
           );
         })}
@@ -357,6 +363,7 @@ const QueueCourt = ({
   onUpdateCourtName,
   onDeleteCourt,
   onTransferQueue,
+  onRefreshData,
 }) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
@@ -376,6 +383,7 @@ const QueueCourt = ({
             onUpdateCourtName={onUpdateCourtName}
             onDeleteCourt={onDeleteCourt}
             onTransferQueue={onTransferQueue}
+            onRefreshData={onRefreshData}
           />
         ))}
 

@@ -78,6 +78,7 @@ export const PlayerCard = ({
   toggleButtonRef,
   isSettingsOpen,
   player,
+  onRefreshData,
 }) => {
   return (
     <div
@@ -122,6 +123,7 @@ export const PlayerCard = ({
             player={player}
             toggleButtonRef={toggleButtonRef}
             onClose={onToggleSettings}
+            onUpdatePlayerStatus={onRefreshData}
           />
         )}
       </div>
@@ -142,6 +144,7 @@ const DraggableSlotPlayer = ({
   toggleButtonRef,
   isSettingsOpen,
   player,
+  onRefreshData,
 }) => {
   const style = {
     transform:
@@ -169,12 +172,13 @@ const DraggableSlotPlayer = ({
         toggleButtonRef={toggleButtonRef}
         isSettingsOpen={isSettingsOpen}
         player={player}
+        onRefreshData={onRefreshData}
       />
     </div>
   );
 };
 
-const DraggablePlayer = ({ player, username }) => {
+const DraggablePlayer = ({ player, username, onRefreshData }) => {
   const draggableProps = useDraggable({
     id: `draggable-player-container-${player.id}`,
     data: { player },
@@ -209,6 +213,7 @@ const DraggablePlayer = ({ player, username }) => {
           toggleButtonRef={buttonRef}
           isSettingsOpen={isSettingsOpen}
           player={player}
+          onRefreshData={onRefreshData}
         />
       </div>
 
@@ -246,7 +251,7 @@ const DraggablePlayer = ({ player, username }) => {
 };
 
 // Main Container List Component
-const PlayersContainer = ({ players = [] }) => {
+const PlayersContainer = ({ players = [], onRefreshData }) => {
   const [activeTab, setActiveTab] = useState("all");
 
   const filteredPlayers = players.filter((player) => {
@@ -299,7 +304,7 @@ const PlayersContainer = ({ players = [] }) => {
                 key={stableId}
                 player={player}
                 username={username}
-                // 🌟 REMOVED the top-level parameters that were causing the crash
+                onRefreshData={onRefreshData}
               />
             );
           })

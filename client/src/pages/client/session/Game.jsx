@@ -706,7 +706,10 @@ const Game = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-x-2 h-full">
-        <PlayersContainer players={sessionData.players} />
+        <PlayersContainer
+          players={sessionData.players}
+          onRefreshData={() => fetchDashboardContext(true)}
+        />
 
         <div className="flex-1 flex flex-col gap-y-2 overflow-y-auto py-2">
           <MatchCourt
@@ -718,6 +721,7 @@ const Game = () => {
             onDeleteCourt={handleDeleteCourt}
             onStartMatchCourt={handleStartMatchCourt}
             onEndMatchCourt={handleEndMatchCourt}
+            onRefreshData={() => fetchDashboardContext(true)}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
@@ -727,6 +731,7 @@ const Game = () => {
             onUpdateCourtName={handleUpdateCourtName}
             onDeleteCourt={handleDeleteCourt}
             onTransferQueue={handleTransferQueue}
+            onRefreshData={() => fetchDashboardContext(true)}
           />
         </div>
       </div>
