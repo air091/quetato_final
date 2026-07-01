@@ -47,7 +47,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <nav ref={sidebarRef} className="w-full max-w-[260px] p-2">
+    <nav ref={sidebarRef} className="w-full max-w-[228px] p-2">
       <ul className="flex flex-col gap-y-1">
         <li>
           <NavLink

@@ -260,6 +260,16 @@ const DraggablePlayer = ({
     setIsSettingsOpen((prev) => !prev);
   };
 
+  const statusBgClasses = {
+    waiting: "bg-stone-100 border-gray-500 text-gray-800",
+    queued: "bg-amber-100 border-amber-500 text-amber-900",
+    playing: "bg-emerald-100 border-emerald-500 text-emerald-950",
+    paid: "bg-rose-100 border-rose-500 text-rose-950",
+  };
+
+  const currentStatus = player?.gameStatus || "waiting";
+  const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+
   return (
     <div
       className={`w-[178px] h-[41px] relative shrink-0 ${isSettingsOpen ? "z-40" : "z-10"}`}
@@ -283,7 +293,9 @@ const DraggablePlayer = ({
       </div>
 
       {draggableProps.isDragging && (
-        <div className="absolute inset-0 flex items-center justify-between p-2 bg-gray-500/40 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0">
+        <div
+          className={`absolute inset-0 flex items-center justify-between p-2 ${bgTheme} rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0`}
+        >
           <div className="flex items-center gap-x-1">
             <PlayerAvatar
               username={username}
