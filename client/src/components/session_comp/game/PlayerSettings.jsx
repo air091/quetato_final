@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import PlayerGameHistory from "../PlayerGameHistory"; // 🌟 Import history modal
 import { useAuth } from "../../../hooks/useAuth";
+import PlayerAvatar from "../../PlayerAvatar";
 
 const PlayerSettings = ({
   player,
@@ -105,13 +106,16 @@ const PlayerSettings = ({
           className="w-48 bg-white border rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-100"
         >
           <header className="bg-stone-800 p-2">
-            <h5 className="font-bold text-[12px] text-stone-100">
+            <h5 className="font-bold text-[12px] text-stone-100 mb-2">
               Player Settings
             </h5>
             <div className="w-full flex items-center justify-between ">
-              <span className="text-[12px] font-medium text-stone-100">
-                {username}
-              </span>
+              <div className="flex items-center gap-x-2">
+                <PlayerAvatar username={username} size="sm" />
+                <span className="text-[12px] font-medium text-stone-100">
+                  {username}
+                </span>
+              </div>
               <span className="text-[12px] font-medium text-stone-100">
                 {player?.sessionPlayer?.role}
               </span>
