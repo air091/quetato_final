@@ -5,7 +5,7 @@ import PlayerAvater from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerSettings from "../game/PlayerSettings";
 
-const PlayerCard = ({ player }) => {
+const PlayerCard = ({ player, onRefreshData }) => {
   const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
@@ -97,9 +97,7 @@ const PlayerCard = ({ player }) => {
               player={player}
               toggleButtonRef={toggleButtonRef}
               onClose={() => setIsSettingsOpen(false)}
-              onUpdatePlayerStatus={() => {
-                // If you want to trigger a parent list clear or layout refresh hook pass it here
-              }}
+              onUpdatePlayerStatus={onRefreshData}
             />
           )}
         </div>

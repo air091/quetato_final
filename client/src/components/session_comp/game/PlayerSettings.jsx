@@ -85,10 +85,9 @@ const PlayerSettings = ({
       setIsUpdating(true);
       const targetId = player?.sessionPlayer?.communityPlayer?.id;
       const res = await fetchWithAuth(
-        `http://localhost:8000/api/players/${targetId}/static`,
+        `http://localhost:8000/api/communities/${communityId}/players/${targetId}/static`,
         {
           method: "PUT",
-          // 🌟 Pass both username and skillLevel to your backend payload
           body: JSON.stringify({
             username: username.trim(),
             skillLevel: skillLevel,
@@ -98,8 +97,13 @@ const PlayerSettings = ({
       const resData = await res.json();
       if (!resData.success) throw new Error(resData?.message);
 
-      if (onUpdatePlayerStatus) onUpdatePlayerStatus();
-      onClose();
+      if (resData.success) {
+        // 🔄 Fire the prop passed down by the parent to pull fresh db data
+        if (typeof onUpdatePlayerStatus === "function") {
+          onUpdatePlayerStatus();
+        }
+        onClose();
+      }
     } catch (err) {
       console.error(err);
     } finally {

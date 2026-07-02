@@ -74,7 +74,10 @@ const AllPlayers = () => {
                   key={player.id}
                   className="relative flex items-center justify-between border min-w-[210px] px-2 py-1 rounded"
                 >
-                  <PlayerCard player={player} />
+                  <PlayerCard
+                    player={player}
+                    onRefreshData={getAcceptedPlayers}
+                  />
                 </div>
               ))}
           </div>
@@ -95,7 +98,10 @@ const AllPlayers = () => {
                   key={player.id}
                   className="relative flex items-center justify-between border min-w-[210px] px-2 py-1 rounded"
                 >
-                  <PlayerCard player={player} />
+                  <PlayerCard
+                    player={player}
+                    onRefreshData={getAcceptedPlayers}
+                  />
                 </div>
               ))}
           </div>
