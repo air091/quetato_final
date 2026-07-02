@@ -72,7 +72,7 @@ router.put(
 );
 
 router.delete(
-  "/:communityId/players/:playerId/static",
+  "/:communityId/players/:userId/static",
   deleteStaticPlayerController,
 );
 

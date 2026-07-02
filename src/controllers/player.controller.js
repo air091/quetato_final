@@ -87,7 +87,7 @@ export const updateStaticPlayerController = async (request, response) => {
     );
     return response.status(200).json({ success: true, player });
   } catch (error) {
-    console.error("Get player failed", error);
+    console.error("Update static player failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";
@@ -103,12 +103,11 @@ export const updateStaticPlayerController = async (request, response) => {
 
 export const deleteStaticPlayerController = async (request, response) => {
   try {
-    const { communityId, playerId } = request.params;
-    const { username } = request.body;
-    await deleteStaticPlayer(communityId, playerId);
+    const { communityId, userId } = request.params;
+    await deleteStaticPlayer(communityId, userId, request.user.sub);
     return response.status(200).json({ success: true });
   } catch (error) {
-    console.error("Get player failed", error);
+    console.error("Delete static player failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";
