@@ -40,8 +40,8 @@ const RequestPlayers = () => {
   }, [getStaticPlayersNotInSession]);
 
   return (
-    <div className="border w-full max-w-[720px] mx-auto">
-      <div>
+    <div className="w-full max-w-[720px] mx-auto">
+      <div className="p-2">
         <h4 className="font-medium text-[18px] text-stone-800">Players</h4>
         <select
           name="sort"
@@ -168,7 +168,7 @@ const RequestPlayers = () => {
                   return (
                     <div
                       key={wrapper.id}
-                      className="flex items-center justify-between border p-2 rounded-md hover:bg-stone-50 transition-colors"
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-stone-50 transition-colors"
                     >
                       <div className="flex items-center gap-x-3">
                         <PlayerAvatar
