@@ -66,6 +66,11 @@ router.get("/:communityId/players/:playerId", getPlayerByIdController);
 
 router.post("/:communityId/players/static", createStaticPlayersController);
 
+router.put(
+  "/:communityId/players/:userId/static",
+  updateStaticPlayerController,
+);
+
 router.delete(
   "/:communityId/players/:playerId/static",
   deleteStaticPlayerController,

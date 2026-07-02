@@ -50,9 +50,14 @@ export const getPlayerByIdController = async (request, response) => {
 
 export const createStaticPlayersController = async (request, response) => {
   try {
-    const { communityId, playerId } = request.params;
-    const { usernames } = request.body;
-    const players = await createStaticPlayers(communityId, usernames);
+    const { communityId } = request.params;
+    const { usernames, skillLevel } = request.body;
+    const players = await createStaticPlayers(
+      communityId,
+      usernames,
+      skillLevel,
+      request.user.sub,
+    );
     return response.status(201).json({ success: true, players });
   } catch (error) {
     console.error("Create static player failed", error);
@@ -71,9 +76,15 @@ export const createStaticPlayersController = async (request, response) => {
 
 export const updateStaticPlayerController = async (request, response) => {
   try {
-    const { playerId } = request.params;
-    const { username } = request.body;
-    const player = await updateStaticPlayer(playerId, username);
+    const { communityId, userId } = request.params;
+    const { username, skillLevel } = request.body;
+    const player = await updateStaticPlayer(
+      communityId,
+      userId,
+      request.user.sub,
+      username,
+      skillLevel,
+    );
     return response.status(200).json({ success: true, player });
   } catch (error) {
     console.error("Get player failed", error);

@@ -781,7 +781,10 @@ const Game = () => {
                     </span>
                   </span>
                   <span className="text-[9px] bg-white px-0.5 rounded-full">
-                    BEG
+                    {
+                      activePlayerData?.sessionPlayer?.communityPlayer
+                        .skillLevel
+                    }
                   </span>
                 </div>
               </div>

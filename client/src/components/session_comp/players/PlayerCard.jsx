@@ -77,8 +77,8 @@ const PlayerCard = ({ player }) => {
                   {player.sessionPlayer?.role}
                 </span>
               )}
-              <span title="Skill Level" className="text-[8px] bg-white">
-                BEG
+              <span title="Skill Level" className="text-[10px] bg-white">
+                {player.sessionPlayer?.communityPlayer.skillLevel}
               </span>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { SkillLevel } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import { randomUUID } from "crypto";
@@ -71,10 +72,20 @@ export const getPlayerById = async (communityId, playerId) => {
   return player;
 };
 
-export const createStaticPlayers = async (communityId, usernames) => {
+export const createStaticPlayers = async (
+  communityId,
+  usernames,
+  skillLevel,
+  authorizedId, // 🌟 Accept the authorizing user's ID
+) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   if (!Array.isArray(usernames) || usernames.length === 0)
     throw new AppError("Usernames array required", 400);
+  if (!authorizedId) throw new AppError("Authorization ID is required", 400);
+
+  if (skillLevel && !Object.values(SkillLevel).includes(skillLevel)) {
+    throw new AppError(`Invalid skill level: ${skillLevel}`, 400);
+  }
 
   const community = await prisma.community.findUnique({
     where: { id: communityId },
@@ -82,91 +93,192 @@ export const createStaticPlayers = async (communityId, usernames) => {
   });
   if (!community) throw new AppError("Community not found", 404);
 
-  // Map each username into an isolated create promise
-  const promises = usernames.map((username) => {
-    const trimmedName = username.trim();
-
-    return prisma.user.create({
-      data: {
-        username: trimmedName,
-        email: `${trimmedName}-${randomUUID()}@static-quetato.com`,
-        password: `${trimmedName}-${randomUUID()}`,
-        type: "static",
-        // Nested relation write: Creates the community player automatically!
-        players: {
-          create: {
-            communityId: community.id,
-          },
+  // 🌟 Switch to an interactive transaction to run authorization checks first
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get the admin's CommunityPlayer record
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId: authorizedId,
         },
       },
     });
-  });
 
-  // Fires them off in parallel (or wrapped in a transaction if using prisma.$transaction(promises))
-  return await prisma.$transaction(promises);
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 2. Validate role privileges
+    const allowedRoles = ["admin", "host", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 3. Map each username into an isolated create operation bound to the transaction context (tx)
+    const promises = usernames.map((username) => {
+      const trimmedName = username.trim();
+
+      return tx.user.create({
+        data: {
+          username: trimmedName,
+          email: `${trimmedName}-${randomUUID()}@static-quetato.com`,
+          password: `${trimmedName}-${randomUUID()}`,
+          type: "static",
+          // Nested relation write: Creates the community player automatically!
+          players: {
+            create: {
+              communityId: community.id,
+            },
+          },
+        },
+      });
+    });
+
+    // Resolve all promises concurrently inside this transaction session
+    return await Promise.all(promises);
+  });
 };
 
-export const updateStaticPlayer = async (userId, newUsername) => {
+export const updateStaticPlayer = async (
+  communityId, // 🌟 Added to look up the admin's role in this community
+  userId, // The ID of the static player being updated
+  authorizedId, // 🌟 Added to identify the acting administrator
+  newUsername,
+  newSkillLevel,
+) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
   if (!userId) throw new AppError("User ID is required", 400);
-  if (!newUsername || newUsername.trim().length === 0) {
-    throw new AppError("New username is required", 400);
-  }
+  if (!authorizedId) throw new AppError("Authorization ID is required", 400);
 
-  // 1. Fetch the user first to verify if they are a static account
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-
-  if (!user) throw new AppError("Player not found", 404);
-
-  // 2. Enforce the "Static Only" guard rail.
-  // If your schema has an 'isStatic' boolean, use that. Otherwise, check the custom email domain:
-  const isStatic = user.email.endsWith("@static-quetato.com");
-  if (!isStatic) {
+  // 1. Ensure at least one field is being updated
+  if (newUsername === undefined && newSkillLevel === undefined) {
     throw new AppError(
-      "Forbidden: Cannot modify non-static player profiles through this endpoint",
-      403,
+      "At least one property (username or skill level) must be provided for update",
+      400,
     );
   }
 
-  // 3. Perform the update restricted ONLY to the username field
-  const updatedPlayer = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      username: newUsername.trim(),
-      // Explicitly omit updating email, password, or roles here
-    },
-  });
+  // 2. Validate username if provided
+  if (newUsername !== undefined) {
+    if (!newUsername || newUsername.trim().length === 0) {
+      throw new AppError("New username cannot be empty", 400);
+    }
+  }
 
-  return updatedPlayer;
+  // 3. Validate skill level if provided
+  if (newSkillLevel !== undefined) {
+    if (!Object.values(SkillLevel).includes(newSkillLevel)) {
+      throw new AppError(`Invalid skill level: ${newSkillLevel}`, 400);
+    }
+  }
+
+  // 🌟 Wrap everything in an interactive transaction to handle sequential checks securely
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get the admin's CommunityPlayer record for authorization
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 2. Enforce allowed administrator roles
+    const allowedRoles = ["admin", "host", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 3. Fetch the target user to verify they are a static account
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) throw new AppError("Player not found", 404);
+
+    // 4. Enforce the "Static Only" guard rail
+    const isStatic = user.email.endsWith("@static-quetato.com");
+    if (!isStatic) {
+      throw new AppError(
+        "Forbidden: Cannot modify non-static player profiles through this endpoint",
+        403,
+      );
+    }
+
+    // 5. Dynamically construct the update payload
+    const updateData = {};
+    if (newUsername !== undefined) {
+      updateData.username = newUsername.trim();
+    }
+    if (newSkillLevel !== undefined) {
+      updateData.skillLevel = newSkillLevel; // 🌟 Fixed typo (was 'skillLevel')
+    }
+
+    // 6. Perform the update locked safely to the transaction context (tx)
+    const updatedPlayer = await tx.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return updatedPlayer;
+  });
 };
 
-export const deleteStaticPlayer = async (communityId, userId) => {
-  if (!communityId || !userId) {
-    throw new AppError("Community ID and User ID are required", 400);
-  }
-
-  // 1. Verify the user exists and check if they are actually a static player
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-
-  if (!user) throw new AppError("Player not found", 404);
-
-  // Guardrail: Safety check to prevent deleting non-static accounts
-  const isStatic = user.email.endsWith("@static-quetato.com");
-  if (!isStatic) {
+export const deleteStaticPlayer = async (communityId, userId, authorizedId) => {
+  if (!communityId || !userId || !authorizedId) {
     throw new AppError(
-      "Forbidden: Cannot delete non-static players through this endpoint",
-      403,
+      "Community ID, User ID, and Authorization ID are required",
+      400,
     );
   }
 
-  // 2. Perform the deletions inside a transaction
-  await prisma.$transaction(async (tx) => {
-    // Delete the relation record first (to avoid foreign key constraint errors)
+  // 🌟 Perform all validation checks and deletions inside a single interactive transaction
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get the admin's CommunityPlayer record for authorization
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 2. Enforce allowed administrator roles
+    const allowedRoles = ["admin", "host", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 3. Verify the user exists and check if they are actually a static player
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) throw new AppError("Player not found", 404);
+
+    // 4. Guardrail: Safety check to prevent deleting non-static accounts
+    const isStatic = user.email.endsWith("@static-quetato.com");
+    if (!isStatic) {
+      throw new AppError(
+        "Forbidden: Cannot delete non-static players through this endpoint",
+        403,
+      );
+    }
+
+    // 5. Delete the relation record first (avoids foreign key constraint errors)
     await tx.communityPlayer.deleteMany({
       where: {
         communityId: communityId,
@@ -174,11 +286,11 @@ export const deleteStaticPlayer = async (communityId, userId) => {
       },
     });
 
-    // Delete the actual static user record
+    // 6. Delete the actual static user record
     await tx.user.delete({
       where: { id: userId },
     });
-  });
 
-  return { success: true, message: "Static player deleted successfully" };
+    return { success: true, message: "Static player deleted successfully" };
+  });
 };

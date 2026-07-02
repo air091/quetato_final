@@ -5,6 +5,18 @@ import PlayerGameHistory from "../PlayerGameHistory"; // 🌟 Import history mod
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../PlayerAvatar";
 
+// Map to look up readable labels for read-only user views
+const SKILL_LEVEL_LABELS = {
+  LB: "Low Beginner",
+  BEG: "Beginner",
+  HG: "High Beginner",
+  LI: "Low Intermediate",
+  INT: "Intermediate",
+  UI: "Upper Intermediate",
+  ADV: "Advanced",
+  EXP: "Experience",
+};
+
 const PlayerSettings = ({
   player,
   onClose,
@@ -18,14 +30,18 @@ const PlayerSettings = ({
   const [isGameHistoryOpen, setIsGameHistoryOpen] = useState(false); // 🌟 Local sub-modal tracker
 
   const initialUsername = player?.sessionPlayer?.communityPlayer?.username;
+  const initialSkillLevel =
+    player?.sessionPlayer?.communityPlayer?.skillLevel || "BEG";
 
   const [username, setUsername] = useState(initialUsername);
+  const [skillLevel, setSkillLevel] = useState(initialSkillLevel); // 🌟 State for skill level
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     setUsername(initialUsername);
-  }, [initialUsername]);
+    setSkillLevel(initialSkillLevel);
+  }, [initialUsername, initialSkillLevel]);
 
   const updatePosition = () => {
     if (toggleButtonRef?.current) {
@@ -72,7 +88,11 @@ const PlayerSettings = ({
         `http://localhost:8000/api/players/${targetId}/static`,
         {
           method: "PUT",
-          body: JSON.stringify({ username: username.trim() }),
+          // 🌟 Pass both username and skillLevel to your backend payload
+          body: JSON.stringify({
+            username: username.trim(),
+            skillLevel: skillLevel,
+          }),
         },
       );
       const resData = await res.json();
@@ -89,7 +109,6 @@ const PlayerSettings = ({
 
   if (!isReady) return null;
 
-  console.log(player);
   return (
     <>
       {createPortal(
@@ -145,8 +164,9 @@ const PlayerSettings = ({
                 />
               )}
             </div>
+
             {/* Skill level */}
-            <div>
+            <div className="flex flex-col gap-y-0.5">
               <label
                 htmlFor="skill-level"
                 className="text-[10px] font-medium uppercase tracking-wider text-gray-400 block"
@@ -154,13 +174,18 @@ const PlayerSettings = ({
                 Skill level
               </label>
               {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
-                <span className="w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
-                  {username}
+                // 🌟 Display the readable mapped text value instead of the username
+                <span className="block w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
+                  {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
                 </span>
               ) : (
+                // 🌟 Controlled select element tied to local skillLevel state
                 <select
                   name="skill-level"
                   id="skill-level"
+                  value={skillLevel}
+                  onChange={(e) => setSkillLevel(e.target.value)}
+                  disabled={isUpdating}
                   className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
                 >
                   <option value="LB">Low Beginner</option>

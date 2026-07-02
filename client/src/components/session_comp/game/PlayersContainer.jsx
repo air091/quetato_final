@@ -136,7 +136,7 @@ export const PlayerCard = ({
               title="Skill Level"
               className="text-[9px] bg-white px-0.5 rounded-full"
             >
-              BEG
+              {player?.sessionPlayer?.communityPlayer.skillLevel}
             </span>
           </div>
         </div>
@@ -357,7 +357,7 @@ const DraggablePlayer = ({
                   <span className="text-[10px]">{totalGames}</span>
                 </span>
                 <span className="text-[9px] bg-white px-0.5 rounded-full">
-                  BEG
+                  {player?.sessionPlayer?.communityPlayer.skillLevel}
                 </span>
               </div>
             </div>

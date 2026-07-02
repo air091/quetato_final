@@ -4,7 +4,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routers/auth.route.js";
 import communityRoutes from "./routers/community.route.js";
-import staticPlayerRoutes from "./routers/staticPlayer.route.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,7 +20,6 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/communities", communityRoutes);
-app.use("/api/players", staticPlayerRoutes);
 
 const startServer = async () => {
   try {

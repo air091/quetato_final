@@ -38,7 +38,9 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
         select: {
           id: true,
           role: true,
-          communityPlayer: { select: { id: true, username: true, type: true } },
+          communityPlayer: {
+            select: { id: true, username: true, type: true, skillLevel: true },
+          },
         },
       },
 
