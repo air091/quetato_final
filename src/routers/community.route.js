@@ -41,6 +41,7 @@ import {
 import {
   acceptPlayerController,
   getAllSessionPlayersController,
+  getStaticPlayersNotInSessionController,
   removePlayerFromSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import { getPlayerGameHistoryController } from "../controllers/gameHistory.controller.js";
@@ -100,6 +101,11 @@ router.delete("/:communityId/sessions/:sessionId", deleteSessionController);
 router.get(
   "/:communityId/sessions/:sessionId/players",
   getAllSessionPlayersController,
+);
+
+router.get(
+  "/:communityId/sessions/:sessionId/players/static",
+  getStaticPlayersNotInSessionController,
 );
 
 router.post(

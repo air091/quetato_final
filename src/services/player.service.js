@@ -120,7 +120,11 @@ export const getStaticPlayersNotInSession = async (
         },
       },
     },
-    include: {
+    select: {
+      id: true,
+      communityId: true,
+      role: true,
+      // ⬇️ Move your relation query inside the select block instead of include!
       communityPlayer: {
         select: {
           id: true,
