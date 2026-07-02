@@ -72,7 +72,7 @@ const AllPlayers = () => {
               .map((player) => (
                 <div
                   key={player.id}
-                  className="relative flex items-center justify-between border min-w-[182px] px-2 py-1 rounded"
+                  className="relative flex items-center justify-between border min-w-[210px] px-2 py-1 rounded"
                 >
                   <PlayerCard player={player} />
                 </div>
@@ -93,7 +93,7 @@ const AllPlayers = () => {
               .map((player) => (
                 <div
                   key={player.id}
-                  className="relative flex items-center justify-between border min-w-[182px] px-2 py-1 rounded"
+                  className="relative flex items-center justify-between border min-w-[210px] px-2 py-1 rounded"
                 >
                   <PlayerCard player={player} />
                 </div>

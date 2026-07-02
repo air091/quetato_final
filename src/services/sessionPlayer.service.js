@@ -174,3 +174,5 @@ export const acceptPlayer = async (
     });
   });
 };
+
+export const removePlayerFromSession = async () => {};

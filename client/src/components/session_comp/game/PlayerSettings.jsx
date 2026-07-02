@@ -10,7 +10,6 @@ const PlayerSettings = ({
   toggleButtonRef,
   onUpdatePlayerStatus,
 }) => {
-  console.log(player);
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
@@ -89,6 +88,7 @@ const PlayerSettings = ({
 
   if (!isReady) return null;
 
+  console.log(player);
   return (
     <>
       {createPortal(
@@ -102,18 +102,31 @@ const PlayerSettings = ({
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onDragStart={(e) => e.preventDefault()}
-          className="w-48 bg-white border rounded-md shadow-lg p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-100"
+          className="w-48 bg-white border rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-100"
         >
-          <form onSubmit={handleSubmit} className="space-y-2">
+          <header className="bg-stone-800 p-2">
+            <h5 className="font-bold text-[12px] text-stone-100">
+              Player Settings
+            </h5>
+            <div className="w-full flex items-center justify-between ">
+              <span className="text-[12px] font-medium text-stone-100">
+                {username}
+              </span>
+              <span className="text-[12px] font-medium text-stone-100">
+                {player?.sessionPlayer?.role}
+              </span>
+            </div>
+          </header>
+          <form onSubmit={handleSubmit} className="space-y-2  p-2">
             <div className="flex flex-col gap-y-0.5">
               <label
                 htmlFor="name"
-                className="text-[10px] font-bold uppercase tracking-wider text-gray-400"
+                className="text-[10px] font-medium uppercase tracking-wider text-gray-400"
               >
                 Name
               </label>
               {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
-                <span className="w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
+                <span className="block w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
                   {username}
                 </span>
               ) : (
@@ -128,6 +141,35 @@ const PlayerSettings = ({
                 />
               )}
             </div>
+            {/* Skill level */}
+            <div>
+              <label
+                htmlFor="skill-level"
+                className="text-[10px] font-medium uppercase tracking-wider text-gray-400 block"
+              >
+                Skill level
+              </label>
+              {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
+                <span className="w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
+                  {username}
+                </span>
+              ) : (
+                <select
+                  name="skill-level"
+                  id="skill-level"
+                  className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
+                >
+                  <option value="LB">Low Beginner</option>
+                  <option value="BEG">Beginner</option>
+                  <option value="HG">High Beginner</option>
+                  <option value="LI">Low Intermediate</option>
+                  <option value="INT">Intermediate</option>
+                  <option value="UI">Upper Intermediate</option>
+                  <option value="ADV">Advanced</option>
+                  <option value="EXP">Experience</option>
+                </select>
+              )}
+            </div>
 
             {/* 🌟 Hooked click handler to open history modal overlay */}
             <button
@@ -137,7 +179,6 @@ const PlayerSettings = ({
             >
               Game History
             </button>
-
             <div className="flex gap-x-1.5 pt-1">
               <button
                 type="submit"

@@ -9,6 +9,7 @@ const PlayerCard = ({ player }) => {
   const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
+  const [winGames, setWinGames] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const toggleButtonRef = useRef(null);
 
@@ -27,10 +28,12 @@ const PlayerCard = ({ player }) => {
           const resJson = await response.json();
           if (resJson.success && resJson.results?.summary) {
             setTotalGames(resJson.results.summary.totalGames || 0);
+            setWinGames(resJson.results.summary.totalWins || 0);
           }
         } else if (response && response.success && response.results?.summary) {
           // Fallback if fetchWithAuth already un-wraps response json natively
           setTotalGames(response.results.summary.totalGames || 0);
+          setWinGames(response.results.summary.totalWins || 0);
         }
       } catch (error) {
         console.error("Error fetching match history count for card:", error);
@@ -52,15 +55,17 @@ const PlayerCard = ({ player }) => {
             <span className="font-semibold leading-0 text-[12px]">
               {player.sessionPlayer?.communityPlayer?.username}
             </span>
-            <div className="flex items-center gap-x-1 font-medium">
+            <div className="flex items-center gap-x-2 font-medium">
               <span title="Games" className="flex items-center gap-x-0.5">
-                <Gamepad2 size={12} />
-                <span className="text-[10px]">{totalGames}</span>{" "}
-                {/* 🌟 Updated from 0 */}
+                <Gamepad2 size={14} />
+                <span className="text-[10px]">
+                  <span className="text-[14px] text-amber-500">{winGames}</span>
+                  /{totalGames}
+                </span>
               </span>
 
               {player.sessionPlayer?.communityPlayer?.type === "static" && (
-                <span className="text-[8px] bg-gray-500/30 text-black rounded-full px-1 w-fit">
+                <span className="text-[10px] bg-gray-500/30 text-black rounded-full px-1 w-fit">
                   {player.sessionPlayer?.communityPlayer.type}
                 </span>
               )}
@@ -68,7 +73,7 @@ const PlayerCard = ({ player }) => {
               {["owner", "admin", "host"].includes(
                 player.sessionPlayer?.role,
               ) && (
-                <span className="text-[8px] bg-blue-500/80 text-blue-100 rounded-full px-1 w-fit capitalize">
+                <span className="text-[10px] bg-blue-500/80 text-blue-100 rounded-full px-1 w-fit capitalize">
                   {player.sessionPlayer?.role}
                 </span>
               )}

@@ -20,6 +20,7 @@ const DraggableSlotPlayer = ({
   player,
   onRefreshData,
   totalGames,
+  isOverdue,
 }) => {
   const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false); // 🌟 Settings toggle state
   const playerButtonRef = useRef(null); // 🌟 Structural tracking anchor ref
@@ -43,16 +44,35 @@ const DraggableSlotPlayer = ({
   const currentStatus = player?.gameStatus || "waiting";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
+  const overdueStyle =
+    isOverdue && !isDragging
+      ? {
+          animation: "borderPulse 1.5s infinite ease-in-out",
+          borderWidth: "1.5px",
+        }
+      : {};
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, ...overdueStyle }}
       {...listeners}
       {...attributes}
       className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
+      {/* 🌟 Injected scoped keyframes to isolate the pulse strictly to border-color */}
+      {isOverdue && !isDragging && (
+        <style>{`
+          @keyframes borderPulse {
+            0% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4); }
+            50% { border-color: rgba(220, 38, 38, 0.2); box-shadow: 0 0 0 1px rgba(220, 38, 38, 0); }
+            100% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4); }
+          }
+        `}</style>
+      )}
+
       <div className="flex items-center gap-x-2">
         <PlayerAvatar
           username={username}
@@ -104,12 +124,17 @@ const DraggableSlotPlayer = ({
 
         {/* 🌟 PlayerSettings Modal Trigger Portal */}
         {isPlayerSettingsOpen && (
-          <PlayerSettings
-            player={player}
-            toggleButtonRef={playerButtonRef}
-            onClose={() => setIsPlayerSettingsOpen(false)}
-            onUpdatePlayerStatus={onRefreshData}
-          />
+          <div
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <PlayerSettings
+              player={player}
+              toggleButtonRef={playerButtonRef}
+              onClose={() => setIsPlayerSettingsOpen(false)}
+              onUpdatePlayerStatus={onRefreshData}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -130,6 +155,8 @@ const CourtSlot = ({
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
+  const [isOverdue, setIsOverdue] = useState(false);
+
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
     data: {
@@ -154,6 +181,25 @@ const CourtSlot = ({
     matchedPoolPlayer?.id ||
     matchedPoolPlayer?.sessionPlayer?.id ||
     slotData?.sessionPlayerId;
+
+  // 🌟 Active threshold check effect monitoring the 20-minute marker
+  const timestamp =
+    matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt;
+  useEffect(() => {
+    const checkOverdueStatus = () => {
+      if (!timestamp) {
+        setIsOverdue(false);
+        return;
+      }
+      const startTime = new Date(timestamp).getTime();
+      const elapsedMinutes = (Date.now() - startTime) / 1000 / 60;
+      setIsOverdue(elapsedMinutes >= 20);
+    };
+
+    checkOverdueStatus();
+    const intervalId = setInterval(checkOverdueStatus, 1000);
+    return () => clearInterval(intervalId);
+  }, [timestamp]);
 
   useEffect(() => {
     const fetchPlayerGamesCount = async () => {
@@ -202,12 +248,15 @@ const CourtSlot = ({
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
   const LiveTimerNode = hasPlayer ? (
-    <PlayerTimer
-      timestamp={
-        matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt
-      }
-    />
+    <PlayerTimer timestamp={timestamp} />
   ) : null;
+
+  const overduePlaceholderStyle = isOverdue
+    ? {
+        animation: "borderPulse 1.5s infinite ease-in-out",
+        borderWidth: "1.5px",
+      }
+    : {};
 
   return (
     <div
@@ -236,10 +285,12 @@ const CourtSlot = ({
             player={matchedPoolPlayer}
             onRefreshData={onRefreshData}
             totalGames={totalGames}
+            isOverdue={isOverdue}
           />
 
           {draggableProps.isDragging && (
             <div
+              style={overduePlaceholderStyle}
               className={`absolute inset-1 flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10 ${bgTheme}`}
             >
               <div className="flex items-center gap-x-2">

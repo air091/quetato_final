@@ -20,6 +20,7 @@ const DraggableSlotPlayer = ({
   player,
   onRefreshData,
   totalGames,
+  isOverdue,
 }) => {
   const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false);
   const playerButtonRef = useRef(null);
@@ -43,16 +44,35 @@ const DraggableSlotPlayer = ({
   const currentStatus = player?.gameStatus || "waiting";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
+  const overdueStyle =
+    isOverdue && !isDragging
+      ? {
+          animation: "borderPulse 1.5s infinite ease-in-out",
+          borderWidth: "1.5px",
+        }
+      : {};
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, ...overdueStyle }} // 🌟 Combined existing styles with overdueStyle
       {...listeners}
       {...attributes}
       className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
+      {/* 🌟 Injected scoped keyframes to isolate the pulse strictly to border-color */}
+      {isOverdue && !isDragging && (
+        <style>{`
+          @keyframes borderPulse {
+            0% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4); }
+            50% { border-color: rgba(220, 38, 38, 0.2); box-shadow: 0 0 0 1px rgba(220, 38, 38, 0); }
+            100% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4); }
+          }
+        `}</style>
+      )}
+
       <div className="flex items-center gap-x-1">
         <PlayerAvatar
           username={username}
@@ -129,6 +149,7 @@ const CourtSlot = ({
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
+  const [isOverdue, setIsOverdue] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
@@ -139,11 +160,30 @@ const CourtSlot = ({
     },
   });
 
-  // 🌟 FIX: Robust lookup fallback for nested target primary IDs
+  // Robust lookup fallback for nested target primary IDs
   const stablePlayerId =
     matchedPoolPlayer?.id ||
     matchedPoolPlayer?.sessionPlayer?.id ||
     slotData?.sessionPlayerId;
+
+  // 🌟 Active threshold check effect monitoring the 20-minute marker
+  const timestamp =
+    matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt;
+  useEffect(() => {
+    const checkOverdueStatus = () => {
+      if (!timestamp) {
+        setIsOverdue(false);
+        return;
+      }
+      const startTime = new Date(timestamp).getTime();
+      const elapsedMinutes = (Date.now() - startTime) / 1000 / 60;
+      setIsOverdue(elapsedMinutes >= 20);
+    };
+
+    checkOverdueStatus();
+    const intervalId = setInterval(checkOverdueStatus, 1000);
+    return () => clearInterval(intervalId);
+  }, [timestamp]);
 
   useEffect(() => {
     const fetchPlayerGamesCount = async () => {
@@ -193,14 +233,10 @@ const CourtSlot = ({
   const hasPlayer = slotData && matchedPoolPlayer && username;
 
   const LiveTimerNode = hasPlayer ? (
-    <PlayerTimer
-      timestamp={
-        matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt
-      }
-    />
+    <PlayerTimer timestamp={timestamp} />
   ) : null;
 
-  // 🌟 Dynamic background mapping based on required gameStatuses rules
+  // Dynamic background mapping based on required gameStatuses rules
   const statusBgClasses = {
     waiting: "bg-stone-100 border-gray-500 text-gray-800",
     queued: "bg-amber-100 border-amber-500 text-amber-900",
@@ -210,6 +246,13 @@ const CourtSlot = ({
 
   const currentStatus = matchedPoolPlayer?.gameStatus || "waiting";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+
+  const overduePlaceholderStyle = isOverdue
+    ? {
+        animation: "borderPulse 1.5s infinite ease-in-out",
+        borderWidth: "1.5px",
+      }
+    : {};
 
   return (
     <div
@@ -238,10 +281,12 @@ const CourtSlot = ({
             player={matchedPoolPlayer}
             onRefreshData={onRefreshData}
             totalGames={totalGames}
+            isOverdue={isOverdue}
           />
 
           {draggableProps.isDragging && (
             <div
+              style={overduePlaceholderStyle}
               className={`absolute inset-1 flex items-center justify-between p-1 ${bgTheme} rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-10`}
             >
               <div className="flex items-center gap-x-1">
@@ -565,6 +610,7 @@ const MatchCourt = ({
               y2="100"
               stroke="rgba(200, 200, 200, 0.8)"
               strokeWidth="1.5"
+              warm
             />
             <line
               x1="50"

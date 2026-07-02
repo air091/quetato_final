@@ -31,10 +31,8 @@ export const PlayerTimer = ({ timestamp }) => {
 
   useEffect(() => {
     const updateTimer = () => {
-      // 1. Update the display text
       setDisplayTime(formatElapsedTime(timestamp));
 
-      // 2. Calculate raw minutes elapsed to determine color thresholds
       if (!timestamp) {
         setColorClass("text-gray-500");
         return;
@@ -44,9 +42,8 @@ export const PlayerTimer = ({ timestamp }) => {
       const now = Date.now();
       const elapsedMinutes = (now - startTime) / 1000 / 60;
 
-      // 3. Set the appropriate threshold color
       if (elapsedMinutes >= 20) {
-        setColorClass("text-red-500 font-semibold animate-pulse"); // Optional: added pulse for high urgency
+        setColorClass("text-red-500 font-semibold animate-pulse");
       } else if (elapsedMinutes >= 15) {
         setColorClass("text-yellow-500 font-semibold");
       } else {
@@ -54,7 +51,6 @@ export const PlayerTimer = ({ timestamp }) => {
       }
     };
 
-    // Run immediately on mount/timestamp change
     updateTimer();
 
     const intervalId = setInterval(updateTimer, 1000);
@@ -81,8 +77,8 @@ export const PlayerCard = ({
   player,
   onRefreshData,
   totalGames,
+  isOverdue,
 }) => {
-  // 🌟 Dynamic background mapping based on required gameStatuses rules
   const statusBgClasses = {
     waiting: "bg-white border-gray-500 text-gray-800",
     queued: "bg-amber-200 border-amber-500 text-amber-900",
@@ -93,12 +89,34 @@ export const PlayerCard = ({
   const currentStatus = player?.gameStatus || "waiting";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
+  // 🌟 Inject an explicit keyframe style targeting ONLY border-color
+  // so that content, text opacity, and base background variants remain unaffected.
+  const overdueStyle =
+    isOverdue && !isDragging
+      ? {
+          animation: "borderPulse 1.5s infinite ease-in-out",
+          borderWidth: "1.5px",
+        }
+      : {};
+
   return (
     <div
-      className={`w-full flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs ${bgTheme} ${
+      style={overdueStyle}
+      className={`w-full flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs transition-colors duration-300 ${bgTheme} ${
         isDragging ? "h-[41px] border-blue-500 shadow-md" : "h-full"
       }`}
     >
+      {/* CSS Keyframe definition injected directly for localized component handling */}
+      {isOverdue && !isDragging && (
+        <style>{`
+          @keyframes borderPulse {
+            0% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4); }
+            50% { border-color: rgba(220, 38, 38, 0.2); box-shadow: 0 0 0 1px rgba(220, 38, 38, 0); }
+            100% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4); }
+          }
+        `}</style>
+      )}
+
       <div className="flex items-center gap-x-1">
         <PlayerAvatar
           username={username}
@@ -130,7 +148,7 @@ export const PlayerCard = ({
           title="Settings"
           ref={toggleButtonRef}
           onClick={(e) => {
-            e.stopPropagation(); // Stop drag hooks from fighting click toggles
+            e.stopPropagation();
             onToggleSettings();
           }}
           className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-100 rounded-full"
@@ -151,7 +169,6 @@ export const PlayerCard = ({
   );
 };
 
-// Internal Draggable Component mirroring MatchCourt's structure
 const DraggableSlotPlayer = ({
   username,
   timer,
@@ -166,6 +183,7 @@ const DraggableSlotPlayer = ({
   player,
   onRefreshData,
   totalGames,
+  isOverdue,
 }) => {
   const style = {
     transform:
@@ -195,6 +213,7 @@ const DraggableSlotPlayer = ({
         player={player}
         onRefreshData={onRefreshData}
         totalGames={totalGames}
+        isOverdue={isOverdue}
       />
     </div>
   );
@@ -209,14 +228,32 @@ const DraggablePlayer = ({
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
+  const [isOverdue, setIsOverdue] = useState(false);
+
   const draggableProps = useDraggable({
     id: `draggable-player-container-${player.id}`,
     data: { player: { ...player, totalGames } },
   });
 
   const stablePlayerId = player?.id;
+  const timestamp = player.updateStatus || player.updatedAt;
 
-  // 🌟 FIX: Keep this state local to the card so it doesn't rely on parent props!
+  useEffect(() => {
+    const checkOverdueStatus = () => {
+      if (!timestamp) {
+        setIsOverdue(false);
+        return;
+      }
+      const startTime = new Date(timestamp).getTime();
+      const elapsedMinutes = (Date.now() - startTime) / 1000 / 60;
+      setIsOverdue(elapsedMinutes >= 20);
+    };
+
+    checkOverdueStatus();
+    const intervalId = setInterval(checkOverdueStatus, 1000);
+    return () => clearInterval(intervalId);
+  }, [timestamp]);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
 
@@ -252,9 +289,7 @@ const DraggablePlayer = ({
     player.updateStatus,
   ]);
 
-  const LiveTimerNode = (
-    <PlayerTimer timestamp={player.updateStatus || player.updatedAt} />
-  );
+  const LiveTimerNode = <PlayerTimer timestamp={timestamp} />;
 
   const handleToggleSettings = () => {
     setIsSettingsOpen((prev) => !prev);
@@ -269,6 +304,14 @@ const DraggablePlayer = ({
 
   const currentStatus = player?.gameStatus || "waiting";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+
+  // 🌟 Same border animation settings applied to the placeholder card layout variation
+  const overduePlaceholderStyle = isOverdue
+    ? {
+        animation: "borderPulse 1.5s infinite ease-in-out",
+        borderWidth: "1.5px",
+      }
+    : {};
 
   return (
     <div
@@ -289,11 +332,13 @@ const DraggablePlayer = ({
           player={player}
           onRefreshData={onRefreshData}
           totalGames={totalGames}
+          isOverdue={isOverdue}
         />
       </div>
 
       {draggableProps.isDragging && (
         <div
+          style={overduePlaceholderStyle}
           className={`absolute inset-0 flex items-center justify-between p-2 ${bgTheme} rounded-md border text-sm font-medium select-none text-gray-800 pointer-events-none z-0`}
         >
           <div className="flex items-center gap-x-1">
@@ -338,7 +383,7 @@ const PlayersContainer = ({
   sessionId,
 }) => {
   const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState(""); // 🌟 Added search query state
+  const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
@@ -351,14 +396,11 @@ const PlayersContainer = ({
     };
   }, [searchQuery]);
 
-  // 🌟 Filter based on both the active status tab AND the text search string
   const filteredPlayers = players.filter((player) => {
-    // 1. Tab filtering
     if (activeTab !== "all" && player?.gameStatus !== activeTab) {
       return false;
     }
 
-    // 2. Search query filtering
     const username = (
       player?.sessionPlayer?.communityPlayer?.username ||
       player?.communityPlayer?.username ||
@@ -381,13 +423,13 @@ const PlayersContainer = ({
               type="text"
               placeholder="Search player"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)} // 🌟 Handle live typing
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="border w-full max-w-[240px] text-xs text-gray-800 rounded-full pl-8 pr-8 py-1 focus:outline-none focus:border-gray-400"
             />
             <span className="absolute top-1.5 left-2.5 text-gray-400">
               <Search size={14} />
             </span>
-            {searchQuery && ( // 🌟 Clear button conditional visibility
+            {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
                 className="absolute top-1.5 right-2.5 text-gray-400 hover:text-gray-600 cursor-pointer"
