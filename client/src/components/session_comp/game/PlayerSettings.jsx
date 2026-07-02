@@ -228,6 +228,7 @@ const PlayerSettings = ({
               >
                 Cancel
               </button>
+              <button>Remove</button>
             </div>
           </form>
         </div>,

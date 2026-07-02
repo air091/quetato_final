@@ -72,6 +72,74 @@ export const getPlayerById = async (communityId, playerId) => {
   return player;
 };
 
+export const getStaticPlayersNotInSession = async (
+  communityId,
+  sessionId,
+  authorizedId,
+) => {
+  // 1. Authorization check: Ensure the operator is part of the community and holds an administrative role
+  const operatorRole = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { role: true },
+  });
+
+  const validRoles = ["owner", "admin", "host"];
+  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+    throw new Error(
+      "Unauthorized: Only community owners, admins, or hosts can view available static rosters.",
+    );
+  }
+
+  // 2. Verify the session exists and belongs to the specified community
+  const sessionExists = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      communityId: communityId,
+    },
+  });
+
+  if (!sessionExists) {
+    throw new Error("Session not found within this community.");
+  }
+
+  // 3. Query community players that are static users AND don't have a row in SessionPlayer for this sessionId
+  const availableStaticPlayers = await prisma.communityPlayer.findMany({
+    where: {
+      communityId: communityId,
+      communityPlayer: {
+        type: "static", // 🎯 Filter by the UserType.static enum value[cite: 9]
+      },
+      sessionPlayers: {
+        none: {
+          sessionId: sessionId, // 🙅‍♂️ Exclude players already linked to this session[cite: 9]
+        },
+      },
+    },
+    include: {
+      communityPlayer: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          skillLevel: true,
+          type: true,
+          createdAt: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return availableStaticPlayers;
+};
+
 export const createStaticPlayers = async (
   communityId,
   usernames,

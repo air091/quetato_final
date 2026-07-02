@@ -1,3 +1,4 @@
+import { GameStatus } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
@@ -177,4 +178,77 @@ export const acceptPlayer = async (
   });
 };
 
-export const removePlayerFromSession = async () => {};
+export const removePlayerFromSession = async (
+  communityId,
+  sessionId,
+  playerId,
+  authorizedId,
+) => {
+  // 1. Verify the targeted session exists and belongs to the community
+  const session = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      communityId: communityId,
+    },
+  });
+
+  if (!session) {
+    throw new Error("Session not found within the specified community.");
+  }
+
+  // 2. Authorization check: Ensure the operator is part of the community and holds an administrative role
+  const operatorRole = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { role: true },
+  });
+
+  const validRoles = ["owner", "admin", "host"];
+  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+    throw new Error(
+      "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
+    );
+  }
+
+  // 3. Find the target SessionPlayer record
+  // Checking by record ID or by structural cross-lookup mapping
+  const targetSessionPlayer = await prisma.sessionPlayer.findFirst({
+    where: {
+      playerId,
+      sessionId: sessionId,
+    },
+    include: {
+      courtSlot: true, // Pull slot placements to verify court status
+    },
+  });
+
+  if (!targetSessionPlayer) {
+    throw new Error("The player is not registered in this session.");
+  }
+
+  // 4. Protection Guard: Prevent removing a player if they are actively playing or queued on a court
+  if (targetSessionPlayer.gameStatus === GameStatus.playing) {
+    throw new Error(
+      "Cannot remove player: They are currently assigned to an active court or queue slot.",
+    );
+  }
+
+  // 5. Execute deletion in an isolated transaction block
+  return await prisma.$transaction(async (tx) => {
+    const deletedPlayer = await tx.sessionPlayer.delete({
+      where: {
+        id: targetSessionPlayer.id,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Player removed from the session successfully.",
+      deletedPlayer,
+    };
+  });
+};

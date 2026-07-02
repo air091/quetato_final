@@ -41,6 +41,7 @@ import {
 import {
   acceptPlayerController,
   getAllSessionPlayersController,
+  removePlayerFromSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import { getPlayerGameHistoryController } from "../controllers/gameHistory.controller.js";
 
@@ -104,6 +105,11 @@ router.get(
 router.post(
   "/:communityId/sessions/:sessionId/:communityPlayerId/accept",
   acceptPlayerController,
+);
+
+router.delete(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/remove",
+  removePlayerFromSessionController,
 );
 
 // SESSION GAMES
