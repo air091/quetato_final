@@ -11,20 +11,31 @@ const PRESET_COLORS = [
   "bg-cyan-500 text-white border-cyan-600",
 ];
 
+// Master size configuration covering layout classes for both images and divs
+const SIZE_MAP = {
+  sm: { dimensions: "w-6 h-6", font: "text-[10px] font-bold" },
+  md: { dimensions: "w-8 h-8", font: "text-[12px] font-bold tracking-wider" },
+  lg: { dimensions: "w-12 h-12", font: "text-[16px] font-bold tracking-wide" },
+  xl: { dimensions: "w-16 h-16", font: "text-[24px] font-bold" },
+};
+
 const PlayerAvatar = ({
   username = "Unknown Player",
-  size = "md",
+  size = "md", // 🌟 Changed prop name to "size" to prevent variable collisions
   customImageUrl,
 }) => {
+  // Resolve the sizing safely or fallback to medium structure
+  const currentSize = SIZE_MAP[size] || SIZE_MAP.md;
+  const baseImgClasses =
+    "rounded-full object-cover border shadow-xs select-none pointer-events-none";
+
   // If the player already has a custom uploaded avatar image, use it instead
   if (customImageUrl) {
     return (
       <img
         src={customImageUrl}
         alt={`${username}'s profile`}
-        className={`rounded-full object-cover border shadow-xs select-none pointer-events-none ${
-          size === "sm" ? "w-6 h-6" : size === "lg" ? "w-12 h-12" : "w-8 h-8"
-        }`}
+        className={`${baseImgClasses} ${currentSize.dimensions}`} // 🌟 Uses standard dimension classes map
       />
     );
   }
@@ -42,25 +53,17 @@ const PlayerAvatar = ({
   }
 
   // 2. Pick a stable background color index based on username hash string code
-  // This ensures the same player always gets the exact same background color across views
   const hash = Array.from(username).reduce(
     (acc, char) => acc + char.charCodeAt(0),
     0,
   );
   const colorClass = PRESET_COLORS[hash % PRESET_COLORS.length];
 
-  // 3. Define size classes
-  const sizeClasses = {
-    sm: "w-6 h-6 text-[10px] font-bold",
-    md: "w-8 h-8 text-[12px] font-bold tracking-wider",
-    lg: "w-12 h-12 text-[16px] font-bold tracking-wide",
-  };
-
   return (
     <div
       className={`flex items-center justify-center rounded-full border shadow-xs select-none pointer-events-none uppercase font-mono ${
-        sizeClasses[size] || sizeClasses.md
-      } ${colorClass}`}
+        currentSize.dimensions
+      } ${currentSize.font} ${colorClass}`}
     >
       {initials}
     </div>

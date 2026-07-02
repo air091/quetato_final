@@ -90,8 +90,9 @@ export const getStaticPlayersNotInSession = async (
 
   const validRoles = ["owner", "admin", "host"];
   if (!operatorRole || !validRoles.includes(operatorRole.role)) {
-    throw new Error(
+    throw new AppError(
       "Unauthorized: Only community owners, admins, or hosts can view available static rosters.",
+      403,
     );
   }
 
@@ -104,7 +105,7 @@ export const getStaticPlayersNotInSession = async (
   });
 
   if (!sessionExists) {
-    throw new Error("Session not found within this community.");
+    throw new AppError("Session not found within this community.", 400);
   }
 
   // 3. Query community players that are static users AND don't have a row in SessionPlayer for this sessionId
