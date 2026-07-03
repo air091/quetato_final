@@ -15,7 +15,7 @@ import PlayerAvatar from "../../PlayerAvatar";
 const SKILL_LEVEL_LABELS = {
   LB: "Low Beginner",
   BEG: "Beginner",
-  HG: "High Beginner",
+  HB: "High Beginner",
   LI: "Low Intermediate",
   INT: "Intermediate",
   UI: "Upper Intermediate",

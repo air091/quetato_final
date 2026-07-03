@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { ChevronDown, EllipsisVertical } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
+import AddStaticPlayer from "../../../../../components/community_comp/players/AddStaticPlayer";
 
 const All = () => {
   const { fetchWithAuth, user } = useAuth();
@@ -11,7 +12,8 @@ const All = () => {
   const [players, setPlayers] = useState([]);
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
   const [isUserMinimized, setIsUserMinimized] = useState(false);
-
+  const [isAddStaticPlayerModalOpen, setIsAddStaticPlayerModalOpen] =
+    useState(false);
   // 🌟 State to track which settings dropdown is open and its button anchor ref
   const [activeMenu, setActiveMenu] = useState(null); // Structure: { playerId: string, ref: ReactRef }
 
@@ -64,9 +66,21 @@ const All = () => {
       <div className="p-2">
         <h4 className="font-medium text-[18px] text-stone-800">Players</h4>
         <div className="flex items-center gap-x-1">
-          <button className="block border px-2 py-0.5 text-[14px] font-medium cursor-pointer rounded-md mt-1 bg-stone-800 text-stone-100 hover:bg-stone-600">
+          <button
+            onClick={() => setIsAddStaticPlayerModalOpen(true)}
+            className="block border px-2 py-0.5 text-[14px] font-medium cursor-pointer rounded-md mt-1 bg-stone-800 text-stone-100 hover:bg-stone-600"
+          >
             Add static player
           </button>
+
+          <AddStaticPlayer
+            fetchWithAuth={fetchWithAuth}
+            communityId={communityId}
+            getAllSession={getAllSession}
+            isOpen={isAddStaticPlayerModalOpen}
+            setIsOpen={setIsAddStaticPlayerModalOpen}
+          />
+
           <select
             name="sort"
             id="sort"

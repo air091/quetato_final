@@ -199,6 +199,7 @@ export const createStaticPlayers = async (
           email: `${trimmedName}-${randomUUID()}@static-quetato.com`,
           password: `${trimmedName}-${randomUUID()}`,
           type: "static",
+          skillLevel,
           // Nested relation write: Creates the community player automatically!
           players: {
             create: {
