@@ -40,6 +40,7 @@ export const getAllPlayers = async (communityId, type = "all") => {
           id: true,
           username: true,
           type: true,
+          skillLevel: true,
         },
       },
     },

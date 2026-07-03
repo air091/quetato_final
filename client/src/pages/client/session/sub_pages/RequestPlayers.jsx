@@ -79,6 +79,7 @@ const RequestPlayers = () => {
 
   return (
     <div className="w-full max-w-[720px] mx-auto">
+      <h3 className="p-2 font-medium">All players</h3>
       <div className="p-2">
         <h4 className="font-medium text-[18px] text-stone-800">Players</h4>
         <select

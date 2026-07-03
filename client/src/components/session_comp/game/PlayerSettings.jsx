@@ -251,7 +251,7 @@ const PlayerSettings = ({
             <button
               type="button"
               onClick={() => setIsGameHistoryOpen(true)}
-              className="w-full text-left text-xs text-blue-600 py-0.5 font-medium cursor-pointer hover:underline"
+              className="w-full text-[10px] font-medium py-1 rounded cursor-pointer hover:bg-stone-200"
             >
               Game History
             </button>

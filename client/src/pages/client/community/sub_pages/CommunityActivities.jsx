@@ -5,14 +5,11 @@ import {
   SquarePen,
   Trash,
   ArrowUpDown,
-  ArrowUpNarrowWide,
-  ArrowDownWideNarrow,
   ArrowUp,
   ArrowDown,
   Search,
   X,
 } from "lucide-react";
-import Modal from "../../../../components/createPortal";
 import AddSessionModal from "../../../../components/community_comp/activities/AddSessionModal";
 import EditSessionModal from "../../../../components/community_comp/activities/EditSessionModal";
 
@@ -25,17 +22,14 @@ const CommunityActivities = () => {
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
 
-  // 1. Filter and Sorting States (Default to sorting by Name A-Z)
   const [status, setStatus] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [order, setOrder] = useState("asc");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
-  // ==================== ADDED DEBOUNCE LOGIC HERE ====================
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Debounce effect: waits 300ms after the last keystroke to update debouncedSearch
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -45,19 +39,15 @@ const CommunityActivities = () => {
       clearTimeout(handler);
     };
   }, [searchQuery]);
-  // ===================================================================
 
   const getAllSessions = useCallback(async () => {
     try {
-      // Build your URL Query parameters
       const queryParams = new URLSearchParams({
         sortBy,
         order,
       });
 
       if (status) queryParams.append("status", status);
-
-      // CHANGED: Use debouncedSearch instead of searchQuery here
       if (debouncedSearch.trim()) {
         queryParams.append("search", debouncedSearch.trim());
       }
@@ -82,18 +72,16 @@ const CommunityActivities = () => {
     } catch (error) {
       console.error("Get all sessions failed", error);
     }
-    // CHANGED: Added debouncedSearch to dependencies, removed searchQuery
   }, [accessToken, communityId, sortBy, order, status, debouncedSearch]);
 
   const deleteSession = useCallback(
     async (sessionId) => {
       if (!accessToken) return;
 
-      // 1. Save a backup of the current sessions in case we need to roll back
       let backupSessions;
 
       setSessions((prevSessions) => {
-        backupSessions = prevSessions; // Store the original state
+        backupSessions = prevSessions;
         return prevSessions.filter((session) => session.id !== sessionId);
       });
 
@@ -113,31 +101,23 @@ const CommunityActivities = () => {
         if (!response.ok) {
           throw new Error("Failed to delete the session");
         }
-
-        // If successful, do nothing! The UI is already updated.
       } catch (error) {
         console.error("Error deleting session, rolling back:", error);
-
-        // 2. 🚨 ERROR HANDLED: Put the data back if the API failed
         if (backupSessions) {
           setSessions(backupSessions);
         }
-
-        // Optional: Alert the user so they know why it came back
         alert("Could not delete session. Please try again.");
       }
     },
     [accessToken, communityId],
   );
 
-  // 3. Re-run fetch whenever dependencies change
   useEffect(() => {
     if (communityId && accessToken) {
       getAllSessions();
     }
   }, [getAllSessions, communityId, accessToken]);
 
-  // 4. Handle Column Header Click Toggles
   const handleSort = (columnKey) => {
     if (sortBy === columnKey) {
       setOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
@@ -149,18 +129,11 @@ const CommunityActivities = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-
     const date = new Date(dateString);
-
-    // Check if the date string parsed successfully
     if (isNaN(date.getTime())) return "";
-
-    // Extract month, day, and year
-    // padStart(2, "0") ensures single digits get a leading zero (e.g., 6 becomes 06)
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     const year = date.getFullYear();
-
     return `${month}-${day}-${year}`;
   };
 
@@ -175,7 +148,6 @@ const CommunityActivities = () => {
             Create session
           </button>
 
-          {/* MODAL */}
           <AddSessionModal
             accessToken={accessToken}
             communityId={communityId}
@@ -184,7 +156,6 @@ const CommunityActivities = () => {
             setIsCreateSessionModalOpen={setIsCreateSessionModalOpen}
           />
 
-          {/* Status Filter Dropdown */}
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
@@ -203,11 +174,9 @@ const CommunityActivities = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border pl-8 pr-8 py-1 rounded-md w-full [&::-webkit-search-cancel-button]:appearance-none"
             />
-
             <span className="absolute left-2 text-gray-400">
               <Search size={18} />
             </span>
-
             {searchQuery && (
               <span
                 className="absolute right-2 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
@@ -222,7 +191,6 @@ const CommunityActivities = () => {
         <table className="w-full mt-2">
           <thead>
             <tr className="bg-stone-50 text-stone-600">
-              {/* Clickable Header: Name */}
               <th
                 className="group py-2 pl-2 pr-4 text-start cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
                 onClick={() => handleSort("name")}
@@ -245,9 +213,7 @@ const CommunityActivities = () => {
                   </span>
                 </div>
               </th>
-
-              {/* Non-clickable Header */}
-              <th className=" py-2 pl-2 text-start select-none text-[14px] font-medium">
+              <th className="py-2 pl-2 text-start select-none text-[14px] font-medium">
                 Hosts
               </th>
               <th className="py-2 text-center w-[98px] select-none text-[14px] font-medium">
@@ -256,13 +222,11 @@ const CommunityActivities = () => {
               <th className="py-2 text-center w-[92px] select-none text-[14px] font-medium">
                 Players
               </th>
-              <th className=" py-2 pl-2 pr-4 text-start select-none text-[14px] w-[180px] font-medium">
+              <th className="py-2 pl-2 pr-4 text-start select-none text-[14px] w-[180px] font-medium">
                 Location
               </th>
-
-              {/* Clickable Header: Schedule */}
               <th
-                className="group  py-2 pl-2 pr-4 text-start w-[210px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
+                className="group py-2 pl-2 pr-4 text-start w-[210px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
                 onClick={() => handleSort("schedule")}
               >
                 <div className="flex items-center justify-between gap-x-2">
@@ -283,13 +247,10 @@ const CommunityActivities = () => {
                   </span>
                 </div>
               </th>
-
-              {/* Clickable Header: Status / Created At */}
-              <th className="group  py-2 pl-2 pr-4 text-center w-[140px]  transition-colors duration-150 ease-in-out select-none text-[14px] font-medium">
+              <th className="group py-2 pl-2 pr-4 text-center w-[140px] transition-colors duration-150 ease-in-out select-none text-[14px] font-medium">
                 Status
               </th>
-
-              <th className=" py-2 pl-2 pr-4 text-center w-[98px] select-none text-[14px] font-medium">
+              <th className="py-2 pl-2 pr-4 text-center w-[98px] select-none text-[14px] font-medium">
                 Actions
               </th>
             </tr>
@@ -312,14 +273,11 @@ const CommunityActivities = () => {
                   }
                   className="odd:bg-stone-100 cursor-pointer hover:bg-gray-200"
                 >
-                  {/* NAME */}
                   <td className="text-start p-2">
                     <span className="block w-full max-w-[280px] truncate">
                       {session?.name}
                     </span>
                   </td>
-
-                  {/* HOSTS */}
                   <td className="text-start p-2">
                     {hosts && hosts?.length > 0 ? (
                       <span className="block truncate w-full">
@@ -329,27 +287,19 @@ const CommunityActivities = () => {
                       <span className="text-gray-400 italic">No host yet</span>
                     )}
                   </td>
-
-                  {/* SPORT */}
                   <td className="text-center p-2">
                     <span className="text-[12px] rounded-full bg-gray-200 px-2 py-0.5">
                       {session?.sport}
                     </span>
                   </td>
-
-                  {/* PLAYERS */}
                   <td className="text-center p-2">
                     {session?._count.players || 0}
                   </td>
-
-                  {/* LOCATION */}
                   <td className="text-start p-2">
                     <span className="block w-full max-w-[180px] truncate">
                       {session?.location || "N/A"}
                     </span>
                   </td>
-
-                  {/* SCHEDULE */}
                   <td className="text-start p-2">
                     <div className="flex flex-col justify-center">
                       <span className="block">
@@ -366,8 +316,6 @@ const CommunityActivities = () => {
                       </span>
                     </div>
                   </td>
-
-                  {/* STATUS */}
                   <td className="text-center p-2">
                     <span
                       className={`text-[12px] px-2 py-0.5 rounded-full ${session?.isAvailable ? "text-white bg-green-600" : "text-red-600"}`}
@@ -375,12 +323,12 @@ const CommunityActivities = () => {
                       {session?.isAvailable ? "Available" : "Unavailable"}
                     </span>
                   </td>
-
-                  {/* ACTIONS */}
+                  {/* FIXED ACTIONS COLUMN */}
                   <td className="text-start p-2">
                     <div className="flex items-center justify-center gap-x-2">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation(); // Stop row click navigation
                           setSelectedSession(session);
                           setIsEditSessionModalOpen(true);
                         }}
@@ -389,7 +337,10 @@ const CommunityActivities = () => {
                         <SquarePen size={20} />
                       </button>
                       <button
-                        onClick={() => deleteSession(session?.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Stop row click navigation
+                          deleteSession(session?.id);
+                        }}
                         className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-red-500 rounded-md"
                       >
                         <Trash size={20} />
@@ -402,10 +353,10 @@ const CommunityActivities = () => {
           </tbody>
         </table>
 
-        {/* EDIT SESSION MODAL */}
         <EditSessionModal
           accessToken={accessToken}
           communityId={communityId}
+          getAllSessions={getAllSessions}
           isEditSessionModalOpen={isEditSessionModalOpen}
           setIsEditSessionModalOpen={setIsEditSessionModalOpen}
           session={selectedSession}
