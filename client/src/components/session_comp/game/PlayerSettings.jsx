@@ -1,7 +1,13 @@
-import React, { useLayoutEffect, useEffect, useRef, useState } from "react";
+import React, {
+  useLayoutEffect,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
-import PlayerGameHistory from "../PlayerGameHistory"; // 🌟 Import history modal
+import PlayerGameHistory from "../PlayerGameHistory";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../PlayerAvatar";
 
@@ -27,14 +33,14 @@ const PlayerSettings = ({
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isGameHistoryOpen, setIsGameHistoryOpen] = useState(false); // 🌟 Local sub-modal tracker
+  const [isGameHistoryOpen, setIsGameHistoryOpen] = useState(false);
 
   const initialUsername = player?.sessionPlayer?.communityPlayer?.username;
   const initialSkillLevel =
     player?.sessionPlayer?.communityPlayer?.skillLevel || "BEG";
 
   const [username, setUsername] = useState(initialUsername);
-  const [skillLevel, setSkillLevel] = useState(initialSkillLevel); // 🌟 State for skill level
+  const [skillLevel, setSkillLevel] = useState(initialSkillLevel);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [isReady, setIsReady] = useState(false);
 
@@ -98,7 +104,6 @@ const PlayerSettings = ({
       if (!resData.success) throw new Error(resData?.message);
 
       if (resData.success) {
-        // 🔄 Fire the prop passed down by the parent to pull fresh db data
         if (typeof onUpdatePlayerStatus === "function") {
           onUpdatePlayerStatus();
         }
@@ -110,6 +115,47 @@ const PlayerSettings = ({
       setIsUpdating(false);
     }
   };
+
+  // 🌟 Completed handleRemoveplayer implementation
+  const handleRemoveplayer = useCallback(
+    async (sessionPlayerId) => {
+      if (!communityId || !sessionId || !sessionPlayerId || isUpdating) return;
+      try {
+        setIsUpdating(true);
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/remove`,
+          { method: "DELETE" },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const resData = await response.json();
+        if (!resData?.success) throw new Error(resData?.message);
+
+        // Refresh data on parent view layout component
+        if (typeof onUpdatePlayerStatus === "function") {
+          onUpdatePlayerStatus();
+        }
+        onClose();
+      } catch (error) {
+        console.error("Remove player failed:", error.message);
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [
+      communityId,
+      sessionId,
+      isUpdating,
+      fetchWithAuth,
+      onUpdatePlayerStatus,
+      onClose,
+    ],
+  );
 
   if (!isReady) return null;
 
@@ -178,12 +224,10 @@ const PlayerSettings = ({
                 Skill level
               </label>
               {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
-                // 🌟 Display the readable mapped text value instead of the username
                 <span className="block w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
                   {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
                 </span>
               ) : (
-                // 🌟 Controlled select element tied to local skillLevel state
                 <select
                   name="skill-level"
                   id="skill-level"
@@ -204,7 +248,6 @@ const PlayerSettings = ({
               )}
             </div>
 
-            {/* 🌟 Hooked click handler to open history modal overlay */}
             <button
               type="button"
               onClick={() => setIsGameHistoryOpen(true)}
@@ -228,14 +271,22 @@ const PlayerSettings = ({
               >
                 Cancel
               </button>
-              <button>Remove</button>
+
+              {/* 🌟 Attached functional handler and Tailwind styling to the button */}
+              <button
+                type="button"
+                disabled={isUpdating}
+                onClick={() => handleRemoveplayer(player?.sessionPlayer?.id)}
+                className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200"
+              >
+                Remove
+              </button>
             </div>
           </form>
         </div>,
         document.body,
       )}
 
-      {/* 🌟 Nested overlay conditional render for the Game History */}
       {isGameHistoryOpen && (
         <PlayerGameHistory
           player={player}

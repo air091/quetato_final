@@ -2,13 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import PlayerAvatar from "../../../../components/PlayerAvatar";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react"; // 🌟 Imported Plus icon
+import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
 
 const RequestPlayers = () => {
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [staticPlayers, setStaticPlayers] = useState([]);
-  const [isStaticMinimized, setIsStaticMinimized] = useState(false); // 🌟 Added state to track minimize/expand toggle
+  const [isStaticMinimized, setIsStaticMinimized] = useState(false);
   const [isUserMinimized, setIsUserMinimized] = useState(false);
 
   const getStaticPlayersNotInSession = useCallback(async () => {
@@ -38,6 +38,44 @@ const RequestPlayers = () => {
   useEffect(() => {
     getStaticPlayersNotInSession();
   }, [getStaticPlayersNotInSession]);
+
+  const addToSession = useCallback(
+    async (communityPlayerId) => {
+      if (!communityId || !sessionId || !communityPlayerId) return;
+      try {
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/${communityPlayerId}/accept`,
+          { method: "POST" },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+        if (!data?.success) {
+          throw new Error(data?.message);
+        }
+
+        // 🌟 Remove the player locally for a fast response
+        setStaticPlayers((prevPlayers) =>
+          prevPlayers.filter(
+            (wrapper) =>
+              wrapper.id !== communityPlayerId &&
+              wrapper.communityPlayer?.id !== communityPlayerId,
+          ),
+        );
+
+        // 🌟 🔄 Pull fresh, synchronized data directly from your database
+        await getStaticPlayersNotInSession();
+      } catch (error) {
+        console.error("Fetch available static players failed:", error.message);
+      }
+    },
+    [communityId, sessionId, fetchWithAuth, getStaticPlayersNotInSession], // 🌟 Added getStaticPlayersNotInSession here
+  );
 
   return (
     <div className="w-full max-w-[720px] mx-auto">
@@ -118,9 +156,7 @@ const RequestPlayers = () => {
                       <div>
                         <button
                           type="button"
-                          onClick={() =>
-                            console.log("Add player action:", wrapper.id)
-                          }
+                          onClick={() => addToSession(wrapper?.id)}
                           className="cursor-pointer text-[14px] bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded-full shadow-sm transition-colors"
                         >
                           Add to Session
@@ -193,9 +229,7 @@ const RequestPlayers = () => {
                       <div>
                         <button
                           type="button"
-                          onClick={() =>
-                            console.log("Add player action:", wrapper.id)
-                          }
+                          onClick={() => addToSession(wrapper?.id)}
                           className="cursor-pointer text-[14px] bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded-full shadow-sm transition-colors"
                         >
                           Add to Session
