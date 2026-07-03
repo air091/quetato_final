@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
 import { ChevronDown, EllipsisVertical } from "lucide-react";
@@ -11,6 +11,9 @@ const All = () => {
   const [players, setPlayers] = useState([]);
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
   const [isUserMinimized, setIsUserMinimized] = useState(false);
+
+  // 🌟 State to track which settings dropdown is open and its button anchor ref
+  const [activeMenu, setActiveMenu] = useState(null); // Structure: { playerId: string, ref: ReactRef }
 
   const getAllSession = useCallback(async () => {
     if (!communityId) return;
@@ -41,6 +44,20 @@ const All = () => {
     getAllSession();
   }, [getAllSession]);
 
+  // Dynamic assignment handler to pass down specific element triggers
+  const handleToggleMenu = (e, player) => {
+    e.stopPropagation();
+    if (activeMenu?.playerId === player.id) {
+      setActiveMenu(null);
+    } else {
+      setActiveMenu({
+        playerId: player.id,
+        // Mock a standard React element ref container for the absolute layout setup
+        current: e.currentTarget,
+      });
+    }
+  };
+
   return (
     <div className="w-full max-w-[720px] mx-auto select-none">
       <h3 className="p-2 font-medium">All players</h3>
@@ -68,7 +85,7 @@ const All = () => {
         </div>
       </div>
 
-      {/* creator and admin section */}
+      {/* Creator and Admin Section */}
       <div className="flex flex-col gap-y-2 p-2">
         <header
           title={
@@ -91,7 +108,6 @@ const All = () => {
           </span>
         </header>
 
-        {/* CSS Grid Smooth Transition Wrapper */}
         <div
           className={`grid transition-[grid-template-rows] duration-200 ease-out ${
             isUserMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
@@ -126,16 +142,39 @@ const All = () => {
                       </div>
                     </div>
                   </div>
-                  <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
-                    Add friend
-                  </button>
+
+                  {/* Added Settings Menu Action for Admin lists too if applicable */}
+                  <div className="flex items-center gap-x-2">
+                    <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
+                      Add friend
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        onClick={(e) => handleToggleMenu(e, player)}
+                        className="block rounded-full p-1 hover:bg-gray-200 cursor-pointer text-stone-700"
+                      >
+                        <EllipsisVertical size={16} />
+                      </button>
+
+                      {activeMenu?.playerId === player.id && (
+                        <PlayerSettings
+                          player={player}
+                          type={player?.communityPlayer?.type}
+                          toggleButtonRef={activeMenu}
+                          onClose={() => setActiveMenu(null)}
+                          onUpdatePlayerStatus={getAllSession}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
           </div>
         </div>
       </div>
 
-      {/* players & statics section */}
+      {/* Players & Statics Section */}
       <div className="p-2 flex flex-col gap-y-2 border-t">
         <header
           title={
@@ -156,7 +195,6 @@ const All = () => {
           </span>
         </header>
 
-        {/* CSS Grid Smooth Transition Wrapper */}
         <div
           className={`grid transition-[grid-template-rows] duration-200 ease-out ${
             isStaticMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
@@ -190,17 +228,33 @@ const All = () => {
                     </div>
                   </div>
 
-                  {player?.communityPlayer.type !== "static" && (
-                    <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
-                      Add friend
-                    </button>
-                  )}
+                  <div className="flex items-center gap-x-2">
+                    {player?.communityPlayer?.type !== "static" && (
+                      <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
+                        Add friend
+                      </button>
+                    )}
 
-                  <div className="relative">
-                    <div className=" block rounded-full p-1 hover:bg-gray-200 cursor-pointer">
-                      <EllipsisVertical size={16} />
+                    <div className="relative">
+                      {/* 🌟 Transformed visual div to interactive button container with anchor event passing */}
+                      <button
+                        onClick={(e) => handleToggleMenu(e, player)}
+                        className="block rounded-full p-1 hover:bg-gray-200 cursor-pointer text-stone-700 outline-none"
+                      >
+                        <EllipsisVertical size={16} />
+                      </button>
+
+                      {/* 🌟 Conditional implementation passing up configuration requirements */}
+                      {activeMenu?.playerId === player.id && (
+                        <PlayerSettings
+                          player={player}
+                          type={player?.communityPlayer?.type}
+                          toggleButtonRef={activeMenu}
+                          onClose={() => setActiveMenu(null)}
+                          onUpdatePlayerStatus={getAllSession}
+                        />
+                      )}
                     </div>
-                    <PlayerSettings type={player?.communityPlayer.type} />
                   </div>
                 </div>
               ))}

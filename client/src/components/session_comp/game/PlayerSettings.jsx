@@ -251,7 +251,7 @@ const PlayerSettings = ({
             <button
               type="button"
               onClick={() => setIsGameHistoryOpen(true)}
-              className="w-full text-[10px] font-medium py-1 rounded cursor-pointer hover:bg-stone-200"
+              className="w-full text-[10px] font-medium py-1 rounded cursor-pointer bg-stone-200 hover:bg-stone-300"
             >
               Game History
             </button>
@@ -259,17 +259,9 @@ const PlayerSettings = ({
               <button
                 type="submit"
                 disabled={isUpdating}
-                className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded flex-1 transition-colors font-semibold text-center"
+                className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center"
               >
                 {isUpdating ? "Saving..." : "Save"}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isUpdating}
-                className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] py-1 rounded flex-1 transition-colors font-medium text-center"
-              >
-                Cancel
               </button>
 
               {/* 🌟 Attached functional handler and Tailwind styling to the button */}
@@ -277,7 +269,7 @@ const PlayerSettings = ({
                 type="button"
                 disabled={isUpdating}
                 onClick={() => handleRemoveplayer(player?.sessionPlayer?.id)}
-                className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200"
+                className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200 w-full"
               >
                 Remove
               </button>
