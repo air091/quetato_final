@@ -127,14 +127,13 @@ const PlayerSettings = ({
     // Determine explicit endpoint action tag or method depending on if they are static or user
     const isStatic = type === "static";
     const endpoint = isStatic
-      ? `http://localhost:8000/api/communities/${communityId}/players/${playerId}/static`
-      : `http://localhost:8000/api/communities/${communityId}/players/${playerId}/kick`;
-
-    const method = isStatic ? "DELETE" : "POST"; // Or DELETE depending on your Kick implementation backend rules
+      ? `http://localhost:8000/api/communities/${communityId}/players/${player?.communityPlayer?.id}/static`
+      : `http://localhost:8000/api/communities/${communityId}/players/${player?.communityPlayer?.id}/kick`;
+    // Or DELETE depending on your Kick implementation backend rules
 
     try {
       setIsUpdating(true);
-      const response = await fetchWithAuth(endpoint, { method });
+      const response = await fetchWithAuth(endpoint, { method: "DELETE" });
 
       if (!response || !response.ok) {
         throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
