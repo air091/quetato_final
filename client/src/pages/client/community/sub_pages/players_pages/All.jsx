@@ -6,7 +6,7 @@ import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
 
 const All = () => {
-  const { fetchWithAuth } = useAuth();
+  const { fetchWithAuth, user } = useAuth();
   const { communityId } = useParams();
   const [players, setPlayers] = useState([]);
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
@@ -145,9 +145,11 @@ const All = () => {
 
                   {/* Added Settings Menu Action for Admin lists too if applicable */}
                   <div className="flex items-center gap-x-2">
-                    <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
-                      Add friend
-                    </button>
+                    {user.id !== player?.communityPlayer?.id && (
+                      <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
+                        Add friend
+                      </button>
+                    )}
 
                     <div className="relative">
                       <button
