@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, EllipsisVertical } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
+import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
 
 const All = () => {
   const { fetchWithAuth } = useAuth();
@@ -194,6 +195,13 @@ const All = () => {
                       Add friend
                     </button>
                   )}
+
+                  <div className="relative">
+                    <div className=" block rounded-full p-1 hover:bg-gray-200 cursor-pointer">
+                      <EllipsisVertical size={16} />
+                    </div>
+                    <PlayerSettings type={player?.communityPlayer.type} />
+                  </div>
                 </div>
               ))}
           </div>
