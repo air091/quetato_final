@@ -24,6 +24,7 @@ import Game from "./pages/client/session/Game";
 import Payment from "./pages/client/session/Payment";
 import AllPlayers from "./pages/client/session/sub_pages/AllPlayers";
 import RequestPlayers from "./pages/client/session/sub_pages/RequestPlayers";
+import SessionDashboard from "./pages/client/session/Dashboard";
 
 const router = createBrowserRouter([
   {
@@ -118,7 +119,7 @@ const router = createBrowserRouter([
           },
           {
             path: "dashboard",
-            element: <Dashboard />,
+            element: <SessionDashboard />,
           },
           {
             path: "players",

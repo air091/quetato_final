@@ -44,7 +44,10 @@ import {
   getStaticPlayersNotInSessionController,
   removePlayerFromSessionController,
 } from "../controllers/sessionPlayer.controller.js";
-import { getPlayerGameHistoryController } from "../controllers/gameHistory.controller.js";
+import {
+  getPlayerGameHistoryController,
+  getPlayerTotalCommunityGamesController,
+} from "../controllers/gameHistory.controller.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -64,6 +67,10 @@ router.delete("/:communityId", deleteCommunityController);
 
 // Community-scoped player actions
 router.get("/:communityId/players", getAllPlayersController);
+router.get(
+  "/:communityId/players/total-community-games",
+  getPlayerTotalCommunityGamesController,
+);
 router.get("/:communityId/players/:playerId", getPlayerByIdController);
 
 router.post("/:communityId/players/static", createStaticPlayersController);
@@ -187,6 +194,11 @@ router.patch(
 router.get(
   "/:communityId/sessions/:sessionId/players/:sessionPlayerId/history",
   getPlayerGameHistoryController,
+);
+
+router.get(
+  "/:communityId/sessions/:sessionId/players/history",
+  getPlayerTotalCommunityGamesController,
 );
 
 export default router;

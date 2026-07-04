@@ -75,7 +75,7 @@ const AddStaticPlayer = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-3 mb-4">
+        <div className="flex items-center justify-between pb-2">
           <h3 className="text-lg font-semibold text-stone-900">
             Add Static Players
           </h3>
@@ -124,7 +124,7 @@ const AddStaticPlayer = ({
           </div>
 
           {/* Action Row */}
-          <div className="flex items-center justify-end gap-x-2 border-t pt-4 mt-2">
+          <div className="flex items-center justify-end gap-x-2">
             <button
               type="button"
               onClick={handleClose}

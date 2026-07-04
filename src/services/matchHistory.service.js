@@ -101,3 +101,112 @@ export const getPlayerGameHistory = async (sessionPlayerId) => {
     history: formattedHistory,
   };
 };
+
+export const getPlayerTotalCommunityGames = async (communityId) => {
+  if (!communityId) {
+    throw new AppError("Community ID is required", 400);
+  }
+
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { id: true },
+  });
+
+  if (!community) {
+    throw new AppError("Community not found", 404);
+  }
+
+  const players = await prisma.communityPlayer.findMany({
+    where: { communityId },
+    include: {
+      communityPlayer: {
+        select: {
+          id: true,
+          username: true,
+          type: true,
+          skillLevel: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  if (players.length === 0) {
+    return [];
+  }
+
+  const sessionPlayers = await prisma.sessionPlayer.findMany({
+    where: {
+      session: {
+        communityId,
+      },
+      playerId: {
+        in: players.map((player) => player.id),
+      },
+    },
+    select: {
+      id: true,
+      playerId: true,
+    },
+  });
+
+  if (sessionPlayers.length === 0) {
+    return players.map((player) => ({
+      ...player,
+      totalCommunityWins: 0,
+      totalCommunityLosses: 0,
+      totalCommunityGames: 0,
+    }));
+  }
+
+  const sessionPlayerOwnerById = new Map(
+    sessionPlayers.map((sessionPlayer) => [
+      sessionPlayer.id,
+      sessionPlayer.playerId,
+    ]),
+  );
+
+  const gameCounts = await prisma.matchHistoryPlayer.groupBy({
+    by: ["sessionPlayerId", "iswin"],
+    where: {
+      sessionPlayerId: {
+        in: sessionPlayers.map((sessionPlayer) => sessionPlayer.id),
+      },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  const statsByPlayerId = new Map();
+
+  gameCounts.forEach((gameCount) => {
+    const playerId = sessionPlayerOwnerById.get(gameCount.sessionPlayerId);
+    if (!playerId) return;
+
+    const currentStats = statsByPlayerId.get(playerId) || {
+      totalCommunityWins: 0,
+      totalCommunityLosses: 0,
+      totalCommunityGames: 0,
+    };
+
+    if (gameCount.iswin) {
+      currentStats.totalCommunityWins += gameCount._count._all;
+    } else {
+      currentStats.totalCommunityLosses += gameCount._count._all;
+    }
+
+    currentStats.totalCommunityGames += gameCount._count._all;
+    statsByPlayerId.set(playerId, currentStats);
+  });
+
+  return players.map((player) => ({
+    ...player,
+    totalCommunityWins: statsByPlayerId.get(player.id)?.totalCommunityWins || 0,
+    totalCommunityLosses:
+      statsByPlayerId.get(player.id)?.totalCommunityLosses || 0,
+    totalCommunityGames: statsByPlayerId.get(player.id)?.totalCommunityGames || 0,
+  }));
+};
