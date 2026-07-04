@@ -139,219 +139,256 @@ const CommunityActivities = () => {
 
   return (
     <>
-      <main>
-        <div className="flex items-center py-1 px-2 gap-x-4">
-          <button
-            onClick={() => setIsCreateSessionModalOpen(true)}
-            className="block cursor-pointer bg-gray-800 text-white px-2 py-1 rounded-md"
-          >
-            Create session
-          </button>
+      <main className="w-full max-w-[1000px] mx-auto select-none mt-4 px-2">
+        {/* Optimized Top Action Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 pb-4 border-b border-stone-200">
+          <div>
+            <button
+              onClick={() => setIsCreateSessionModalOpen(true)}
+              className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
+            >
+              Create Session
+            </button>
 
-          <AddSessionModal
-            accessToken={accessToken}
-            communityId={communityId}
-            getAllSessions={getAllSessions}
-            isCreateSessionModalOpen={isCreateSessionModalOpen}
-            setIsCreateSessionModalOpen={setIsCreateSessionModalOpen}
-          />
-
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="border px-2 py-1 rounded-md bg-white cursor-pointer"
-          >
-            <option value="">All Statuses</option>
-            <option value="available">Available Only</option>
-          </select>
-
-          <div className="relative flex items-center w-full max-w-[284px]">
-            <input
-              type="search"
-              placeholder="Search"
-              autoComplete="off"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border pl-8 pr-8 py-1 rounded-md w-full [&::-webkit-search-cancel-button]:appearance-none"
+            <AddSessionModal
+              accessToken={accessToken}
+              communityId={communityId}
+              getAllSessions={getAllSessions}
+              isCreateSessionModalOpen={isCreateSessionModalOpen}
+              setIsCreateSessionModalOpen={setIsCreateSessionModalOpen}
             />
-            <span className="absolute left-2 text-gray-400">
-              <Search size={18} />
-            </span>
-            {searchQuery && (
-              <span
-                className="absolute right-2 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
-                onClick={() => setSearchQuery("")}
-              >
-                <X size={18} />
+          </div>
+
+          <div className="flex items-center gap-x-2 w-full sm:w-auto sm:justify-end">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="bg-stone-50 border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 cursor-pointer rounded-lg outline-none focus:border-stone-400 transition-colors h-[34px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="available">Available Only</option>
+            </select>
+
+            <div className="relative flex items-center w-full max-w-[240px]">
+              <input
+                type="search"
+                placeholder="Search sessions..."
+                autoComplete="off"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border border-stone-200 pl-8 pr-8 py-1.5 text-xs text-stone-900 rounded-lg w-full outline-none focus:border-stone-400 bg-stone-50/50 transition-colors h-[34px] [&::-webkit-search-cancel-button]:appearance-none"
+              />
+              <span className="absolute left-2.5 text-stone-400 pointer-events-none">
+                <Search size={14} />
               </span>
-            )}
+              {searchQuery && (
+                <span
+                  className="absolute right-2.5 cursor-pointer text-stone-400 hover:text-stone-600 transition-colors"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X size={14} />
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <table className="w-full mt-2">
-          <thead>
-            <tr className="bg-stone-50 text-stone-600">
-              <th
-                className="group py-2 pl-2 pr-4 text-start cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
-                onClick={() => handleSort("name")}
-              >
-                <div className="flex items-center justify-between gap-x-2">
-                  <span>Name</span>
-                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
-                    {sortBy === "name" ? (
-                      order === "asc" ? (
-                        <ArrowUp size={14} className="text-stone-900" />
-                      ) : (
-                        <ArrowDown size={14} className="text-stone-900" />
-                      )
-                    ) : (
-                      <ArrowUpDown
-                        size={14}
-                        className="opacity-40 group-hover:opacity-100"
-                      />
-                    )}
-                  </span>
-                </div>
-              </th>
-              <th className="py-2 pl-2 text-start select-none text-[14px] font-medium">
-                Hosts
-              </th>
-              <th className="py-2 text-center w-[98px] select-none text-[14px] font-medium">
-                Sport
-              </th>
-              <th className="py-2 text-center w-[92px] select-none text-[14px] font-medium">
-                Players
-              </th>
-              <th className="py-2 pl-2 pr-4 text-start select-none text-[14px] w-[180px] font-medium">
-                Location
-              </th>
-              <th
-                className="group py-2 pl-2 pr-4 text-start w-[210px] cursor-pointer transition-colors duration-150 ease-in-out hover:bg-stone-200 hover:text-stone-900 select-none text-[14px] font-medium"
-                onClick={() => handleSort("schedule")}
-              >
-                <div className="flex items-center justify-between gap-x-2">
-                  <span>Schedule</span>
-                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
-                    {sortBy === "schedule" ? (
-                      order === "asc" ? (
-                        <ArrowUp size={14} className="text-stone-900" />
-                      ) : (
-                        <ArrowDown size={14} className="text-stone-900" />
-                      )
-                    ) : (
-                      <ArrowUpDown
-                        size={14}
-                        className="opacity-40 group-hover:opacity-100"
-                      />
-                    )}
-                  </span>
-                </div>
-              </th>
-              <th className="group py-2 pl-2 pr-4 text-center w-[140px] transition-colors duration-150 ease-in-out select-none text-[14px] font-medium">
-                Status
-              </th>
-              <th className="py-2 pl-2 pr-4 text-center w-[98px] select-none text-[14px] font-medium">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions?.map((session) => {
-              const hosts = session?.players
-                ?.filter(
-                  (p) =>
-                    p?.sessionPlayer?.role === "owner" ||
-                    p?.sessionPlayer?.role === "admin",
-                )
-                ?.map((p) => p?.sessionPlayer?.communityPlayer?.username);
+        {/* Table Layout Wrapper Card */}
+        <div className="w-full border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-stone-50/70 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                  <th
+                    className="group p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none text-stone-700 normal-case text-sm font-bold"
+                    onClick={() => handleSort("name")}
+                  >
+                    <div className="flex items-center gap-x-1">
+                      <span>Name</span>
+                      <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
+                        {sortBy === "name" ? (
+                          order === "asc" ? (
+                            <ArrowUp size={14} className="text-stone-900" />
+                          ) : (
+                            <ArrowDown size={14} className="text-stone-900" />
+                          )
+                        ) : (
+                          <ArrowUpDown
+                            size={12}
+                            className="opacity-40 group-hover:opacity-100"
+                          />
+                        )}
+                      </span>
+                    </div>
+                  </th>
 
-              return (
-                <tr
-                  key={session.id}
-                  onClick={() =>
-                    navigate(`/community/${communityId}/sessions/${session.id}`)
-                  }
-                  className="odd:bg-stone-100 cursor-pointer hover:bg-gray-200"
-                >
-                  <td className="text-start p-2">
-                    <span className="block w-full max-w-[280px] truncate">
-                      {session?.name}
-                    </span>
-                  </td>
-                  <td className="text-start p-2">
-                    {hosts && hosts?.length > 0 ? (
-                      <span className="block truncate w-full">
-                        {hosts?.join(", ")}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 italic">No host yet</span>
-                    )}
-                  </td>
-                  <td className="text-center p-2">
-                    <span className="text-[12px] rounded-full bg-gray-200 px-2 py-0.5">
-                      {session?.sport}
-                    </span>
-                  </td>
-                  <td className="text-center p-2">
-                    {session?._count.players || 0}
-                  </td>
-                  <td className="text-start p-2">
-                    <span className="block w-full max-w-[180px] truncate">
-                      {session?.location || "N/A"}
-                    </span>
-                  </td>
-                  <td className="text-start p-2">
-                    <div className="flex flex-col justify-center">
-                      <span className="block">
-                        Starts at:{" "}
-                        <span className="font-medium">
-                          {formatDate(session?.startAt) || "Anytime"}
-                        </span>
-                      </span>
-                      <span className="block text-[12px] text-gray-700">
-                        Ends at:{" "}
-                        <span className="font-medium">
-                          {formatDate(session?.endAt) || "Anytime"}
-                        </span>
+                  <th className="p-4 w-[140px]">Hosts</th>
+                  <th className="p-4 w-[100px] text-center">Sport</th>
+                  <th className="p-4 w-[85px] text-center">Players</th>
+                  <th className="p-4 w-[160px]">Location</th>
+
+                  <th
+                    className="group p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none w-[200px]"
+                    onClick={() => handleSort("schedule")}
+                  >
+                    <div className="flex items-center gap-x-1">
+                      <span>Schedule</span>
+                      <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
+                        {sortBy === "schedule" ? (
+                          order === "asc" ? (
+                            <ArrowUp size={14} className="text-stone-900" />
+                          ) : (
+                            <ArrowDown size={14} className="text-stone-900" />
+                          )
+                        ) : (
+                          <ArrowUpDown
+                            size={12}
+                            className="opacity-40 group-hover:opacity-100"
+                          />
+                        )}
                       </span>
                     </div>
-                  </td>
-                  <td className="text-center p-2">
-                    <span
-                      className={`text-[12px] px-2 py-0.5 rounded-full ${session?.isAvailable ? "text-white bg-green-600" : "text-red-600"}`}
-                    >
-                      {session?.isAvailable ? "Available" : "Unavailable"}
-                    </span>
-                  </td>
-                  {/* FIXED ACTIONS COLUMN */}
-                  <td className="text-start p-2">
-                    <div className="flex items-center justify-center gap-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Stop row click navigation
-                          setSelectedSession(session);
-                          setIsEditSessionModalOpen(true);
-                        }}
-                        className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-blue-500 rounded-md"
-                      >
-                        <SquarePen size={20} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Stop row click navigation
-                          deleteSession(session?.id);
-                        }}
-                        className="cursor-pointer text-gray-500 p-1 hover:bg-gray-300 hover:text-red-500 rounded-md"
-                      >
-                        <Trash size={20} />
-                      </button>
-                    </div>
-                  </td>
+                  </th>
+
+                  <th className="p-4 w-[110px] text-center">Status</th>
+                  <th className="p-4 w-[90px] text-center">Actions</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+
+              <tbody className="divide-y divide-stone-100">
+                {sessions?.map((session) => {
+                  const hosts = session?.players
+                    ?.filter(
+                      (p) =>
+                        p?.sessionPlayer?.role === "owner" ||
+                        p?.sessionPlayer?.role === "admin",
+                    )
+                    ?.map((p) => p?.sessionPlayer?.communityPlayer?.username);
+
+                  return (
+                    <tr
+                      key={session.id}
+                      onClick={() =>
+                        navigate(
+                          `/community/${communityId}/sessions/${session.id}`,
+                        )
+                      }
+                      className="hover:bg-stone-50/40 cursor-pointer transition-colors duration-150"
+                    >
+                      <td className="p-4 text-sm font-semibold text-stone-900">
+                        <span
+                          className="block max-w-[240px] truncate"
+                          title={session?.name}
+                        >
+                          {session?.name}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-xs text-stone-600 font-medium">
+                        {hosts && hosts?.length > 0 ? (
+                          <span
+                            className="block truncate max-w-[130px]"
+                            title={hosts?.join(", ")}
+                          >
+                            {hosts?.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="text-stone-400 italic font-normal">
+                            No hosts assigned
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="p-4 text-center">
+                        <span className="inline-block text-[11px] font-bold uppercase tracking-wider rounded-md bg-stone-100 text-stone-700 px-2 py-0.5 border border-stone-200/40">
+                          {session?.sport}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-center text-sm font-semibold text-stone-700">
+                        {session?._count.players || 0}
+                      </td>
+
+                      <td className="p-4 text-xs text-stone-600 font-medium">
+                        <span
+                          className="block max-w-[150px] truncate"
+                          title={session?.location}
+                        >
+                          {session?.location || "—"}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-xs text-stone-600">
+                        <div className="flex flex-col gap-y-0.5 justify-center font-medium">
+                          <span className="text-stone-800">
+                            <span className="text-stone-400 font-normal mr-1">
+                              Starts:
+                            </span>
+                            {formatDate(session?.startAt) || "Anytime"}
+                          </span>
+                          <span className="text-[11px] text-stone-500">
+                            <span className="text-stone-400 font-normal mr-1">
+                              Ends:
+                            </span>
+                            {formatDate(session?.endAt) || "Anytime"}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="p-4 text-center">
+                        <span
+                          className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                            session?.isAvailable
+                              ? "bg-green-50 text-green-700 border-green-100"
+                              : "bg-red-50 text-red-600 border-red-100"
+                          }`}
+                        >
+                          {session?.isAvailable ? "Available" : "Full"}
+                        </span>
+                      </td>
+
+                      {/* ACTIONS COLUMN */}
+                      <td className="p-4">
+                        <div className="flex items-center justify-center gap-x-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSession(session);
+                              setIsEditSessionModalOpen(true);
+                            }}
+                            className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-md transition-colors cursor-pointer outline-none"
+                          >
+                            <SquarePen size={15} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteSession(session?.id);
+                            }}
+                            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer outline-none"
+                          >
+                            <Trash size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {(!sessions || sessions.length === 0) && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="p-12 text-center text-sm text-stone-400 italic bg-stone-50/20"
+                    >
+                      No scheduled sessions found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <EditSessionModal
           accessToken={accessToken}
