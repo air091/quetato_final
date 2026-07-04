@@ -77,69 +77,64 @@ const PlayerCard = ({ player, onRefreshData }) => {
 
   return (
     <>
-      <div className="flex h-full flex-col justify-between gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-x-3">
-            <PlayerAvater username={username} size="xl" />
-            <div className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-stone-900">
-                {username}
-              </span>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-                {playerType === "static" && (
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">
-                    {playerType}
-                  </span>
-                )}
+      <div className="w-full flex items-center justify-between gap-x-4">
+        {/* LEFT: Player Info & Badges */}
+        <div className="flex min-w-0 items-center gap-x-3">
+          <PlayerAvater username={username} size="md" />
+          <div className="min-w-0 flex flex-col sm:items-start sm:gap-x-3">
+            <span className="block truncate text-sm font-semibold text-stone-900">
+              {username}
+            </span>
 
-                {["owner", "admin", "host"].includes(playerRole) && (
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
-                    {playerRole}
-                  </span>
-                )}
+            <div className="mt-0.5 sm:mt-0 flex flex-wrap items-center gap-1 text-[9px] font-bold uppercase tracking-wide">
+              {playerType === "static" && (
+                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-stone-600">
+                  {playerType}
+                </span>
+              )}
 
-                {skillLevel && (
-                  <span
-                    title="Skill Level"
-                    className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700"
-                  >
-                    {skillLevel}
-                  </span>
-                )}
-              </div>
+              {["owner", "admin", "host"].includes(playerRole) && (
+                <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
+                  {playerRole}
+                </span>
+              )}
+
+              {skillLevel && (
+                <span
+                  title="Skill Level"
+                  className="rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700"
+                >
+                  {skillLevel}
+                </span>
+              )}
             </div>
           </div>
+        </div>
 
+        {/* RIGHT: Combined Record Metric & Actions */}
+        <div className="flex items-center gap-x-3 shrink-0">
+          {/* Unified Record Badge (Wins / Total Games) */}
+          <div
+            title="Wins / Total Games"
+            className="flex items-center gap-x-1.5 rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs text-stone-600 shadow-sm"
+          >
+            <Trophy size={13} className="text-amber-500 shrink-0" />
+            <span className="font-bold text-stone-900">
+              {winGames}
+              <span className="text-stone-400 font-normal mx-0.5">/</span>
+              {totalGames}
+            </span>
+          </div>
+
+          {/* Action Trigger */}
           <button
             ref={toggleButtonRef}
             onClick={() => setIsSettingsOpen((prev) => !prev)}
-            className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-900"
             aria-label={`Open settings for ${username}`}
           >
-            <EllipsisVertical size={16} />
+            <EllipsisVertical size={15} />
           </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border border-stone-100 bg-stone-50 px-3 py-2">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-stone-500">
-              <Gamepad2 size={13} />
-              Games
-            </span>
-            <strong className="mt-1 block text-lg font-bold text-stone-900">
-              {totalGames}
-            </strong>
-          </div>
-
-          <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
-              <Trophy size={13} />
-              Wins
-            </span>
-            <strong className="mt-1 block text-lg font-bold text-amber-700">
-              {winGames}
-            </strong>
-          </div>
         </div>
 
         {isSettingsOpen && (

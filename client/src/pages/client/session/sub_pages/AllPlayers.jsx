@@ -119,19 +119,15 @@ const AllPlayers = () => {
 
   // Split configurations for sub-sections safely
   const adminGroup = useMemo(() => {
-    return processedPlayers.filter((p) =>
-      isAdminRole(p.sessionPlayer?.role),
-    );
+    return processedPlayers.filter((p) => isAdminRole(p.sessionPlayer?.role));
   }, [processedPlayers]);
 
   const regularGroup = useMemo(() => {
-    return processedPlayers.filter(
-      (p) => !isAdminRole(p.sessionPlayer?.role),
-    );
+    return processedPlayers.filter((p) => !isAdminRole(p.sessionPlayer?.role));
   }, [processedPlayers]);
 
   return (
-    <div className="w-full max-w-[760px] mx-auto flex flex-col gap-y-6 mt-4 px-4 sm:px-0">
+    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 mt-4 px-4 sm:px-0">
       {/* ACTIONS CONTROLS HEADER */}
       <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Input with Integrated Icon */}
@@ -221,11 +217,11 @@ const AllPlayers = () => {
               </h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {adminGroup.map((player) => (
                 <article
                   key={player.id}
-                  className="relative min-h-[154px] rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md"
+                  className="relative rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md"
                 >
                   <PlayerCard
                     player={player}
@@ -247,11 +243,11 @@ const AllPlayers = () => {
               </h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {regularGroup.map((player) => (
                 <article
                   key={player.id}
-                  className="relative min-h-[154px] rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md"
+                  className="relative rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md"
                 >
                   <PlayerCard
                     player={player}

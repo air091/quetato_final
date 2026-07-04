@@ -3,22 +3,56 @@ import React from "react";
 
 const Players = () => {
   return (
-    <div className="px-4">
-      <header>
-        <h3>Players Management</h3>
+    <div className="max-w-5xl mx-auto px-6 py-4">
+      {/* HEADER SECTION */}
+      <header className="mb-6">
+        <h3 className="text-xl font-bold tracking-tight text-stone-900">
+          Players Management
+        </h3>
+        <p className="text-xs text-stone-500 mt-0.5">
+          Manage community members, roles, and incoming access requests.
+        </p>
       </header>
-      <main>
-        <nav>
-          <ul className="flex items-center gap-x-4">
+
+      <main className="space-y-6">
+        {/* NAVIGATION TABS */}
+        <nav className="border-b border-stone-200">
+          <ul className="flex items-center gap-x-6">
             <li>
-              <NavLink to="all">Players</NavLink>
+              <NavLink
+                to="all"
+                className={({ isActive }) => `
+                block pb-2.5 text-sm font-medium border-b-2 transition-all duration-200
+                ${
+                  isActive
+                    ? "border-stone-900 text-stone-900 font-semibold"
+                    : "border-transparent text-stone-500 hover:text-stone-800"
+                }
+              `}
+              >
+                Players
+              </NavLink>
             </li>
             <li>
-              <NavLink to="requests">Requests</NavLink>
+              <NavLink
+                to="requests"
+                className={({ isActive }) => `
+                block pb-2.5 text-sm font-medium border-b-2 transition-all duration-200
+                ${
+                  isActive
+                    ? "border-stone-900 text-stone-900 font-semibold"
+                    : "border-transparent text-stone-500 hover:text-stone-800"
+                }
+              `}
+              >
+                Requests
+              </NavLink>
             </li>
           </ul>
         </nav>
-        <div>
+
+        {/* INNER VIEW CONTENT */}
+        <div className="pt-2">
           <Outlet />
         </div>
       </main>
