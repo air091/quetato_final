@@ -61,16 +61,24 @@ const All = () => {
   };
 
   return (
-    <div className="w-full max-w-[720px] mx-auto select-none">
-      <h3 className="p-2 font-medium">All players</h3>
-      <div className="p-2">
-        <h4 className="font-medium text-[18px] text-stone-800">Players</h4>
-        <div className="flex items-center gap-x-1">
+    <div className="w-full max-w-[720px] mx-auto select-none bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden my-4">
+      {/* Clean Top Action Header bar */}
+      <div className="p-4 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-y-3">
+        <div>
+          <h3 className="font-bold text-lg text-stone-900">
+            Community Members
+          </h3>
+          <p className="text-xs text-stone-500 mt-0.5">
+            Manage community rosters, roles, and static players.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-x-2 self-end sm:self-auto">
           <button
             onClick={() => setIsAddStaticPlayerModalOpen(true)}
-            className="block border px-2 py-0.5 text-[14px] font-medium cursor-pointer rounded-md mt-1 bg-stone-800 text-stone-100 hover:bg-stone-600"
+            className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
           >
-            Add static player
+            Add Static Player
           </button>
 
           <AddStaticPlayer
@@ -84,37 +92,35 @@ const All = () => {
           <select
             name="sort"
             id="sort"
-            className="block border px-1 py-0.5 text-[14px] font-medium cursor-pointer rounded-md mt-1"
+            className="bg-stone-50 border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 cursor-pointer rounded-lg outline-none focus:border-stone-400 transition-colors"
           >
-            <option value="a-z" className="font-medium">
-              A-Z
-            </option>
-            <option value="asc" className="font-medium">
-              Ascend
-            </option>
-            <option value="desc" className="font-medium">
-              Descend
-            </option>
+            <option value="a-z">Sort: A-Z</option>
+            <option value="asc">Sort: Ascending</option>
+            <option value="desc">Sort: Descending</option>
           </select>
         </div>
       </div>
 
       {/* Creator and Admin Section */}
-      <div className="flex flex-col gap-y-2 p-2">
+      <div className="p-2 flex flex-col">
         <header
-          title={
-            isUserMinimized
-              ? "Expand user container"
-              : "Minimize user container"
-          }
+          title={isUserMinimized ? "Expand container" : "Minimize container"}
           onClick={() => setIsUserMinimized((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer hover:bg-stone-200 py-1 px-2 rounded-md"
+          className="flex items-center justify-between cursor-pointer hover:bg-stone-50 py-2 px-3 rounded-xl group transition-colors"
         >
-          <h4 className="font-medium text-[16px] text-stone-800">
-            Creator & admins
-          </h4>
+          <div className="flex items-center gap-x-2">
+            <h4 className="font-semibold text-sm text-stone-800">
+              Creator & Admins
+            </h4>
+            <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
+              {
+                players.filter((p) => p.role === "owner" || p.role === "admin")
+                  .length
+              }
+            </span>
+          </div>
           <span
-            className={`transition-transform duration-200 flex items-center justify-center ${
+            className={`text-stone-400 group-hover:text-stone-600 transition-transform duration-200 flex items-center justify-center ${
               isUserMinimized ? "rotate-180" : "rotate-0"
             }`}
           >
@@ -127,7 +133,7 @@ const All = () => {
             isUserMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
           }`}
         >
-          <div className="overflow-hidden flex flex-col gap-y-2 py-1">
+          <div className="overflow-hidden flex flex-col gap-y-1 px-1">
             {players
               .filter(
                 (player) => player.role === "owner" || player.role === "admin",
@@ -135,7 +141,7 @@ const All = () => {
               .map((player) => (
                 <div
                   key={player.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-stone-50 transition-colors"
+                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50/70 transition-colors border border-transparent hover:border-stone-100"
                 >
                   <div className="flex items-center gap-x-3">
                     <PlayerAvatar
@@ -143,32 +149,37 @@ const All = () => {
                       size="xl"
                     />
                     <div>
-                      <h5 className="font-semibold text-stone-900">
+                      <h5 className="font-semibold text-sm text-stone-900 leading-tight">
                         {player?.communityPlayer?.username}
                       </h5>
-                      <div className="flex items-center gap-x-2 text-[12px] text-gray-500 font-medium">
-                        <span className="bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded-full uppercase">
-                          {player?.communityPlayer?.skillLevel}
-                        </span>
-                        <span className="capitalize bg-gray-100 px-1.5 py-0.5 rounded-full">
+                      <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                        <span
+                          className={`px-2 py-0.5 rounded-md capitalize ${
+                            player.role === "owner"
+                              ? "bg-amber-50 text-amber-700 border border-amber-100"
+                              : "bg-blue-50 text-blue-700 border border-blue-100"
+                          }`}
+                        >
                           {player.role}
+                        </span>
+                        <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
+                          {player?.communityPlayer?.skillLevel || "UNRANKED"}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Added Settings Menu Action for Admin lists too if applicable */}
                   <div className="flex items-center gap-x-2">
                     {user.id !== player?.communityPlayer?.id && (
-                      <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
-                        Add friend
+                      <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                        Add Friend
                       </button>
                     )}
 
                     <div className="relative">
                       <button
                         onClick={(e) => handleToggleMenu(e, player)}
-                        className="block rounded-full p-1 hover:bg-gray-200 cursor-pointer text-stone-700"
+                        className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                       >
                         <EllipsisVertical size={16} />
                       </button>
@@ -191,19 +202,22 @@ const All = () => {
       </div>
 
       {/* Players & Statics Section */}
-      <div className="p-2 flex flex-col gap-y-2 border-t">
+      <div className="p-2 flex flex-col border-t border-stone-100 bg-stone-50/30">
         <header
-          title={
-            isStaticMinimized
-              ? "Expand static container"
-              : "Minimize static container"
-          }
+          title={isStaticMinimized ? "Expand container" : "Minimize container"}
           onClick={() => setIsStaticMinimized((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer hover:bg-stone-200 py-1 px-2 rounded-md"
+          className="flex items-center justify-between cursor-pointer hover:bg-stone-50 py-2 px-3 rounded-xl group transition-colors"
         >
-          <h4 className="font-medium text-[16px] text-stone-800">All static</h4>
+          <div className="flex items-center gap-x-2">
+            <h4 className="font-semibold text-sm text-stone-800">
+              All Regular & Static Players
+            </h4>
+            <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
+              {players.filter((p) => p.role === "player").length}
+            </span>
+          </div>
           <span
-            className={`transition-transform duration-200 flex items-center justify-center ${
+            className={`text-stone-400 group-hover:text-stone-600 transition-transform duration-200 flex items-center justify-center ${
               isStaticMinimized ? "rotate-180" : "rotate-0"
             }`}
           >
@@ -216,13 +230,13 @@ const All = () => {
             isStaticMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
           }`}
         >
-          <div className="overflow-hidden flex flex-col gap-y-2 py-1">
+          <div className="overflow-hidden flex flex-col gap-y-1 px-1">
             {players
               .filter((player) => player.role === "player")
               .map((player) => (
                 <div
                   key={player.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-stone-50 transition-colors"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-white"
                 >
                   <div className="flex items-center gap-x-3">
                     <PlayerAvatar
@@ -230,15 +244,21 @@ const All = () => {
                       size="xl"
                     />
                     <div>
-                      <h5 className="font-semibold text-stone-900">
+                      <h5 className="font-semibold text-sm text-stone-900 leading-tight">
                         {player?.communityPlayer?.username}
                       </h5>
-                      <div className="flex items-center gap-x-2 text-[12px] text-gray-500 font-medium">
-                        <span className="bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded-full uppercase">
-                          {player?.communityPlayer?.skillLevel}
+                      <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                        <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
+                          {player?.communityPlayer?.skillLevel || "UNRANKED"}
                         </span>
-                        <span className="capitalize bg-gray-100 px-1.5 py-0.5 rounded-full">
-                          {player.role}
+                        <span
+                          className={`px-2 py-0.5 rounded-md capitalize border ${
+                            player?.communityPlayer?.type === "static"
+                              ? "bg-purple-50 text-purple-700 border-purple-100"
+                              : "bg-stone-50 text-stone-600 border-stone-200"
+                          }`}
+                        >
+                          {player?.communityPlayer?.type || "Regular"}
                         </span>
                       </div>
                     </div>
@@ -246,21 +266,19 @@ const All = () => {
 
                   <div className="flex items-center gap-x-2">
                     {player?.communityPlayer?.type !== "static" && (
-                      <button className="border px-2 font-medium text-[14px] cursor-pointer rounded py-1">
-                        Add friend
+                      <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                        Add Friend
                       </button>
                     )}
 
                     <div className="relative">
-                      {/* 🌟 Transformed visual div to interactive button container with anchor event passing */}
                       <button
                         onClick={(e) => handleToggleMenu(e, player)}
-                        className="block rounded-full p-1 hover:bg-gray-200 cursor-pointer text-stone-700 outline-none"
+                        className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                       >
                         <EllipsisVertical size={16} />
                       </button>
 
-                      {/* 🌟 Conditional implementation passing up configuration requirements */}
                       {activeMenu?.playerId === player.id && (
                         <PlayerSettings
                           player={player}

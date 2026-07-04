@@ -179,20 +179,20 @@ const PlayerSettings = ({
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onDragStart={(e) => e.preventDefault()}
-          className="w-48 bg-white border rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-100"
+          className="w-48 bg-white border border-stone-200 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-100 overflow-hidden"
         >
-          <header className="bg-stone-800 p-2">
-            <h5 className="font-bold text-[12px] text-stone-100 mb-2">
+          <header className="bg-stone-800 p-2.5">
+            <h5 className="font-bold text-[11px] uppercase tracking-wider text-stone-400 mb-2">
               Community Settings
             </h5>
             <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-x-2">
                 <PlayerAvatar username={username} size="sm" />
-                <span className="text-[12px] font-medium text-stone-100 truncate max-w-[100px]">
+                <span className="text-[12px] font-semibold text-stone-100 truncate max-w-[100px]">
                   {username}
                 </span>
               </div>
-              <span className="text-[10px] uppercase font-semibold text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] uppercase font-bold text-stone-300 bg-stone-900 px-1.5 py-0.5 rounded">
                 {type}
               </span>
             </div>
@@ -215,7 +215,7 @@ const PlayerSettings = ({
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isUpdating}
-                  className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
+                  className="w-full text-xs border border-stone-200 rounded px-2 py-1 outline-none focus:border-stone-400 bg-gray-50/50"
                 />
               </div>
 
@@ -232,7 +232,7 @@ const PlayerSettings = ({
                   value={skillLevel}
                   onChange={(e) => setSkillLevel(e.target.value)}
                   disabled={isUpdating}
-                  className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
+                  className="w-full text-xs border border-stone-200 rounded px-2 py-1 outline-none focus:border-stone-400 bg-gray-50/50 cursor-pointer"
                 >
                   <option value="LB">Low Beginner</option>
                   <option value="BEG">Beginner</option>
@@ -249,7 +249,7 @@ const PlayerSettings = ({
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center"
+                  className="cursor-pointer bg-stone-950 hover:bg-stone-850 disabled:bg-stone-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center"
                 >
                   {isUpdating ? "Saving..." : "Save"}
                 </button>
@@ -264,27 +264,34 @@ const PlayerSettings = ({
               </div>
             </form>
           ) : (
-            /* REGISTERED USER PLAYER: Read-only data layout, with Kick community privileges */
-            <div className="p-2 space-y-3">
+            /* REGISTERED USER PLAYER: Read-only data layout */
+            <div className="p-2.5 space-y-3">
               <div className="flex flex-col gap-y-0.5">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
                   Skill Level
                 </span>
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-xs font-semibold text-stone-700">
                   {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
                 </span>
               </div>
 
-              <div className="flex gap-x-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={handleRemovePlayer}
-                  disabled={isUpdating}
-                  className="w-full cursor-pointer bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
-                >
-                  {isUpdating ? "Processing..." : "Kick Player"}
-                </button>
-              </div>
+              {/* Only show kick option if the member target isn't the primary owner */}
+              {player?.role !== "owner" ? (
+                <div className="flex gap-x-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleRemovePlayer}
+                    disabled={isUpdating}
+                    className="w-full cursor-pointer bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
+                  >
+                    {isUpdating ? "Processing..." : "Kick Player"}
+                  </button>
+                </div>
+              ) : (
+                <div className="text-[11px] italic text-stone-400 text-center pt-1 border-t border-stone-100">
+                  Creator role cannot be kicked
+                </div>
+              )}
             </div>
           )}
         </div>,

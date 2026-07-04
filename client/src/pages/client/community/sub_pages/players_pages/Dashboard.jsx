@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import PlayerAvatar from "../../../../../components/PlayerAvatar";
 
 const Dashboard = () => {
   const { fetchWithAuth } = useAuth();
@@ -80,132 +81,187 @@ const Dashboard = () => {
 
   // Render sort direction icon indicator helper
   const renderSortIcon = (columnKey) => {
-    if (sortBy !== columnKey) {
-      return (
+    const isActive = sortBy === columnKey;
+
+    return (
+      <div className="relative flex items-center justify-center w-4 h-4">
+        {/* 
+        Default generic placeholder icon when column is inactive. 
+        Fades out smoothly when the column becomes active.
+      */}
         <ArrowUpDown
           size={14}
-          className="opacity-30 group-hover:opacity-100 transition-opacity"
+          className={`absolute transition-all duration-300 ${
+            isActive
+              ? "opacity-0 scale-75 pointer-events-none"
+              : "opacity-30 group-hover:opacity-100 scale-100"
+          }`}
         />
-      );
-    }
-    return order === "desc" ? (
-      <ArrowDown size={14} className="text-stone-900" />
-    ) : (
-      <ArrowUp size={14} className="text-stone-900" />
+
+        {/* 
+        Active state indicator icon. 
+        Rotates 180 degrees seamlessly when changing order from 'desc' to 'asc'.
+      */}
+        <ArrowDown
+          size={14}
+          className={`absolute text-stone-900 transition-all duration-300 ease-in-out ${
+            isActive
+              ? "opacity-100 scale-100"
+              : "opacity-0 scale-75 pointer-events-none"
+          } ${isActive && order === "asc" ? "rotate-180" : "rotate-0"}`}
+        />
+      </div>
     );
   };
-
   const sortedPlayers = getSortedPlayers();
 
   return (
-    <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200 rounded-lg overflow-hidden shadow-sm bg-white">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-stone-50 border-b border-stone-200 text-sm">
-            <th className="p-3 font-semibold text-stone-700 text-left">
-              Player
-            </th>
+    <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="bg-stone-50/70 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+              <th className="p-4 text-stone-700 normal-case text-sm font-bold">
+                Player
+              </th>
 
-            {/* Clickable Wins Column Header */}
-            <th
-              onClick={() => handleSort("wins")}
-              className="p-3 font-semibold text-stone-700 cursor-pointer hover:bg-stone-100 transition-colors select-none group w-[95px]"
-            >
-              <div className="flex items-center justify-center gap-x-1">
-                <span>Wins</span>
-                {renderSortIcon("wins")}
-              </div>
-            </th>
-
-            {/* Clickable Losses Column Header */}
-            <th
-              onClick={() => handleSort("losses")}
-              className="p-3 font-semibold text-stone-700 cursor-pointer hover:bg-stone-100 transition-colors select-none group w-[95px]"
-            >
-              <div className="flex items-center justify-center gap-x-1">
-                <span>Losses</span>
-                {renderSortIcon("losses")}
-              </div>
-            </th>
-
-            {/* Clickable Total Points Column Header */}
-            <th
-              onClick={() => handleSort("points")}
-              className="p-3 font-semibold text-stone-700 cursor-pointer hover:bg-stone-100 transition-colors select-none group w-[115px]"
-            >
-              <div className="flex items-center justify-center gap-x-1">
-                <span>Total Points</span>
-                {renderSortIcon("points")}
-              </div>
-            </th>
-
-            {/* Clickable Total Games Column Header */}
-            <th
-              onClick={() => handleSort("games")}
-              className="p-3 font-semibold text-stone-700 cursor-pointer hover:bg-stone-100 transition-colors select-none group w-[125px]"
-            >
-              <div className="flex items-center justify-center gap-x-1">
-                <span>Total Games</span>
-                {renderSortIcon("games")}
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-stone-100">
-          {sortedPlayers.map((player) => {
-            const totalWins = player?.totalCommunityWins ?? 0;
-            const totalLosses = player?.totalCommunityLosses ?? 0;
-            const totalGames = player?.totalCommunityGames ?? 0;
-            const totalPoints = player?.totalCommunityPoints ?? totalWins;
-
-            return (
-              <tr
-                key={player?.id}
-                className="hover:bg-stone-50/70 transition-colors duration-150"
+              {/* Clickable Wins Column Header */}
+              <th
+                onClick={() => handleSort("wins")}
+                className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[95px] text-center"
               >
-                {/* Primary Identifier */}
-                <td className="p-3 text-sm font-medium text-stone-900">
-                  {player?.communityPlayer?.username}
-                </td>
-
-                {/* Wins Count - Light Green accent */}
-                <td className="p-3 text-sm text-center">
-                  <span className="inline-block px-2 py-0.5 font-semibold text-green-700 bg-green-50 rounded-md min-w-[32px]">
-                    {totalWins}
+                <div className="flex items-center justify-center gap-x-1">
+                  <span>Wins</span>
+                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
+                    {renderSortIcon("wins")}
                   </span>
-                </td>
+                </div>
+              </th>
 
-                {/* Losses Count - Light Red accent */}
-                <td className="p-3 text-sm text-center">
-                  <span className="inline-block px-2 py-0.5 font-semibold text-red-700 bg-red-50 rounded-md min-w-[32px]">
-                    {totalLosses}
+              {/* Clickable Losses Column Header */}
+              <th
+                onClick={() => handleSort("losses")}
+                className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[95px] text-center"
+              >
+                <div className="flex items-center justify-center gap-x-1">
+                  <span>Losses</span>
+                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
+                    {renderSortIcon("losses")}
                   </span>
-                </td>
+                </div>
+              </th>
 
-                {/* Total Points Metric */}
-                <td className="p-3 text-sm text-center font-bold text-stone-700">
-                  {totalPoints}
-                </td>
+              {/* Clickable Total Points Column Header */}
+              <th
+                onClick={() => handleSort("points")}
+                className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[120px] text-center"
+              >
+                <div className="flex items-center justify-center gap-x-1">
+                  <span>Points</span>
+                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
+                    {renderSortIcon("points")}
+                  </span>
+                </div>
+              </th>
 
-                {/* Total Summary Field */}
-                <td className="p-3 text-sm text-center font-medium text-stone-500">
-                  {totalGames}
+              {/* Clickable Total Games Column Header */}
+              <th
+                onClick={() => handleSort("games")}
+                className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[120px] text-center"
+              >
+                <div className="flex items-center justify-center gap-x-1">
+                  <span>Games</span>
+                  <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
+                    {renderSortIcon("games")}
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-stone-100">
+            {sortedPlayers.map((player) => {
+              const totalWins = player?.totalCommunityWins ?? 0;
+              const totalLosses = player?.totalCommunityLosses ?? 0;
+              const totalGames = player?.totalCommunityGames ?? 0;
+              const totalPoints = player?.totalCommunityPoints ?? totalWins;
+
+              return (
+                <tr
+                  key={player?.id}
+                  className="hover:bg-stone-50/40 transition-colors duration-150"
+                >
+                  {/* Primary Identifier */}
+                  <td className="p-4 text-sm">
+                    <div className="flex items-center gap-x-3 max-w-[260px]">
+                      <PlayerAvatar
+                        username={player?.communityPlayer?.username}
+                        size="md"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-stone-900 truncate">
+                          {player?.communityPlayer?.username}
+                        </span>
+                        <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-0.5">
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md capitalize border ${
+                              player?.communityPlayer?.type === "static"
+                                ? "bg-purple-50 text-purple-700 border-purple-100"
+                                : "bg-stone-50 text-stone-600 border-stone-200"
+                            }`}
+                          >
+                            {player?.communityPlayer?.type || "Regular"}
+                          </span>
+                          <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md uppercase">
+                            {player?.communityPlayer?.skillLevel || "UNRANKED"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Wins Count - Clear green distinction */}
+                  <td className="p-4 text-sm text-center">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 font-bold text-green-700 bg-green-50/60 rounded-md min-w-[36px] border border-green-100/50">
+                      {totalWins}
+                    </span>
+                  </td>
+
+                  {/* Losses Count */}
+                  <td className="p-4 text-sm text-center">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 font-semibold text-stone-600 bg-stone-50 rounded-md min-w-[36px] border border-stone-200/40">
+                      {totalLosses}
+                    </span>
+                  </td>
+
+                  {/* Total Points Metric */}
+                  <td className="p-4 text-sm text-center">
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 font-bold text-amber-700 bg-amber-50/60 rounded-md min-w-[36px] border border-amber-100/50">
+                      {totalPoints}
+                    </span>
+                  </td>
+
+                  {/* Total Summary Field */}
+                  <td className="p-4 text-sm text-center font-semibold text-stone-500">
+                    {totalGames}
+                  </td>
+                </tr>
+              );
+            })}
+
+            {sortedPlayers.length === 0 && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="p-12 text-center text-sm text-stone-400 italic bg-stone-50/20"
+                >
+                  No statistical roster data available yet
                 </td>
               </tr>
-            );
-          })}
-          {sortedPlayers.length === 0 && (
-            <tr>
-              <td
-                colSpan={5}
-                className="p-8 text-center text-sm text-stone-400 italic"
-              >
-                No data available yet
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
