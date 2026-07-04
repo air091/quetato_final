@@ -84,27 +84,34 @@ const AddSessionModal = ({
     <Modal isOpen={isCreateSessionModalOpen}>
       <div
         onClick={() => setIsCreateSessionModalOpen(false)}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white p-6 rounded-md shadow-lg max-w-[520px] w-full z-999"
+          className="bg-white rounded-xl shadow-xl max-w-[520px] w-full z-999 border border-stone-200 overflow-hidden"
         >
-          <header className="flex items-center justify-between py-2">
-            <h3 className="font-medium">Create new session</h3>
+          {/* Header Container */}
+          <header className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+            <h3 className="text-base font-bold text-stone-900">
+              Create new session
+            </h3>
             <button
               onClick={() => setIsCreateSessionModalOpen(false)}
-              className="cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full p-1"
+              className="cursor-pointer text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg p-1.5 transition-colors"
             >
-              <X size={20} />
+              <X size={16} />
             </button>
           </header>
 
-          <form onSubmit={handleOnSubmit} className="flex flex-col gap-y-2">
-            {/* NAME AND SPORT */}
-            <div className="flex items-center gap-x-2">
+          {/* Main Form Box */}
+          <form onSubmit={handleOnSubmit} className="p-6 flex flex-col gap-y-4">
+            {/* NAME AND SPORT FIELDS */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="w-full">
-                <label htmlFor="name" className="text-[14px]">
+                <label
+                  htmlFor="name"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Name
                 </label>
                 <input
@@ -113,12 +120,15 @@ const AddSessionModal = ({
                   name="name"
                   value={session.name}
                   onChange={handleOnChange}
-                  placeholder="Smash today"
-                  className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                  placeholder="e.g., Friday Night Smash"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400"
                 />
               </div>
-              <div>
-                <label htmlFor="sport" className="text-[14px]">
+              <div className="w-full sm:w-auto sm:min-w-[160px]">
+                <label
+                  htmlFor="sport"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Sport
                 </label>
                 <select
@@ -126,61 +136,74 @@ const AddSessionModal = ({
                   id="sport"
                   value={session.sport}
                   onChange={handleOnChange}
-                  className="block px-2 py-1 min-w-[140px] border cursor-pointer rounded-sm mt-0.5"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full cursor-pointer rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-800"
                 >
                   <option value="badminton">Badminton</option>
                 </select>
               </div>
             </div>
 
-            {/* LOCATION */}
+            {/* LOCATION FIELD */}
             <div>
-              <label htmlFor="location" className="text-[14px]">
+              <label
+                htmlFor="location"
+                className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+              >
                 Location
               </label>
               <input
                 type="text"
                 id="location"
                 name="location"
+                placeholder="e.g., Court 3, Downtown Sports Complex"
                 value={session.location}
                 onChange={handleOnChange}
-                className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400"
               />
             </div>
 
-            {/* START AND END SCHEDULE */}
-            <div className="flex items-center gap-x-2">
+            {/* TIMING CONFIGURATIONS */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="w-full">
-                <label htmlFor="startAt" className="text-[14px]">
+                <label
+                  htmlFor="startAt"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Starts at
                 </label>
                 <input
                   id="startAt"
                   type="datetime-local"
-                  name="startAt" // ✅ FIX: Added missing name attribute
+                  name="startAt"
                   value={session.startAt}
                   onChange={handleOnChange}
-                  className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-800"
                 />
               </div>
               <div className="w-full">
-                <label htmlFor="endAt" className="text-[14px]">
+                <label
+                  htmlFor="endAt"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Ends at
                 </label>
                 <input
                   id="endAt"
                   type="datetime-local"
-                  name="endAt" // ✅ FIX: Added missing name attribute
+                  name="endAt"
                   value={session.endAt}
                   onChange={handleOnChange}
-                  className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-800"
                 />
               </div>
             </div>
 
-            {/* DESCRIPTION */}
+            {/* DESCRIPTION CONTAINER */}
             <div>
-              <label htmlFor="description" className="text-[14px]">
+              <label
+                htmlFor="description"
+                className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+              >
                 Description
               </label>
               <textarea
@@ -189,25 +212,25 @@ const AddSessionModal = ({
                 rows={3}
                 value={session.description}
                 onChange={handleOnChange}
-                placeholder="Join the queue and start playing with nearby players."
-                className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                placeholder="Provide guidelines, queue rules, or required gear specs for players..."
+                className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400 resize-none"
               ></textarea>
             </div>
 
-            {/* ACTIONS */}
-            <div className="flex items-center justify-end gap-x-3 mt-2">
+            {/* FOUL-SAFE MODAL ACTION FOOTER */}
+            <div className="flex items-center justify-end gap-x-2 pt-2 border-t border-stone-100 mt-2">
               <button
-                type="button" // ✅ FIX: Explicitly mark as type="button" so it doesn't trigger a form submit
+                type="button"
                 onClick={() => setIsCreateSessionModalOpen(false)}
-                className="px-4 py-1 bg-gray-200 hover:bg-gray-300 cursor-pointer rounded-sm"
+                className="px-4 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer outline-none"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-1 bg-blue-400 hover:bg-blue-500 hover:text-white cursor-pointer rounded-sm"
+                className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
               >
-                Add
+                Create Session
               </button>
             </div>
           </form>
