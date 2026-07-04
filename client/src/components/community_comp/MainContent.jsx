@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import SubHeader from "./SubHeader";
 
-const MainContent = () => {
+const MainContent = ({ outletContext }) => {
   return (
     <div className="px-4 flex flex-col gap-y-2 py-2 overflow-hidden">
       {/* sub header */}
@@ -10,7 +10,7 @@ const MainContent = () => {
 
       {/* main */}
       <main className="">
-        <Outlet />
+        <Outlet context={outletContext} />
       </main>
     </div>
   );

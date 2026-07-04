@@ -41,7 +41,7 @@ const Header = ({ communityId, accessToken }) => {
     <header className="flex items-center justify-center px-6 py-4 border-b border-stone-100 bg-white">
       <div className="flex flex-col gap-y-1">
         <div className="flex items-center gap-x-2 mb-2 justify-center">
-          <PlayerAvatar username={community.name} size="md" />
+          <PlayerAvatar username={community?.name} size="md" />
           {/* Community Title */}
           <h3 className="text-xl font-bold tracking-tight text-stone-900">
             {community?.name}
