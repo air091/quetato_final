@@ -343,7 +343,7 @@ const CommunityActivities = () => {
                               : "bg-red-50 text-red-600 border-red-100"
                           }`}
                         >
-                          {session?.isAvailable ? "Available" : "Full"}
+                          {session?.isAvailable ? "Available" : "Unavailable"}
                         </span>
                       </td>
 

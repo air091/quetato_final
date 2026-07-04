@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../../createPortal";
 import { X } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
@@ -12,7 +12,7 @@ const EditSessionModal = ({
   session,
 }) => {
   const { fetchWithAuth } = useAuth();
-  // 1. Initialize local state for the form inputs
+
   const [sessionData, setSessionData] = useState({
     name: "",
     sport: "badminton",
@@ -22,14 +22,12 @@ const EditSessionModal = ({
     description: "",
   });
 
-  // 2. Sync local state whenever the "session" prop changes or opens
   useEffect(() => {
     if (session) {
       setSessionData({
         name: session.name || "",
         sport: session.sport || "badminton",
         location: session.location || "",
-        // Format dates to YYYY-MM-DDTHH:MM if they exist for datetime-local compatibility
         startAt: session.startAt
           ? new Date(session.startAt).toISOString().slice(0, 16)
           : "",
@@ -46,7 +44,6 @@ const EditSessionModal = ({
     setSessionData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 3. Define the actual update API call function
   const updateSession = async () => {
     try {
       const response = await fetchWithAuth(
@@ -63,7 +60,6 @@ const EditSessionModal = ({
       if (!data.success)
         throw new Error(data?.message || "Internal server error");
 
-      // Refresh the main table data and close modal
       if (getAllSessions) getAllSessions();
       setIsEditSessionModalOpen(false);
     } catch (error) {
@@ -77,33 +73,91 @@ const EditSessionModal = ({
     await updateSession();
   };
 
+  // FIXED: Dynamic route injection, state refreshes, and clear error logs
+  const startEndSession = useCallback(
+    async (isAvailable) => {
+      if (!session?.id) return;
+
+      try {
+        const endpoint = isAvailable ? "end" : "start";
+        const response = await fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${session.id}/${endpoint}`,
+          { method: "PUT" },
+        );
+
+        if (!response.ok) throw new Error(`Failed to ${endpoint} session`);
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data?.message || "Action failed");
+
+        // Instantly sync the listing table UI updates
+        if (getAllSessions) getAllSessions();
+        setIsEditSessionModalOpen(false);
+      } catch (error) {
+        console.error(`Error toggling session state:`, error);
+        alert("Could not modify session status. Please try again.");
+      }
+    },
+    [
+      communityId,
+      session?.id,
+      fetchWithAuth,
+      getAllSessions,
+      setIsEditSessionModalOpen,
+    ],
+  );
+
   return (
     <Modal isOpen={isEditSessionModalOpen}>
       <div
         onClick={() => setIsEditSessionModalOpen(false)}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/50 backdrop-blur-sm p-4"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white p-6 rounded-md shadow-lg max-w-[520px] w-full z-999"
+          className="bg-white rounded-xl shadow-xl max-w-[520px] w-full z-999 border border-stone-200 overflow-hidden"
         >
-          <header className="flex items-center justify-between py-2">
-            <h3 className="font-medium">Edit session</h3>
-            <button
-              type="button"
-              onClick={() => setIsEditSessionModalOpen(false)}
-              className="cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full p-1"
-            >
-              <X size={20} />
-            </button>
+          {/* Header Container */}
+          <header className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+            <h3 className="text-base font-bold text-stone-900">Edit session</h3>
+            <div className="flex items-center gap-x-2">
+              {session?.isAvailable ? (
+                <button
+                  type="button"
+                  onClick={() => startEndSession(session?.isAvailable)}
+                  className="px-4 py-2 text-xs font-semibold bg-red-900 text-stone-100 hover:bg-red-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                >
+                  End Session
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => startEndSession(session?.isAvailable)}
+                  className="px-4 py-2 text-xs font-semibold bg-green-900 text-stone-100 hover:bg-green-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                >
+                  Start Session
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsEditSessionModalOpen(false)}
+                className="cursor-pointer text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg p-1.5 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </header>
 
-          {/* Connected the submit handler here */}
-          <form onSubmit={handleOnSubmit}>
-            {/* NAME AND SPORT */}
-            <div className="flex items-center gap-x-2">
+          {/* Main Edit Form */}
+          <form onSubmit={handleOnSubmit} className="p-6 flex flex-col gap-y-4">
+            {/* NAME AND SPORT FIELDS */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="w-full">
-                <label htmlFor="name" className="text-[14px]">
+                <label
+                  htmlFor="name"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Name
                 </label>
                 <input
@@ -112,13 +166,16 @@ const EditSessionModal = ({
                   name="name"
                   value={sessionData.name}
                   onChange={handleOnChange}
-                  placeholder="Smash today"
-                  className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                  placeholder="e.g., Friday Night Smash"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400 font-medium text-stone-900"
                   required
                 />
               </div>
-              <div>
-                <label htmlFor="sport" className="text-[14px]">
+              <div className="w-full sm:w-auto sm:min-w-[160px]">
+                <label
+                  htmlFor="sport"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Sport
                 </label>
                 <select
@@ -126,32 +183,39 @@ const EditSessionModal = ({
                   id="sport"
                   value={sessionData.sport}
                   onChange={handleOnChange}
-                  className="block px-2 py-1 min-w-[140px] border cursor-pointer rounded-sm mt-0.5"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full cursor-pointer rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-800"
                 >
                   <option value="badminton">Badminton</option>
                 </select>
               </div>
             </div>
 
-            {/* LOCATION */}
-            <div className="mt-2">
-              <label htmlFor="location" className="text-[14px]">
+            {/* LOCATION FIELD */}
+            <div>
+              <label
+                htmlFor="location"
+                className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+              >
                 Location
               </label>
               <input
                 type="text"
                 id="location"
                 name="location"
+                placeholder="e.g., Court 3, Downtown Sports Complex"
                 value={sessionData.location}
                 onChange={handleOnChange}
-                className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400"
               />
             </div>
 
-            {/* START AND END SCHEDULE */}
-            <div className="flex items-center gap-x-2 mt-2">
+            {/* TIMING CONFIGURATIONS */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="w-full">
-                <label htmlFor="startAt" className="text-[14px]">
+                <label
+                  htmlFor="startAt"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Starts at
                 </label>
                 <input
@@ -160,11 +224,14 @@ const EditSessionModal = ({
                   name="startAt"
                   value={sessionData.startAt}
                   onChange={handleOnChange}
-                  className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-800"
                 />
               </div>
               <div className="w-full">
-                <label htmlFor="endAt" className="text-[14px]">
+                <label
+                  htmlFor="endAt"
+                  className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+                >
                   Ends at
                 </label>
                 <input
@@ -173,14 +240,17 @@ const EditSessionModal = ({
                   name="endAt"
                   value={sessionData.endAt}
                   onChange={handleOnChange}
-                  className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-800"
                 />
               </div>
             </div>
 
-            {/* DESCRIPTION */}
-            <div className="mt-2">
-              <label htmlFor="description" className="text-[14px]">
+            {/* DESCRIPTION FIELD */}
+            <div>
+              <label
+                htmlFor="description"
+                className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5"
+              >
                 Description
               </label>
               <textarea
@@ -189,25 +259,25 @@ const EditSessionModal = ({
                 rows={3}
                 value={sessionData.description}
                 onChange={handleOnChange}
-                placeholder="Join the queue and start playing with nearby players."
-                className="block px-2 py-1 border w-full rounded-sm mt-0.5"
+                placeholder="Provide guidelines, queue rules, or required gear specs for players..."
+                className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400 resize-none"
               ></textarea>
             </div>
 
-            {/* ACTIONS */}
-            <div className="flex items-center justify-end gap-x-3 mt-4">
+            {/* FOUL-SAFE MODAL ACTION FOOTER */}
+            <div className="flex items-center justify-end gap-x-2 pt-2 border-t border-stone-100 mt-2">
               <button
                 type="button"
                 onClick={() => setIsEditSessionModalOpen(false)}
-                className="px-4 py-1 bg-gray-200 hover:bg-gray-300 cursor-pointer rounded-sm"
+                className="px-4 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer outline-none"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-1 bg-blue-400 hover:bg-blue-500 hover:text-white cursor-pointer rounded-sm"
+                className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
               >
-                Save
+                Save Changes
               </button>
             </div>
           </form>

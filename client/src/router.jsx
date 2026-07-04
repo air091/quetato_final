@@ -15,7 +15,6 @@ import CommunityActivity from "./pages/client/community/CommunityActivity";
 import Community from "./pages/client/community/Community";
 import CommunityActivities from "./pages/client/community/sub_pages/CommunityActivities";
 import CommunityPlayers from "./pages/client/community/sub_pages/CommunityPlayers";
-import CommunityDetails from "./pages/client/community/sub_pages/CommunityDetails";
 import All from "./pages/client/community/sub_pages/players_pages/All";
 import Dashboard from "./pages/client/community/sub_pages/players_pages/Dashboard";
 import SessionLayout from "./layouts/SessionLayout";
@@ -25,6 +24,7 @@ import Payment from "./pages/client/session/Payment";
 import AllPlayers from "./pages/client/session/sub_pages/AllPlayers";
 import RequestPlayers from "./pages/client/session/sub_pages/RequestPlayers";
 import SessionDashboard from "./pages/client/session/Dashboard";
+import CommunitySettings from "./pages/client/community/sub_pages/CommunitySettings";
 
 const router = createBrowserRouter([
   {
@@ -101,7 +101,7 @@ const router = createBrowserRouter([
               },
               {
                 path: "details",
-                element: <CommunityDetails />,
+                element: <CommunitySettings />,
               },
             ],
           },

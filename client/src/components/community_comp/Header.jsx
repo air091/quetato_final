@@ -1,5 +1,6 @@
 import { EllipsisVertical } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
+import PlayerAvatar from "../PlayerAvatar";
 
 const Header = ({ communityId, accessToken }) => {
   const [community, setCommunity] = useState();
@@ -37,25 +38,36 @@ const Header = ({ communityId, accessToken }) => {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-4 py-2">
-      <div>
-        <h3 className="font-medium text-[20px] leading-5">{community?.name}</h3>
-        <div>
-          <span className="text-[16px] mr-2 font-medium">
-            {community?.owner.username}
+    <header className="flex items-center justify-center px-6 py-4 border-b border-stone-100 bg-white">
+      <div className="flex flex-col gap-y-1">
+        <div className="flex items-center gap-x-2 mb-2 justify-center">
+          <PlayerAvatar username={community.name} size="md" />
+          {/* Community Title */}
+          <h3 className="text-xl font-bold tracking-tight text-stone-900">
+            {community?.name}
+          </h3>
+        </div>
+
+        {/* Context Metadata Row */}
+        <div className="flex items-center flex-wrap gap-x-2 text-sm text-stone-500">
+          <span className="font-medium text-stone-700">
+            by {community?.owner?.username}
           </span>
-          <span className="text-[14px] mr-2">
-            Players: {community?._count.players}
+          <span className="text-stone-300" aria-hidden="true">
+            ·
           </span>
-          <span className="text-[14px] mr-2">
-            Sessions: {community?._count.sessions}
+          <span className="font-medium">
+            {community?._count?.players ?? 0}{" "}
+            {community?._count?.players === 1 ? "player" : "players"}
+          </span>
+          <span className="text-stone-300" aria-hidden="true">
+            ·
+          </span>
+          <span className="font-medium">
+            {community?._count?.sessions ?? 0}{" "}
+            {community?._count?.sessions === 1 ? "session" : "sessions"}
           </span>
         </div>
-      </div>
-      <div>
-        <button className="hover:bg-gray-200 cursor-pointer rounded-full p-1">
-          <EllipsisVertical size={20} />
-        </button>
       </div>
     </header>
   );
