@@ -158,6 +158,7 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
       totalCommunityWins: 0,
       totalCommunityLosses: 0,
       totalCommunityGames: 0,
+      totalCommunityPoints: 0,
     }));
   }
 
@@ -190,10 +191,12 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
       totalCommunityWins: 0,
       totalCommunityLosses: 0,
       totalCommunityGames: 0,
+      totalCommunityPoints: 0,
     };
 
     if (gameCount.iswin) {
       currentStats.totalCommunityWins += gameCount._count._all;
+      currentStats.totalCommunityPoints += gameCount._count._all;
     } else {
       currentStats.totalCommunityLosses += gameCount._count._all;
     }
@@ -208,5 +211,7 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
     totalCommunityLosses:
       statsByPlayerId.get(player.id)?.totalCommunityLosses || 0,
     totalCommunityGames: statsByPlayerId.get(player.id)?.totalCommunityGames || 0,
+    totalCommunityPoints:
+      statsByPlayerId.get(player.id)?.totalCommunityPoints || 0,
   }));
 };
