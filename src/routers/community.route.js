@@ -48,6 +48,7 @@ import {
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
 } from "../controllers/gameHistory.controller.js";
+import { addPricingController } from "../controllers/pricing.controller.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -200,5 +201,9 @@ router.get(
   "/:communityId/sessions/:sessionId/players/history",
   getPlayerTotalCommunityGamesController,
 );
+
+// PRICING
+
+router.post("/:communityId/sessions/:sessionId/pricing", addPricingController);
 
 export default router;
