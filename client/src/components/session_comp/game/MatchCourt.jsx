@@ -80,7 +80,7 @@ const DraggableSlotPlayer = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
+          <span className="truncate text-black font-semibold max-w-[140px] block text-[12px]">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -296,7 +296,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
+                  <span className="truncate text-black font-semibold max-w-[60px] block text-[10px] border">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
@@ -548,7 +548,12 @@ const MatchCourt = ({
       <h4 className="font-semibold text-gray-700 mb-2">
         Match ({countDisplay})
       </h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* 
+        UPDATED LINE BELOW: 
+        grid-cols-1 applies to everything under 1280px. 
+        xl:grid-cols-2 switches it to 2 columns at 1280px and above.
+      */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         {courtsList.map((matchCourt) => (
           <MatchCourtCard
             key={matchCourt.id}

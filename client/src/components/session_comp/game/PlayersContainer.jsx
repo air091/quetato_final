@@ -43,7 +43,7 @@ export const PlayerTimer = ({ timestamp }) => {
       const elapsedMinutes = (now - startTime) / 1000 / 60;
 
       if (elapsedMinutes >= 20) {
-        setColorClass("text-red-500 font-semibold animate-pulse");
+        setColorClass("text-red-600 font-bold");
       } else if (elapsedMinutes >= 15) {
         setColorClass("text-yellow-500 font-semibold");
       } else {
@@ -124,7 +124,7 @@ export const PlayerCard = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
+          <span className="truncate text-black font-semibold max-w-[60px] block text-[10px]">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -348,7 +348,7 @@ const DraggablePlayer = ({
               size="sm"
             />
             <div>
-              <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
+              <span className="truncate text-black font-semibold max-w-[60px] block text-[10px]">
                 {username}
               </span>
               <div className="flex items-center gap-x-1">
@@ -412,7 +412,7 @@ const PlayersContainer = ({
   });
 
   return (
-    <div className="w-full md:w-[400px] bg-white rounded-lg flex flex-col h-full">
+    <div className="w-full max-w-[400px] bg-white rounded-lg flex flex-col h-full">
       <header className="flex-shrink-0 border-b border-gray-100 p-2">
         <h4 className="font-semibold text-gray-800">
           Players ({filteredPlayers.length})
