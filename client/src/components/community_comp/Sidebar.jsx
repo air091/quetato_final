@@ -1,4 +1,4 @@
-import { Compass, Handshake, House, Newspaper, Plus } from "lucide-react";
+import { Compass, House, Newspaper, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -32,7 +32,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         throw new Error(data?.message || "Internal server error");
       }
 
-      return setMyCommunities(data.myCommunities);
+      setMyCommunities(data.myCommunities || []);
     } catch (error) {
       console.error("Failed to fetch communities:", error);
     }
@@ -40,13 +40,12 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     getMyCommunity();
-  }, []);
+  }, [getMyCommunity]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       const clickedElement = event.target;
 
-      // 2. Identify interactive things to completely ignore
       const isInteractive =
         clickedElement.closest("button") ||
         clickedElement.closest("a") ||
@@ -54,12 +53,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         clickedElement.closest("select") ||
         clickedElement.closest("textarea");
 
-      // If they clicked a button (like the Menu button!) or a link, do absolutely nothing
       if (isInteractive) {
         return;
       }
 
-      // 3. If they clicked outside the sidebar (empty space/labels), trigger parent close function
+      // If sidebar is minimized (not fully open), we don't trigger click-away close behavior
+      if (!isOpen) return;
+
       if (sidebarRef.current && !sidebarRef.current.contains(clickedElement)) {
         onClose();
       }
@@ -69,76 +69,141 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [onClose]);
-
-  // 4. Use the prop to control rendering visibility
-  if (!isOpen) return null;
+  }, [isOpen, onClose]);
 
   return (
-    <nav ref={sidebarRef} className="w-full max-w-[260px] p-2">
-      <ul className="flex flex-col gap-y-1">
-        <li>
-          <NavLink
-            to="/"
-            className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
-            }
-          >
-            <House size={20} /> Home
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/community/sessions"
-            end
-            className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
-            }
-          >
-            <Newspaper size={20} /> Sessions
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/community/find"
-            className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
-            }
-          >
-            <Compass size={20} /> Find
-          </NavLink>
-        </li>
-        <li>
-          <button className="w-full flex items-center justify-center gap-x-2 border p-2 cursor-pointer rounded">
-            <Plus size={18} />
-            Create community
-          </button>
-        </li>
-      </ul>
+    <nav
+      ref={sidebarRef}
+      className={`h-screen bg-stone-50 border-r border-stone-200 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between ${
+        isOpen ? "w-[260px]" : "w-[60px]"
+      }`}
+    >
+      <div className="flex flex-col gap-y-4">
+        {/* CORE NAV LINKS */}
+        <ul className="flex flex-col gap-y-1">
+          {/* HOME */}
+          <li>
+            <NavLink
+              to="/"
+              title={!isOpen ? "Home" : undefined}
+              className={({ isActive }) =>
+                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                  isOpen ? "gap-x-4 justify-start" : "justify-center"
+                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+              }
+            >
+              <House size={20} className="shrink-0" />
+              <span
+                className={`text-sm tracking-wide whitespace-nowrap ${isOpen ? "block" : "hidden"}`}
+              >
+                Home
+              </span>
+            </NavLink>
+          </li>
 
-      <ul className="flex flex-col gap-y-1 border-t mt-4 py-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[14px]">Community you've joined</span>
-          <NavLink
-            to="my-community-all"
-            className="text-[14px] text-blue-400 underline"
+          {/* SESSIONS */}
+          <li>
+            <NavLink
+              to="/community/sessions"
+              end
+              title={!isOpen ? "Sessions" : undefined}
+              className={({ isActive }) =>
+                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                  isOpen ? "gap-x-4 justify-start" : "justify-center"
+                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+              }
+            >
+              <Newspaper size={20} className="shrink-0" />
+              <span
+                className={`text-sm tracking-wide whitespace-nowrap ${isOpen ? "block" : "hidden"}`}
+              >
+                Sessions
+              </span>
+            </NavLink>
+          </li>
+
+          {/* FIND */}
+          <li>
+            <NavLink
+              to="/community/find"
+              title={!isOpen ? "Find" : undefined}
+              className={({ isActive }) =>
+                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                  isOpen ? "gap-x-4 justify-start" : "justify-center"
+                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+              }
+            >
+              <Compass size={20} className="shrink-0" />
+              <span
+                className={`text-sm tracking-wide whitespace-nowrap ${isOpen ? "block" : "hidden"}`}
+              >
+                Find
+              </span>
+            </NavLink>
+          </li>
+
+          {/* CREATE COMMUNITY BUTTON */}
+          <li className="mt-2">
+            <button
+              title={!isOpen ? "Create community" : undefined}
+              className={`w-full flex items-center border border-stone-200 p-2.5 cursor-pointer rounded-xl font-medium text-stone-700 bg-white shadow-sm hover:bg-stone-50 hover:border-stone-300 transition-all ${
+                isOpen ? "gap-x-2 justify-center text-sm" : "justify-center"
+              }`}
+            >
+              <Plus size={18} className="shrink-0" />
+              <span className={isOpen ? "block" : "hidden"}>
+                Create community
+              </span>
+            </button>
+          </li>
+        </ul>
+
+        {/* COMMUNITIES LIST SECTION */}
+        <div className="flex flex-col gap-y-2 border-t border-stone-200 pt-4">
+          <div
+            className={`items-center justify-between px-2 ${isOpen ? "flex" : "hidden"}`}
           >
-            See all
-          </NavLink>
+            <span className="text-[12px] font-bold text-stone-400 uppercase tracking-wider">
+              Communities
+            </span>
+            <NavLink
+              to="my-community-all"
+              className="text-[11px] font-semibold text-stone-500 hover:text-stone-900 underline"
+            >
+              See all
+            </NavLink>
+          </div>
+
+          <ul className="flex flex-col gap-y-1">
+            {myCommunities?.map((myCommunity) => (
+              <li key={myCommunity.id}>
+                <NavLink
+                  to={`/community/${myCommunity.id}`}
+                  title={!isOpen ? myCommunity.name : undefined}
+                  className={({ isActive }) =>
+                    `flex items-center rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                      isOpen
+                        ? "p-2.5 gap-x-4 justify-start text-sm"
+                        : "p-2 justify-center"
+                    } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+                  }
+                >
+                  {isOpen ? (
+                    <span className="truncate tracking-wide">
+                      {myCommunity.name}
+                    </span>
+                  ) : (
+                    /* Elegant single-letter fallback badge when minimized */
+                    <div className="w-8 h-8 rounded-lg bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-xs uppercase shadow-sm group-hover:bg-stone-300 transition-colors">
+                      {myCommunity.name?.charAt(0) || "C"}
+                    </div>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
         </div>
-
-        {myCommunities?.map((myCommunity) => (
-          <NavLink
-            key={myCommunity.id}
-            to={`/community/${myCommunity.id}`}
-            className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
-            }
-          >
-            {myCommunity.name}
-          </NavLink>
-        ))}
-      </ul>
+      </div>
     </nav>
   );
 };

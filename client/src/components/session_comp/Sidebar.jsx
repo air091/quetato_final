@@ -2,23 +2,20 @@ import {
   ArrowLeft,
   CreditCard,
   Gamepad2,
-  Handshake,
-  House,
   LayoutDashboard,
   UsersRound,
 } from "lucide-react";
 import React, { useEffect, useRef } from "react";
-import { NavLink, useParams } from "react-router-dom"; // 👈 Swap useNavigate for useParams
+import { NavLink, useParams } from "react-router-dom";
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const { communityId } = useParams(); // 👈 Grab the current community ID
+  const { communityId } = useParams();
   const sidebarRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       const clickedElement = event.target;
 
-      // 2. Identify interactive things to completely ignore
       const isInteractive =
         clickedElement.closest("button") ||
         clickedElement.closest("a") ||
@@ -26,12 +23,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         clickedElement.closest("select") ||
         clickedElement.closest(".player");
 
-      // If they clicked a button (like the Menu button!) or a link, do absolutely nothing
       if (isInteractive) {
         return;
       }
 
-      // 3. If they clicked outside the sidebar (empty space/labels), trigger parent close function
+      // If sidebar is minimized (not fully open), we don't trigger the click-away close behavior
+      if (!isOpen) return;
+
       if (sidebarRef.current && !sidebarRef.current.contains(clickedElement)) {
         onClose();
       }
@@ -41,63 +39,124 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [onClose]);
-
-  // 4. Use the prop to control rendering visibility
-  if (!isOpen) return null;
+  }, [isOpen, onClose]);
 
   return (
-    <nav ref={sidebarRef} className="w-full max-w-[228px] p-2">
+    <nav
+      ref={sidebarRef}
+      className={`h-screen bg-stone-50 border-r border-stone-200 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between ${
+        isOpen ? "w-[228px]" : "w-[60px]"
+      }`}
+    >
       <ul className="flex flex-col gap-y-1">
+        {/* BACK TO COMMUNITY */}
         <li>
           <NavLink
-            to={`/community/${communityId}/sessions`} // 👈 Explicit path back to the community
+            to={`/community/${communityId}/sessions`}
             end
+            title={!isOpen ? "Back to community" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : ""}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 group text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <ArrowLeft size={20} /> Back to community
+            <ArrowLeft size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Back to community
+            </span>
           </NavLink>
         </li>
+
+        {/* DASHBOARD */}
         <li>
           <NavLink
             to="dashboard"
+            title={!isOpen ? "Dashboard" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : ""}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 group text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <LayoutDashboard size={20} /> Dashboard
+            <LayoutDashboard size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Dashboard
+            </span>
           </NavLink>
         </li>
+
+        {/* PLAYERS */}
         <li>
           <NavLink
             to="players"
+            title={!isOpen ? "Players" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : ""}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 group text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <UsersRound size={20} /> Players
+            <UsersRound size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Players
+            </span>
           </NavLink>
         </li>
+
+        {/* GAME */}
         <li>
           <NavLink
             to="game"
+            title={!isOpen ? "Game" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : ""}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 group text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <Gamepad2 size={20} /> Game
+            <Gamepad2 size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Game
+            </span>
           </NavLink>
         </li>
+
+        {/* PAYMENT */}
         <li>
           <NavLink
             to="payment"
+            title={!isOpen ? "Payment" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : ""}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 group text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <CreditCard size={20} /> Payment
+            <CreditCard size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Payment
+            </span>
           </NavLink>
         </li>
       </ul>

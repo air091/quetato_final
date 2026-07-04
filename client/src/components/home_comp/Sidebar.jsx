@@ -2,7 +2,6 @@ import { Handshake, House, UsersRound } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 
-// 1. Accept isOpen and onClose props from the parent
 const Sidebar = ({ isOpen, onClose }) => {
   const sidebarRef = useRef(null);
 
@@ -10,19 +9,19 @@ const Sidebar = ({ isOpen, onClose }) => {
     const handleClickOutside = (event) => {
       const clickedElement = event.target;
 
-      // 2. Identify interactive things to completely ignore
       const isInteractive =
         clickedElement.closest("button") ||
         clickedElement.closest("a") ||
         clickedElement.closest("input") ||
         clickedElement.closest("select");
 
-      // If they clicked a button (like the Menu button!) or a link, do absolutely nothing
       if (isInteractive) {
         return;
       }
 
-      // 3. If they clicked outside the sidebar (empty space/labels), trigger parent close function
+      // If sidebar is minimized (not fully open), we don't trigger click-away close behavior
+      if (!isOpen) return;
+
       if (sidebarRef.current && !sidebarRef.current.contains(clickedElement)) {
         onClose();
       }
@@ -32,46 +31,80 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [onClose]);
-
-  // 4. Use the prop to control rendering visibility
-  if (!isOpen) return null;
+  }, [isOpen, onClose]);
 
   return (
     <nav
       ref={sidebarRef}
-      className="w-full max-w-[260px] p-2 bg-white shadow-md h-screen"
+      className={`h-screen bg-stone-50 border-r border-stone-200 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between ${
+        isOpen ? "w-[260px]" : "w-[60px]"
+      }`}
     >
       <ul className="flex flex-col gap-y-1">
+        {/* HOME */}
         <li>
           <NavLink
             to="/"
             end
+            title={!isOpen ? "Home" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <House size={20} /> Home
+            <House size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Home
+            </span>
           </NavLink>
         </li>
+
+        {/* FRIENDS */}
         <li>
           <NavLink
             to="/find-friends"
+            title={!isOpen ? "Friends" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <Handshake size={20} /> Friends
+            <Handshake size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Friends
+            </span>
           </NavLink>
         </li>
+
+        {/* COMMUNITY */}
         <li>
           <NavLink
             to="/community/sessions"
+            title={!isOpen ? "Community" : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-x-4 hover:bg-gray-300 p-2 rounded ${isActive ? "font-medium bg-gray-200" : null}`
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                isOpen ? "gap-x-4 justify-start" : "justify-center"
+              } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <UsersRound size={20} /> Community
+            <UsersRound size={20} className="shrink-0" />
+            <span
+              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
+                isOpen ? "opacity-100" : "hidden"
+              }`}
+            >
+              Community
+            </span>
           </NavLink>
         </li>
       </ul>
