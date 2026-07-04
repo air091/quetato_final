@@ -279,7 +279,7 @@ const Payment = () => {
               <span className="sm:hidden text-stone-500">
                 <DollarSign size={16} />
               </span>
-              Session Fees Structure
+              Payment Management
             </h3>
             {pricing ? (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-stone-500">
