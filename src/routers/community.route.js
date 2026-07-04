@@ -22,6 +22,7 @@ import {
   getAllPublicSessionsController,
   getAllSessionsController,
   getSessionByIdController,
+  pauseMatchCourtController,
   removePlayerFromSlotController,
   sessionDashboardController,
   startMatchCourtController,
@@ -187,6 +188,11 @@ router.post(
 router.patch(
   "/:communityId/sessions/:sessionId/courts/:courtId/start",
   startMatchCourtController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/pause",
+  pauseMatchCourtController,
 );
 
 router.patch(

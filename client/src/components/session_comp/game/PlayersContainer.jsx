@@ -412,7 +412,7 @@ const PlayersContainer = ({
   });
 
   return (
-    <div className="w-full max-w-[400px] bg-white rounded-lg flex flex-col h-full">
+    <div className="w-full max-w-[400px] max-[1024px]:max-w-[240px] bg-white rounded-lg flex flex-col h-full">
       <header className="flex-shrink-0 border-b border-gray-100 p-2">
         <h4 className="font-semibold text-gray-800">
           Players ({filteredPlayers.length})

@@ -1,9 +1,16 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { CornerDownLeft, EllipsisVertical, Gamepad2, Plus } from "lucide-react";
+import {
+  CornerDownLeft,
+  EllipsisVertical,
+  Gamepad2,
+  Plus,
+  Pause,
+  Play,
+} from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import CourtSettings from "./CourtSettings";
-import PlayerSettings from "./PlayerSettings"; // 🌟 Import PlayerSettings component
+import PlayerSettings from "./PlayerSettings";
 import { PlayerTimer } from "./PlayersContainer";
 import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
@@ -33,7 +40,6 @@ const DraggableSlotPlayer = ({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  // 🌟 Dynamic background mapping based on required gameStatuses rules
   const statusBgClasses = {
     waiting: "bg-white border-gray-500 text-gray-800",
     queued: "bg-amber-200 border-amber-500 text-amber-900",
@@ -55,14 +61,13 @@ const DraggableSlotPlayer = ({
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, ...overdueStyle }} // 🌟 Combined existing styles with overdueStyle
+      style={{ ...style, ...overdueStyle }}
       {...listeners}
       {...attributes}
       className={`player w-full cursor-grab active:cursor-grabbing touch-pan-y flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
-      {/* 🌟 Injected scoped keyframes to isolate the pulse strictly to border-color */}
       {isOverdue && !isDragging && (
         <style>{`
           @keyframes borderPulse {
@@ -80,7 +85,7 @@ const DraggableSlotPlayer = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[140px] block text-[12px]">
+          <span className="truncate text-black font-semibold max-[1320px]:max-w-[46px] max-w-[90px] block max-[1320px]:text-[10px] text-[12px]">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -146,11 +151,13 @@ const CourtSlot = ({
   onRefreshData,
   communityId,
   sessionId,
+  isCourtPaused, // 🌟 Received context parameter
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(0);
   const [isOverdue, setIsOverdue] = useState(false);
 
+  // 🌟 Disable droppable capture if the court is active and NOT explicitly paused
   const { setNodeRef, isOver } = useDroppable({
     id: `slot-${courtId}-${position}`,
     data: {
@@ -158,15 +165,14 @@ const CourtSlot = ({
       courtType,
       position,
     },
+    disabled: !isCourtPaused && !slotData?.sessionPlayerId,
   });
 
-  // Robust lookup fallback for nested target primary IDs
   const stablePlayerId =
     matchedPoolPlayer?.id ||
     matchedPoolPlayer?.sessionPlayer?.id ||
     slotData?.sessionPlayerId;
 
-  // 🌟 Active threshold check effect monitoring the 20-minute marker
   const timestamp =
     matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt;
   useEffect(() => {
@@ -225,9 +231,11 @@ const CourtSlot = ({
     }
   };
 
+  // 🌟 Disable draggable functionality if the match is active unless it is paused
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
     data: { player: { ...matchedPoolPlayer, totalGames } },
+    disabled: !isCourtPaused && slotData?.sessionPlayerId !== undefined,
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
@@ -236,7 +244,6 @@ const CourtSlot = ({
     <PlayerTimer timestamp={timestamp} />
   ) : null;
 
-  // Dynamic background mapping based on required gameStatuses rules
   const statusBgClasses = {
     waiting: "bg-stone-100 border-gray-500 text-gray-800",
     queued: "bg-amber-100 border-amber-500 text-amber-900",
@@ -296,7 +303,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-w-[60px] block text-[10px] border">
+                  <span className="truncate text-black font-semibold max-[1320px]:max-w-[46px] max-w-[90px] block max-[1320px]:text-[10px] text-[12px]">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
@@ -344,16 +351,46 @@ const MatchCourtCard = ({
   sessionId,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
   const buttonRef = useRef(null);
+  const { fetchWithAuth } = useAuth();
 
   const occupiedSlots =
     matchCourt.slots?.filter((slot) => slot.sessionPlayerId) || [];
   const hasTeamAPlayer = occupiedSlots.some((slot) => slot.position % 2 === 0);
   const hasTeamBPlayer = occupiedSlots.some((slot) => slot.position % 2 === 1);
+
+  // 🌟 Logic modifications to handle granular sub-states
+  const isPaused = matchCourt.status === "paused";
+  const isStarted = matchCourt.status === "started";
+
   const canStartGame =
-    hasTeamAPlayer && hasTeamBPlayer && matchCourt.startedAt === null;
-  const isMatchLive =
-    matchCourt.status === "started" || matchCourt.startedAt !== null;
+    hasTeamAPlayer &&
+    hasTeamBPlayer &&
+    (matchCourt.status === "idle" || isPaused);
+  const isMatchLive = isStarted; // 🌟 Only active/started games can select a winner
+
+  // 🌟 Dynamic integration loop with your PATCH route handler
+  const handlePauseToggle = async () => {
+    if (isPausing) return;
+    setIsPausing(true);
+    try {
+      const response = await fetchWithAuth(
+        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${matchCourt.id}/pause`,
+        { method: "PATCH" },
+      );
+      if (response.ok) {
+        onRefreshData?.();
+      }
+    } catch (err) {
+      console.error(
+        "Failed executing match optimization mutation lifecycle:",
+        err,
+      );
+    } finally {
+      setIsPausing(false);
+    }
+  };
 
   return (
     <div
@@ -429,16 +466,40 @@ const MatchCourtCard = ({
             <span className="text-[14px] font-semibold">
               {matchCourt?.name}
             </span>
+            {/* 🌟 New Live Label indicator */}
+            {isStarted && (
+              <span className="text-[10px] bg-emerald-500 text-black px-1.5 rounded-full font-bold uppercase animate-pulse">
+                Live
+              </span>
+            )}
+            {isPaused && (
+              <span className="text-[10px] bg-amber-500 text-black px-1.5 rounded-full font-bold uppercase animate-pulse">
+                Paused
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-x-1 relative">
+            {/* 🌟 Pause Button: Active only when court is explicitly started */}
+            {isStarted && (
+              <button
+                disabled={isPausing}
+                onClick={handlePauseToggle}
+                className="cursor-pointer flex items-center gap-x-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] py-0.5 px-2 rounded-full transition-colors font-medium"
+              >
+                <Pause size={10} /> Pause
+              </button>
+            )}
+
+            {/* 🌟 Resume/Start Game Trigger */}
             {canStartGame && (
               <button
                 onClick={() => onStartMatchCourt?.(matchCourt.id)}
-                className="cursor-pointer bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors"
+                className="cursor-pointer flex items-center gap-x-1 bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors"
               >
-                Start game
+                <Play size={10} /> {isPaused ? "Resume game" : "Start game"}
               </button>
             )}
+
             <button
               title="Settings"
               ref={buttonRef}
@@ -519,6 +580,7 @@ const MatchCourtCard = ({
               onRefreshData={onRefreshData}
               communityId={communityId}
               sessionId={sessionId}
+              isCourtPaused={isPaused || matchCourt.status === "idle"}
             />
           );
         })}
@@ -548,12 +610,8 @@ const MatchCourt = ({
       <h4 className="font-semibold text-gray-700 mb-2">
         Match ({countDisplay})
       </h4>
-      {/* 
-        UPDATED LINE BELOW: 
-        grid-cols-1 applies to everything under 1280px. 
-        xl:grid-cols-2 switches it to 2 columns at 1280px and above.
-      */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      {/* 🌟 Updated responsive classes to stack at 1120px and below */}
+      <div className="grid min-[1200px]:grid-cols-2 grid-cols-1 gap-3">
         {courtsList.map((matchCourt) => (
           <MatchCourtCard
             key={matchCourt.id}

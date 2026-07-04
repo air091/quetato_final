@@ -80,7 +80,7 @@ const DraggableSlotPlayer = ({
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
+          <span className="truncate text-black font-semibold max-[1320px]:max-w-[46px] max-w-[90px] block max-[1320px]:text-[10px] text-[12px]">
             {username}
           </span>
           <div className="flex items-center gap-x-1">
@@ -300,7 +300,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-w-[60px] block text-[12px]">
+                  <span className="truncate text-black font-semibold max-[1320px]:max-w-[46px] max-w-[90px] block max-[1320px]:text-[10px] text-[12px]">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
@@ -421,7 +421,7 @@ const QueueCourtCard = ({
         <div className="flex items-center justify-between w-full">
           <span className="text-[14px] font-semibold">{queueCourt?.name}</span>
           <div className="flex items-center gap-x-1 relative">
-            {queueCourt.slots.length > 0 && (
+            {queueCourt.slots?.length > 0 && (
               <button
                 onClick={() => onTransferQueue(queueCourt.id)}
                 title="Transfer players to first open Match Court"
@@ -512,7 +512,7 @@ const QueueCourt = ({
       <h4 className="font-semibold text-gray-700 mb-2">
         Queues ({countDisplay})
       </h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid min-[1200px]:grid-cols-2 grid-cols-1 gap-3">
         {courtsList.map((queueCourt) => (
           <QueueCourtCard
             key={queueCourt.id}

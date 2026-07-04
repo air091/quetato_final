@@ -608,7 +608,7 @@ export const assignPlayerToSlot = async (
       }),
       tx.court.findMany({
         where: { sessionId },
-        select: { id: true, startedAt: true },
+        select: { id: true, status: true, type: true },
       }),
       tx.courtSlot.findMany({
         where: { court: { sessionId } },
@@ -655,7 +655,7 @@ export const assignPlayerToSlot = async (
     );
 
     // 4. Live Match Rule Guards
-    if (targetCourt.startedAt !== null) {
+    if (targetCourt.type === "match" && targetCourt.status === "started") {
       throw new AppError(
         "Forbidden: Cannot alter lineups on a live match court",
         400,
@@ -665,7 +665,7 @@ export const assignPlayerToSlot = async (
       const sourceCourt = allSessionCourts.find(
         (c) => c.id === sourceSlot.courtId,
       );
-      if (sourceCourt?.startedAt !== null) {
+      if (sourceCourt?.type === "match" && sourceCourt.status === "started") {
         throw new AppError(
           "Forbidden: Cannot move a player out of an active live match",
           400,
@@ -674,6 +674,12 @@ export const assignPlayerToSlot = async (
     }
 
     // 5. Intelligent Assignment Matrix
+    const getSlotGameStatus = (court) =>
+      court?.type === "match" &&
+      (court.status === "started" || court.status === "paused")
+        ? "playing"
+        : "queued";
+    const nextTargetPlayerStatus = getSlotGameStatus(targetCourt);
 
     // Case 1: SWAP — Swapping positions between two distinct court slots.
     if (sourceSlot && occupiedSlot) {
@@ -726,7 +732,10 @@ export const assignPlayerToSlot = async (
         }),
         tx.sessionPlayer.update({
           where: { id: sessionPlayerId },
-          data: { gameStatus: "queued" },
+          data: {
+            gameStatus: nextTargetPlayerStatus,
+            updateStatus: new Date(),
+          },
         }),
       ]);
     }
@@ -744,9 +753,42 @@ export const assignPlayerToSlot = async (
         }),
         tx.sessionPlayer.update({
           where: { id: sessionPlayerId },
-          data: { gameStatus: "queued" },
+          data: {
+            gameStatus: nextTargetPlayerStatus,
+            updateStatus: new Date(),
+          },
         }),
       ]);
+    }
+
+    const touchedSlotPlayerIds = [sourceSlot, occupiedSlot]
+      .map((slot) => slot?.sessionPlayerId)
+      .filter(Boolean);
+
+    if (touchedSlotPlayerIds.length > 0) {
+      const touchedSlots = await tx.courtSlot.findMany({
+        where: {
+          sessionPlayerId: { in: touchedSlotPlayerIds },
+          court: { sessionId },
+        },
+        include: {
+          court: {
+            select: { type: true, status: true },
+          },
+        },
+      });
+
+      await Promise.all(
+        touchedSlots.map((slot) =>
+          tx.sessionPlayer.update({
+            where: { id: slot.sessionPlayerId },
+            data: {
+              gameStatus: getSlotGameStatus(slot.court),
+              updateStatus: new Date(),
+            },
+          }),
+        ),
+      );
     }
 
     // Return the updated states of the entire court collection
@@ -1045,15 +1087,17 @@ export const startMatchCourt = async (
       throw new AppError("Match court not found in this session", 404);
     }
 
-    // 3. Game State Guards
-    if (targetCourt.startedAt !== null || targetCourt.status !== "idle") {
+    // 3. 🌟 UPDATED GAME STATE GUARDS
+    // Allow starting if status is 'idle' OR 'paused'. Block if it's already 'started' or 'ended'.
+    const allowedStatuses = ["idle", "paused"];
+    if (!allowedStatuses.includes(targetCourt.status)) {
       throw new AppError(
-        "Forbidden: This match court has already started or concluded",
+        `Forbidden: This match court is currently '${targetCourt.status}' and cannot be started or resumed`,
         400,
       );
     }
 
-    // 🌟 FIX: Calculate occupied teams based on position integers (Even = Team A, Odd = Team B)
+    // 4. Calculate occupied teams based on position integers
     const occupiedSlots = targetCourt.slots.filter(
       (slot) => slot.sessionPlayerId,
     );
@@ -1071,16 +1115,18 @@ export const startMatchCourt = async (
       );
     }
 
-    // 4. Extract all player IDs sitting in this court's slots
     const playerIdsInMatch = occupiedSlots.map((slot) => slot.sessionPlayerId);
 
-    // 5. Update court information and shift players' game status atomically
+    // 5. 🌟 UPDATED ATOMIC STATE UPDATE
+    // Preserve the original startedAt timestamp if it was already set during a previous pause/resume loop
+    const newStartedAt = targetCourt.startedAt || new Date();
+
     const [updatedCourt] = await Promise.all([
       tx.court.update({
         where: { id: courtId },
         data: {
           status: "started",
-          startedAt: new Date(),
+          startedAt: newStartedAt,
           updatedBy: authorizingAttendee.id,
         },
         include: { slots: true },
@@ -1095,6 +1141,89 @@ export const startMatchCourt = async (
         },
       }),
     ]);
+
+    return updatedCourt;
+  });
+};
+
+export const pauseMatchCourt = async (
+  communityId,
+  sessionId,
+  courtId,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !courtId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, and Authorized ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch user authorization context and the target match court concurrently
+    const [authorizingAttendee, targetCourt] = await Promise.all([
+      tx.sessionPlayer.findFirst({
+        where: {
+          sessionId: sessionId,
+          sessionPlayer: {
+            communityId: communityId,
+            userId: authorizedId,
+          },
+        },
+        select: {
+          id: true,
+          sessionPlayer: { select: { role: true } },
+        },
+      }),
+      tx.court.findFirst({
+        where: {
+          id: courtId,
+          sessionId: sessionId,
+          type: "match",
+        },
+        include: {
+          slots: true,
+        },
+      }),
+    ]);
+
+    // 2. Auth & Existence Guards
+    if (!authorizingAttendee) {
+      throw new AppError(
+        "Forbidden: You are not part of this session's roster",
+        403,
+      );
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only admins, owners, or hosts can pause matches",
+        403,
+      );
+    }
+
+    if (!targetCourt) {
+      throw new AppError("Match court not found in this session", 404);
+    }
+
+    // 3. Game State Guards: Court must be actively 'started' to be paused
+    if (targetCourt.status !== "started") {
+      throw new AppError(
+        `Forbidden: Cannot pause a court that is currently '${targetCourt.status}'`,
+        400,
+      );
+    }
+
+    // 4. Update court state to paused atomically
+    const updatedCourt = await tx.court.update({
+      where: { id: courtId },
+      data: {
+        status: "paused",
+        updatedBy: authorizingAttendee.id,
+      },
+      include: { slots: true },
+    });
 
     return updatedCourt;
   });

@@ -19,6 +19,7 @@ import {
   deleteQueueCourt,
   endMatchCourt,
   getAllCourts,
+  pauseMatchCourt,
   removePlayerFromSlot,
   startMatchCourt,
   transferQueueToMatch,
@@ -580,6 +581,37 @@ export const startMatchCourtController = async (request, response) => {
     const { communityId, sessionId, courtId } = request.params;
 
     const result = await startMatchCourt(
+      communityId,
+      sessionId,
+      courtId,
+      request.user.sub,
+    );
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Start match court failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const pauseMatchCourtController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+
+    const result = await pauseMatchCourt(
       communityId,
       sessionId,
       courtId,

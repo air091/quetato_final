@@ -154,6 +154,9 @@ const AllPlayers = () => {
 
         {/* Metric Filter Tags */}
         <div className="flex items-center gap-x-2 self-end sm:self-auto">
+          <button className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm">
+            Add player
+          </button>
           <button
             onClick={() => handleSortToggle("games")}
             className={`flex items-center gap-x-1.5 border px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-all shadow-sm outline-none ${
