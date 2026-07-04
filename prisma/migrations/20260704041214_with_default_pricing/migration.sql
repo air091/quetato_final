@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Pricing" ALTER COLUMN "entranceFee" SET DEFAULT 0.00,
+ALTER COLUMN "perGameFee" SET DEFAULT 0.00,
+ALTER COLUMN "totalFee" SET DEFAULT 0.00;

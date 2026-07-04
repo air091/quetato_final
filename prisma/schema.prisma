@@ -99,6 +99,7 @@ model Session {
   players         SessionPlayer[]
   courts          Court[]
   matchHistories  MatchHistory[]
+  pricies         Pricing[]
 
   @@index([communityId])
   @@index([createdBy])
@@ -255,10 +256,13 @@ enum Currency {
 model Pricing {
   id                  String @id @default(cuid())
   sessionId           String
-  entranceFee         Decimal
-  perGameFee          Decimal
+  entranceFee         Decimal @default(0.00)
+  perGameFee          Decimal @default(0.00)
   currency            Currency @default(PHP)
-  totalFee            Decimal
+  totalFee            Decimal @default(0.00)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  session             Session @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([sessionId])
 }
