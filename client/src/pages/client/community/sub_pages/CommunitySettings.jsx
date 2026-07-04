@@ -76,7 +76,7 @@ const CommunitySettings = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl border border-stone-200 shadow-sm mt-6">
+    <div className="w-full max-w-[720px] mx-auto p-6 bg-white rounded-xl border border-stone-200 shadow-sm mt-6">
       <form onSubmit={handleOnSubmit} className="flex flex-col gap-y-6">
         {" "}
         {/*[cite: 2] */}

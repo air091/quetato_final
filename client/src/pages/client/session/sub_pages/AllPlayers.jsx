@@ -127,7 +127,7 @@ const AllPlayers = () => {
   }, [processedPlayers]);
 
   return (
-    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 mt-4 px-4 sm:px-0">
+    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 px-4 sm:px-0">
       {/* ACTIONS CONTROLS HEADER */}
       <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Input with Integrated Icon */}

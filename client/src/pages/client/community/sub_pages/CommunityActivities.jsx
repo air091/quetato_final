@@ -139,7 +139,7 @@ const CommunityActivities = () => {
 
   return (
     <>
-      <main className="w-full max-w-[1000px] mx-auto select-none mt-4 px-2">
+      <main className="w-full max-w-[1024px] mx-auto select-none mt-4 px-2">
         {/* Optimized Top Action Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 pb-4 border-b border-stone-200">
           <div>

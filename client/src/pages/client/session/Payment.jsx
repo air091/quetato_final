@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
+import PlayerAvatar from "../../../components/PlayerAvatar";
 
 const Payment = () => {
   const { communityId, sessionId } = useParams();
@@ -267,7 +268,7 @@ const Payment = () => {
   };
 
   return (
-    <div className="w-full max-w-[760px] mx-auto flex flex-col gap-y-6 mt-6 px-4 sm:px-0">
+    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 mt-6 px-4 sm:px-0">
       {/* PRICING SETTINGS SUMMARY BANNER */}
       <div className="border border-stone-200 rounded-xl p-5 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-x-3.5">
@@ -537,8 +538,25 @@ const Payment = () => {
                     className="hover:bg-stone-50/40 transition-colors duration-150 group"
                   >
                     <td className="py-3.5 px-4 text-sm font-semibold text-stone-900">
-                      {player.sessionPlayer?.communityPlayer?.username ||
-                        "Unknown"}
+                      <div className="flex items-center gap-x-2">
+                        <PlayerAvatar
+                          username={
+                            player.sessionPlayer?.communityPlayer?.username
+                          }
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-sm text-stone-900 truncate">
+                            {player.sessionPlayer?.communityPlayer?.username ||
+                              "Unknown"}
+                          </span>
+
+                          <div className="flex items-center gap-x-1.5 mt-0.5">
+                            <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider">
+                              {player.sessionPlayer?.role || "Guest"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-sm text-stone-600 text-center font-medium">
                       <span className="bg-stone-50 px-2 py-1 rounded text-stone-700 border border-stone-100 group-hover:bg-white transition-colors">

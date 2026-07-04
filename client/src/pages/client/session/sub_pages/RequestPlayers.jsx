@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import PlayerAvatar from "../../../../components/PlayerAvatar";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
+import { ArrowUpDown, ChevronDown } from "lucide-react";
 
 const RequestPlayers = () => {
   const { fetchWithAuth } = useAuth();
   const { communityId, sessionId } = useParams();
   const [staticPlayers, setStaticPlayers] = useState([]);
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
-  const [isUserMinimized, setIsUserMinimized] = useState(false);
 
   const getStaticPlayersNotInSession = useCallback(async () => {
     if (!communityId || !sessionId) return;
@@ -29,7 +28,7 @@ const RequestPlayers = () => {
         throw new Error(data?.message);
       }
 
-      setStaticPlayers(data?.results);
+      setStaticPlayers(data?.results || []);
     } catch (error) {
       console.error("Fetch available static players failed:", error.message);
     }
@@ -59,7 +58,7 @@ const RequestPlayers = () => {
           throw new Error(data?.message);
         }
 
-        // 🌟 Remove the player locally for a fast response
+        // Optimistically remove from view for snap UI feedback
         setStaticPlayers((prevPlayers) =>
           prevPlayers.filter(
             (wrapper) =>
@@ -68,177 +67,104 @@ const RequestPlayers = () => {
           ),
         );
 
-        // 🌟 🔄 Pull fresh, synchronized data directly from your database
+        // Fetch fresh state from the source
         await getStaticPlayersNotInSession();
       } catch (error) {
         console.error("Fetch available static players failed:", error.message);
       }
     },
-    [communityId, sessionId, fetchWithAuth, getStaticPlayersNotInSession], // 🌟 Added getStaticPlayersNotInSession here
+    [communityId, sessionId, fetchWithAuth, getStaticPlayersNotInSession],
   );
 
   return (
-    <div className="w-full max-w-[720px] mx-auto">
-      <h3 className="p-2 font-medium">All players</h3>
-      <div className="p-2">
-        <h4 className="font-medium text-[18px] text-stone-800">Players</h4>
-        <select
-          name="sort"
-          id="sort"
-          className="block border px-1 py-0.5 text-[12px] font-medium cursor-pointer rounded-md mt-1"
-        >
-          <option value="a-z" className="font-medium">
-            A-Z
-          </option>
-          <option value="asc" className="font-medium">
-            Ascend
-          </option>
-          <option value="desc" className="font-medium">
-            Descend
-          </option>
-        </select>
+    <div className="w-full max-w-5xl mx-auto space-y-4">
+      {/* TOP TOOLBAR */}
+      <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        {/* Sort Menu */}
+        <div className="flex items-center gap-x-2">
+          <label
+            htmlFor="sort"
+            className="text-xs font-medium text-stone-500 flex items-center gap-x-1"
+          >
+            <ArrowUpDown size={13} /> Sort
+          </label>
+          <select
+            name="sort"
+            id="sort"
+            className="block bg-white border border-stone-200 pl-2 pr-8 py-1 text-xs font-medium cursor-pointer rounded-lg text-stone-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-stone-400"
+          >
+            <option value="a-z">A-Z</option>
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+        </div>
       </div>
 
-      {/* USER PLAYERS CONTAINER */}
-      <div className="flex flex-col gap-y-2 p-2">
-        <header
-          title={
-            isUserMinimized
-              ? "Expand user container"
-              : "Minimize user container"
-          }
-          onClick={() => setIsUserMinimized((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer hover:bg-stone-200 py-1 px-2 rounded-md"
-        >
-          <h4 className="font-medium text-[16px] text-stone-800">All user</h4>
-          <span className="cursor-pointer rounded-full transition-colors flex items-center justify-center">
-            {isUserMinimized ? (
-              <ChevronUp size={16} />
-            ) : (
-              <ChevronDown size={16} />
-            )}
-          </span>
-        </header>
-
-        {!isUserMinimized && (
-          <div className="animate-in fade-in slide-in-from-top-1 duration-150">
-            {staticPlayers.length === 0 ? (
-              <p className="text-xs text-gray-400 italic p-2">
-                No static players found.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-y-2">
-                {staticPlayers.map((wrapper) => {
-                  return (
-                    <div
-                      key={wrapper.id}
-                      className="flex items-center justify-between p-2 rounded-md hover:bg-stone-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-x-3">
-                        <PlayerAvatar
-                          username={wrapper?.communityPlayer?.username}
-                          size="xl"
-                        />
-                        <div>
-                          <h5 className="font-semibold text-stone-900">
-                            {wrapper?.communityPlayer?.username}
-                          </h5>
-                          <div className="flex items-center gap-x-2 text-[12px] text-gray-500 font-medium">
-                            <span className="bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded-full uppercase">
-                              {wrapper?.communityPlayer?.skillLevel}
-                            </span>
-                            <span className="capitalize bg-gray-100 px-1.5 py-0.5 rounded-full">
-                              {wrapper.role}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => addToSession(wrapper?.id)}
-                          className="cursor-pointer text-[14px] bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded-full shadow-sm transition-colors"
-                        >
-                          Add to Session
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* STATIC PLAYERS CONTAINER */}
-      <div className="flex flex-col gap-y-2 p-2 border-t">
-        <header
-          title={
-            isStaticMinimized
-              ? "Expand static container"
-              : "Minimize static container"
-          }
+      {/* STATIC PLAYERS PROFILE CONTAINER */}
+      <div className="border border-stone-200/80 rounded-xl bg-white overflow-hidden shadow-sm">
+        <button
+          type="button"
           onClick={() => setIsStaticMinimized((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer hover:bg-stone-200 py-1 px-2 rounded-md"
+          className="w-full flex items-center justify-between cursor-pointer bg-stone-50/70 hover:bg-stone-50 py-3 px-4 transition-colors border-b border-stone-100"
         >
-          <h4 className="font-medium text-[16px] text-stone-800">All static</h4>
-          <span className="cursor-pointer rounded-full transition-colors flex items-center justify-center">
-            {isStaticMinimized ? (
-              <ChevronUp size={16} />
-            ) : (
-              <ChevronDown size={16} />
-            )}
-          </span>
-        </header>
+          <div className="flex items-center gap-x-2">
+            <h4 className="font-semibold text-sm text-stone-800">Statics</h4>
+            <span className="text-xs text-stone-400 font-normal">
+              ({staticPlayers?.length || 0})
+            </span>
+          </div>
+          <ChevronDown
+            size={16}
+            className={`text-stone-500 transition-transform duration-200 ${
+              isStaticMinimized ? "-rotate-90" : ""
+            }`}
+          />
+        </button>
 
         {!isStaticMinimized && (
-          <div className="animate-in fade-in slide-in-from-top-1 duration-150 mt-2">
+          <div className="p-2 animate-in fade-in slide-in-from-top-1 duration-150">
             {staticPlayers.length === 0 ? (
-              <p className="text-xs text-gray-400 italic p-2">
-                No static players found.
+              <p className="text-xs text-stone-400 italic p-3 text-center">
+                No available static guest accounts found.
               </p>
             ) : (
-              <div className="flex flex-col gap-y-2">
-                {staticPlayers.map((wrapper) => {
-                  return (
-                    <div
-                      key={wrapper.id}
-                      className="flex items-center justify-between p-2 rounded-md hover:bg-stone-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-x-3">
-                        <PlayerAvatar
-                          username={wrapper?.communityPlayer?.username}
-                          size="xl"
-                        />
-                        <div>
-                          <h5 className="font-semibold text-stone-900">
-                            {wrapper?.communityPlayer?.username}
-                          </h5>
-                          <div className="flex items-center gap-x-2 text-[12px] text-gray-500 font-medium">
-                            <span className="bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded-full uppercase">
+              <div className="flex flex-col gap-y-1">
+                {staticPlayers.map((wrapper) => (
+                  <div
+                    key={wrapper.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-x-3 min-w-0">
+                      <PlayerAvatar
+                        username={wrapper?.communityPlayer?.username}
+                        size="md"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="font-semibold text-sm text-stone-900 truncate">
+                          {wrapper?.communityPlayer?.username}
+                        </h5>
+                        <div className="flex items-center gap-x-1.5 mt-0.5 text-[10px] font-bold uppercase tracking-wider">
+                          {wrapper?.communityPlayer?.skillLevel && (
+                            <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
                               {wrapper?.communityPlayer?.skillLevel}
                             </span>
-                            <span className="capitalize bg-gray-100 px-1.5 py-0.5 rounded-full">
-                              {wrapper.role}
-                            </span>
-                          </div>
+                          )}
+                          <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md normal-case font-medium">
+                            {wrapper.role || "Guest"}
+                          </span>
                         </div>
                       </div>
-
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => addToSession(wrapper?.id)}
-                          className="cursor-pointer text-[14px] bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded-full shadow-sm transition-colors"
-                        >
-                          Add to Session
-                        </button>
-                      </div>
                     </div>
-                  );
-                })}
+
+                    <button
+                      type="button"
+                      onClick={() => addToSession(wrapper?.id)}
+                      className="cursor-pointer text-xs bg-stone-900 hover:bg-stone-800 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors shrink-0"
+                    >
+                      Add to Session
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

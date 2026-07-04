@@ -8,7 +8,8 @@ import MatchCourt from "../../../components/session_comp/game/MatchCourt";
 import QueueCourt from "../../../components/session_comp/game/QueueCourt";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   pointerWithin,
   useSensor,
   useSensors,
@@ -545,9 +546,15 @@ const Game = () => {
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 1,
+        distance: 2,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 220,
+        tolerance: 14,
       },
     }),
   );

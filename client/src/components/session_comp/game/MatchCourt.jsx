@@ -4,7 +4,7 @@ import { CornerDownLeft, EllipsisVertical, Gamepad2, Plus } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import CourtSettings from "./CourtSettings";
 import PlayerSettings from "./PlayerSettings"; // 🌟 Import PlayerSettings component
-import { formatElapsedTime, PlayerTimer } from "./PlayersContainer";
+import { PlayerTimer } from "./PlayersContainer";
 import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 
@@ -58,7 +58,7 @@ const DraggableSlotPlayer = ({
       style={{ ...style, ...overdueStyle }} // 🌟 Combined existing styles with overdueStyle
       {...listeners}
       {...attributes}
-      className={`player w-full cursor-grab active:cursor-grabbing touch-none flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
+      className={`player w-full cursor-grab active:cursor-grabbing touch-pan-y flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
@@ -613,7 +613,6 @@ const MatchCourt = ({
               y2="100"
               stroke="rgba(200, 200, 200, 0.8)"
               strokeWidth="1.5"
-              warm
             />
             <line
               x1="50"

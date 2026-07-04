@@ -7,7 +7,7 @@ import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 
 // NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
-export const formatElapsedTime = (pastIsoString) => {
+const formatElapsedTime = (pastIsoString) => {
   if (!pastIsoString) return "00:00:00";
 
   const past = new Date(pastIsoString).getTime();
@@ -201,7 +201,7 @@ const DraggableSlotPlayer = ({
       style={style}
       {...listeners}
       {...attributes}
-      className="player w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
+      className="player w-full h-full cursor-grab active:cursor-grabbing touch-pan-y select-none"
     >
       <PlayerCard
         username={username}
@@ -408,7 +408,7 @@ const PlayersContainer = ({
       ""
     ).toLowerCase();
 
-    return username.includes(searchQuery.toLowerCase());
+    return username.includes(debouncedSearch.toLowerCase());
   });
 
   return (

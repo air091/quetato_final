@@ -5,7 +5,7 @@ const Players = () => {
   return (
     <div className="max-w-5xl mx-auto px-6 py-4">
       {/* HEADER SECTION */}
-      <header className="mb-6">
+      <header className="mb-3">
         <h3 className="text-xl font-bold tracking-tight text-stone-900">
           Players Management
         </h3>
@@ -14,7 +14,7 @@ const Players = () => {
         </p>
       </header>
 
-      <main className="space-y-6">
+      <main className="space-y-2">
         {/* NAVIGATION TABS */}
         <nav className="border-b border-stone-200">
           <ul className="flex items-center gap-x-6">
