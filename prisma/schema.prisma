@@ -247,3 +247,18 @@ model MatchHistoryPlayer {
   @@index([matchHistoryId])
   @@index([sessionPlayerId])
 }
+
+enum Currency {
+  PHP
+}
+
+model Pricing {
+  id                  String @id @default(cuid())
+  sessionId           String
+  entranceFee         Decimal
+  perGameFee          Decimal
+  currency            Currency @default(PHP)
+  totalFee            Decimal
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
