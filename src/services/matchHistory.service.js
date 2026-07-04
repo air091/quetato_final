@@ -149,6 +149,7 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
     select: {
       id: true,
       playerId: true,
+      gameStatus: true,
     },
   });
 
@@ -168,6 +169,16 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
       sessionPlayer.playerId,
     ]),
   );
+  const paidSessionCountsByPlayerId = new Map();
+
+  sessionPlayers.forEach((sessionPlayer) => {
+    if (sessionPlayer.gameStatus !== "paid") return;
+
+    paidSessionCountsByPlayerId.set(
+      sessionPlayer.playerId,
+      (paidSessionCountsByPlayerId.get(sessionPlayer.playerId) || 0) + 1,
+    );
+  });
 
   const gameCounts = await prisma.matchHistoryPlayer.groupBy({
     by: ["sessionPlayerId", "iswin"],
@@ -212,6 +223,8 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
       statsByPlayerId.get(player.id)?.totalCommunityLosses || 0,
     totalCommunityGames: statsByPlayerId.get(player.id)?.totalCommunityGames || 0,
     totalCommunityPoints:
-      statsByPlayerId.get(player.id)?.totalCommunityPoints || 0,
+      (statsByPlayerId.get(player.id)?.totalCommunityPoints || 0) +
+      (paidSessionCountsByPlayerId.get(player.id) || 0) * 3,
+    paidSessionCount: paidSessionCountsByPlayerId.get(player.id) || 0,
   }));
 };

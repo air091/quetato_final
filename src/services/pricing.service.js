@@ -13,6 +13,34 @@ const toFeeNumber = (value, fieldName) => {
   return fee;
 };
 
+const assertPricingManager = async (communityId, authorizedId) => {
+  const authorizedMember = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId,
+        userId: authorizedId,
+      },
+    },
+    select: {
+      role: true,
+    },
+  });
+
+  if (!authorizedMember) {
+    throw new AppError("You are not a member of this community", 403);
+  }
+
+  const allowedRoles = ["owner", "admin", "host"];
+  if (!allowedRoles.includes(authorizedMember.role)) {
+    throw new AppError(
+      "Unauthorized. Only owners, admins, or hosts can manage pricing.",
+      403,
+    );
+  }
+
+  return authorizedMember;
+};
+
 // add pricing
 export const addPricing = async (
   communityId,
@@ -33,29 +61,7 @@ export const addPricing = async (
   const requestedPerGameFee = toFeeNumber(perGameFee, "Per-game fee");
 
   // 2. Check authorization: User must be an owner, admin, or host in the community
-  const authorizedMember = await prisma.communityPlayer.findUnique({
-    where: {
-      communityId_userId: {
-        communityId,
-        userId: authorizedId,
-      },
-    },
-    select: {
-      role: true,
-    },
-  });
-
-  if (!authorizedMember) {
-    throw new AppError("You are not a member of this community", 403);
-  }
-
-  const allowedRoles = ["owner", "admin", "host"];
-  if (!allowedRoles.includes(authorizedMember.role)) {
-    throw new AppError(
-      "Unauthorized. Only owners, admins, or hosts can configure pricing.",
-      403,
-    );
-  }
+  await assertPricingManager(communityId, authorizedId);
 
   // 3. Verify that the session actually belongs to this community
   const sessionExists = await prisma.session.findFirst({
@@ -188,5 +194,150 @@ export const addPricing = async (
       totalPlayerGames: gameRecords.length,
       playerFees,
     },
+  };
+};
+
+// mark player as paid
+export const markPlayerAsPaid = async (
+  communityId,
+  sessionId,
+  sessionPlayerId,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !sessionPlayerId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Session Player ID, and Authorized User ID are required",
+      400,
+    );
+  }
+
+  await assertPricingManager(communityId, authorizedId);
+
+  const targetPlayer = await prisma.sessionPlayer.findFirst({
+    where: {
+      id: sessionPlayerId,
+      sessionId,
+      session: {
+        communityId,
+      },
+    },
+    select: {
+      id: true,
+      gameStatus: true,
+    },
+  });
+
+  if (!targetPlayer) {
+    throw new AppError("Session player not found in this session", 404);
+  }
+
+  if (targetPlayer.gameStatus === "paid") {
+    return {
+      success: true,
+      message: "Player is already marked as paid",
+      player: targetPlayer,
+    };
+  }
+
+  const player = await prisma.sessionPlayer.update({
+    where: { id: sessionPlayerId },
+    data: {
+      gameStatus: "paid",
+      updateStatus: new Date(),
+    },
+    select: {
+      id: true,
+      gameStatus: true,
+      updateStatus: true,
+      sessionPlayer: {
+        select: {
+          communityPlayer: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    success: true,
+    message: "Player marked as paid",
+    pointsAdded: 3,
+    player,
+  };
+};
+
+export const unmarkPlayerAsPaid = async (
+  communityId,
+  sessionId,
+  sessionPlayerId,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !sessionPlayerId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Session Player ID, and Authorized User ID are required",
+      400,
+    );
+  }
+
+  await assertPricingManager(communityId, authorizedId);
+
+  const targetPlayer = await prisma.sessionPlayer.findFirst({
+    where: {
+      id: sessionPlayerId,
+      sessionId,
+      session: {
+        communityId,
+      },
+    },
+    select: {
+      id: true,
+      gameStatus: true,
+    },
+  });
+
+  if (!targetPlayer) {
+    throw new AppError("Session player not found in this session", 404);
+  }
+
+  if (targetPlayer.gameStatus !== "paid") {
+    return {
+      success: true,
+      message: "Player is not marked as paid",
+      player: targetPlayer,
+    };
+  }
+
+  const player = await prisma.sessionPlayer.update({
+    where: { id: sessionPlayerId },
+    data: {
+      gameStatus: "waiting",
+      updateStatus: new Date(),
+    },
+    select: {
+      id: true,
+      gameStatus: true,
+      updateStatus: true,
+      sessionPlayer: {
+        select: {
+          communityPlayer: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    success: true,
+    message: "Player unmarked as paid",
+    pointsRemoved: 3,
+    player,
   };
 };

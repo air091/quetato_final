@@ -48,7 +48,11 @@ import {
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
 } from "../controllers/gameHistory.controller.js";
-import { addPricingController } from "../controllers/pricing.controller.js";
+import {
+  addPricingController,
+  markPlayerAsPaidController,
+  unmarkPlayerAsPaidController,
+} from "../controllers/pricing.controller.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -205,5 +209,13 @@ router.get(
 // PRICING
 
 router.post("/:communityId/sessions/:sessionId/pricing", addPricingController);
+router.patch(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/paid",
+  markPlayerAsPaidController,
+);
+router.patch(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/unpaid",
+  unmarkPlayerAsPaidController,
+);
 
 export default router;
