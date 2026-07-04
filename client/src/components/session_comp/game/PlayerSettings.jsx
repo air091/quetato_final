@@ -23,6 +23,8 @@ const SKILL_LEVEL_LABELS = {
   EXP: "Experience",
 };
 
+const PROTECTED_SESSION_ROLES = ["owner", "admin", "host"];
+
 const PlayerSettings = ({
   player,
   onClose,
@@ -38,6 +40,8 @@ const PlayerSettings = ({
   const initialUsername = player?.sessionPlayer?.communityPlayer?.username;
   const initialSkillLevel =
     player?.sessionPlayer?.communityPlayer?.skillLevel || "BEG";
+  const sessionRole = player?.sessionPlayer?.role;
+  const canRemovePlayer = !PROTECTED_SESSION_ROLES.includes(sessionRole);
 
   const [username, setUsername] = useState(initialUsername);
   const [skillLevel, setSkillLevel] = useState(initialSkillLevel);
@@ -186,7 +190,7 @@ const PlayerSettings = ({
                 </span>
               </div>
               <span className="text-[12px] font-medium text-stone-100">
-                {player?.sessionPlayer?.role}
+                {sessionRole}
               </span>
             </div>
           </header>
@@ -265,14 +269,16 @@ const PlayerSettings = ({
               </button>
 
               {/* 🌟 Attached functional handler and Tailwind styling to the button */}
-              <button
-                type="button"
-                disabled={isUpdating}
-                onClick={() => handleRemoveplayer(player?.sessionPlayer?.id)}
-                className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200 w-full"
-              >
-                Remove
-              </button>
+              {canRemovePlayer && (
+                <button
+                  type="button"
+                  disabled={isUpdating}
+                  onClick={() => handleRemoveplayer(player?.sessionPlayer?.id)}
+                  className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200 w-full"
+                >
+                  Remove
+                </button>
+              )}
             </div>
           </form>
         </div>,

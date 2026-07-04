@@ -88,7 +88,62 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
     return timeA - timeB;
   });
 
-  return sessionPlayers;
+  const sessionPlayerIds = sessionPlayers.map((player) => player.id);
+  const matchCounts =
+    sessionPlayerIds.length > 0
+      ? await prisma.matchHistoryPlayer.groupBy({
+          by: ["sessionPlayerId", "iswin"],
+          where: {
+            sessionPlayerId: {
+              in: sessionPlayerIds,
+            },
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : [];
+
+  const statsBySessionPlayerId = new Map();
+
+  matchCounts.forEach((count) => {
+    const current = statsBySessionPlayerId.get(count.sessionPlayerId) || {
+      totalGames: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      winRate: 0,
+    };
+    const total = count._count?._all || 0;
+
+    current.totalGames += total;
+    if (count.iswin) {
+      current.totalWins += total;
+    } else {
+      current.totalLosses += total;
+    }
+
+    current.winRate =
+      current.totalGames > 0
+        ? Math.round((current.totalWins / current.totalGames) * 100)
+        : 0;
+
+    statsBySessionPlayerId.set(count.sessionPlayerId, current);
+  });
+
+  return sessionPlayers.map((player) => {
+    const stats = statsBySessionPlayerId.get(player.id) || {
+      totalGames: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      winRate: 0,
+    };
+
+    return {
+      ...player,
+      ...stats,
+      stats,
+    };
+  });
 };
 
 export const acceptPlayer = async (

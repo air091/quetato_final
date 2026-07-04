@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { EllipsisVertical, Gamepad2 } from "lucide-react";
+import { EllipsisVertical, Gamepad2, Trophy } from "lucide-react";
 import PlayerAvater from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerSettings from "../game/PlayerSettings";
@@ -8,16 +8,37 @@ import PlayerSettings from "../game/PlayerSettings";
 const PlayerCard = ({ player, onRefreshData }) => {
   const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
-  const [totalGames, setTotalGames] = useState(0);
-  const [winGames, setWinGames] = useState(0);
+  const providedTotalGames =
+    player?.stats?.totalGames ?? player?.totalGames ?? null;
+  const providedTotalWins =
+    player?.stats?.totalWins ?? player?.totalWins ?? null;
+  const [fallbackStats, setFallbackStats] = useState({
+    totalGames: 0,
+    totalWins: 0,
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const toggleButtonRef = useRef(null);
 
   const stablePlayerId = player?.id;
+  const username =
+    player?.sessionPlayer?.communityPlayer?.username || "Unknown player";
+  const playerType = player?.sessionPlayer?.communityPlayer?.type;
+  const playerRole = player?.sessionPlayer?.role;
+  const skillLevel = player?.sessionPlayer?.communityPlayer?.skillLevel;
+  const totalGames = providedTotalGames ?? fallbackStats.totalGames;
+  const winGames = providedTotalWins ?? fallbackStats.totalWins;
 
   useEffect(() => {
     const fetchPlayerGamesCount = async () => {
-      if (!communityId || !sessionId || !stablePlayerId) return;
+      if (
+        (providedTotalGames !== null && providedTotalWins !== null) ||
+        !communityId ||
+        !sessionId ||
+        !stablePlayerId
+      ) {
+        return;
+      }
+
       try {
         const response = await fetchWithAuth(
           `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
@@ -27,13 +48,17 @@ const PlayerCard = ({ player, onRefreshData }) => {
         if (response && response.ok) {
           const resJson = await response.json();
           if (resJson.success && resJson.results?.summary) {
-            setTotalGames(resJson.results.summary.totalGames || 0);
-            setWinGames(resJson.results.summary.totalWins || 0);
+            setFallbackStats({
+              totalGames: resJson.results.summary.totalGames || 0,
+              totalWins: resJson.results.summary.totalWins || 0,
+            });
           }
         } else if (response && response.success && response.results?.summary) {
           // Fallback if fetchWithAuth already un-wraps response json natively
-          setTotalGames(response.results.summary.totalGames || 0);
-          setWinGames(response.results.summary.totalWins || 0);
+          setFallbackStats({
+            totalGames: response.results.summary.totalGames || 0,
+            totalWins: response.results.summary.totalWins || 0,
+          });
         }
       } catch (error) {
         console.error("Error fetching match history count for card:", error);
@@ -41,66 +66,90 @@ const PlayerCard = ({ player, onRefreshData }) => {
     };
 
     fetchPlayerGamesCount();
-  }, [communityId, sessionId, stablePlayerId, fetchWithAuth]);
+  }, [
+    communityId,
+    sessionId,
+    stablePlayerId,
+    fetchWithAuth,
+    providedTotalGames,
+    providedTotalWins,
+  ]);
 
   return (
     <>
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-x-2">
-          <PlayerAvater
-            username={player.sessionPlayer?.communityPlayer?.username}
-            size="sm"
-          />
-          <div>
-            <span className="font-semibold leading-0 text-[12px]">
-              {player.sessionPlayer?.communityPlayer?.username}
-            </span>
-            <div className="flex items-center gap-x-2 font-medium">
-              <span title="Games" className="flex items-center gap-x-0.5">
-                <Gamepad2 size={14} />
-                <span className="text-[10px]">
-                  <span className="text-[14px] text-amber-500">{winGames}</span>
-                  /{totalGames}
-                </span>
+      <div className="flex h-full flex-col justify-between gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-x-3">
+            <PlayerAvater username={username} size="xl" />
+            <div className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-stone-900">
+                {username}
               </span>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                {playerType === "static" && (
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">
+                    {playerType}
+                  </span>
+                )}
 
-              {player.sessionPlayer?.communityPlayer?.type === "static" && (
-                <span className="text-[10px] bg-gray-500/30 text-black rounded-full px-1 w-fit">
-                  {player.sessionPlayer?.communityPlayer.type}
-                </span>
-              )}
+                {["owner", "admin", "host"].includes(playerRole) && (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+                    {playerRole}
+                  </span>
+                )}
 
-              {["owner", "admin", "host"].includes(
-                player.sessionPlayer?.role,
-              ) && (
-                <span className="text-[10px] bg-blue-500/80 text-blue-100 rounded-full px-1 w-fit capitalize">
-                  {player.sessionPlayer?.role}
-                </span>
-              )}
-              <span title="Skill Level" className="text-[10px] bg-white">
-                {player.sessionPlayer?.communityPlayer.skillLevel}
-              </span>
+                {skillLevel && (
+                  <span
+                    title="Skill Level"
+                    className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700"
+                  >
+                    {skillLevel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div>
+
           <button
             ref={toggleButtonRef}
             onClick={() => setIsSettingsOpen((prev) => !prev)}
-            className="cursor-pointer hover:bg-gray-200 rounded-full p-1"
+            className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            aria-label={`Open settings for ${username}`}
           >
-            <EllipsisVertical size={14} />
+            <EllipsisVertical size={16} />
           </button>
-
-          {isSettingsOpen && (
-            <PlayerSettings
-              player={player}
-              toggleButtonRef={toggleButtonRef}
-              onClose={() => setIsSettingsOpen(false)}
-              onUpdatePlayerStatus={onRefreshData}
-            />
-          )}
         </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-stone-100 bg-stone-50 px-3 py-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-stone-500">
+              <Gamepad2 size={13} />
+              Games
+            </span>
+            <strong className="mt-1 block text-lg font-bold text-stone-900">
+              {totalGames}
+            </strong>
+          </div>
+
+          <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+              <Trophy size={13} />
+              Wins
+            </span>
+            <strong className="mt-1 block text-lg font-bold text-amber-700">
+              {winGames}
+            </strong>
+          </div>
+        </div>
+
+        {isSettingsOpen && (
+          <PlayerSettings
+            player={player}
+            toggleButtonRef={toggleButtonRef}
+            onClose={() => setIsSettingsOpen(false)}
+            onUpdatePlayerStatus={onRefreshData}
+          />
+        )}
       </div>
     </>
   );
