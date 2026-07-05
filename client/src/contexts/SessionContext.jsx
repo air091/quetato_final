@@ -6,7 +6,7 @@ import {
 } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { SessionContext } from "./sessionContext";
+import { SessionContext } from "./SessionContextValue";
 
 const API_BASE_URL = "http://localhost:8000/api/communities";
 
