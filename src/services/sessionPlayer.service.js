@@ -2,19 +2,18 @@ import { GameStatus } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
-export const getAllSessionPlayers = async (communityId, sessionId) => {
+export const getAllSessionPlayers = async (
+  communityId,
+  sessionId,
+  options = { includeHidden: false },
+) => {
   if (!communityId || !sessionId)
     throw new AppError("Community ID and session ID are required", 400);
 
   // 1. Fetch the specific session and verify it belongs to this community
   const session = await prisma.session.findUnique({
-    where: {
-      id: sessionId,
-    },
-    select: {
-      id: true,
-      communityId: true,
-    },
+    where: { id: sessionId },
+    select: { id: true, communityId: true },
   });
 
   // 2. Safeguard checks
@@ -22,9 +21,17 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
     throw new AppError("Session not found in this community", 404);
   }
 
-  // 3. Fetch the players for the correct session
+  // 🌟 Dynamic filters setup
+  const whereFilter = { sessionId: session.id };
+
+  // If we do NOT want to include hidden players, filter them out in the database query
+  if (!options.includeHidden) {
+    whereFilter.isHide = false;
+  }
+
+  // 3. Fetch the players for the correct session using our dynamic filter
   const sessionPlayers = await prisma.sessionPlayer.findMany({
-    where: { sessionId: session.id },
+    where: whereFilter, // 🌟 Swapped for dynamic filter object
     select: {
       id: true,
       status: true,
@@ -68,7 +75,7 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
   const statusPriority = {
     waiting: 1,
     queued: 2,
-    playing: 3, // Your 3rd and last requirements are both playing, which means playing comes 3rd overall
+    playing: 3,
   };
 
   // 🌟 5. Sort the array
@@ -76,12 +83,10 @@ export const getAllSessionPlayers = async (communityId, sessionId) => {
     const priorityA = statusPriority[a.gameStatus] || 99;
     const priorityB = statusPriority[b.gameStatus] || 99;
 
-    // First: Sort by gameStatus priority (ascending category value: 1, then 2, then 3)
     if (priorityA !== priorityB) {
       return priorityA - priorityB;
     }
 
-    // Second: Sort by time descending (More time elapsed = earlier timestamp comes first)
     const timeA = new Date(a.updateStatus || a.acceptedAt || 0).getTime();
     const timeB = new Date(b.updateStatus || b.acceptedAt || 0).getTime();
 

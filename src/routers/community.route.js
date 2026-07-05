@@ -43,6 +43,7 @@ import {
   acceptPlayerController,
   getAllSessionPlayersController,
   getStaticPlayersNotInSessionController,
+  hideAuthorizedPlayerInSessionController,
   removePlayerFromSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import {
@@ -124,6 +125,11 @@ router.get(
 router.post(
   "/:communityId/sessions/:sessionId/:communityPlayerId/accept",
   acceptPlayerController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/hide",
+  hideAuthorizedPlayerInSessionController,
 );
 
 router.delete(
