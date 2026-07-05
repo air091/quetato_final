@@ -207,6 +207,9 @@ export const createStaticPlayers = async (
             },
           },
         },
+        include: {
+          players: true,
+        },
       });
     });
 

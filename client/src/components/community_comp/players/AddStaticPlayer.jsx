@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 
 // Skill level labels dictionary
-const SKILL_LEVEL_LABELS = {
+export const SKILL_LEVEL_LABELS = {
   LB: "Low Beginner",
   BEG: "Beginner",
   HB: "High Beginner",

@@ -6,9 +6,12 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import PlayerCard from "../../../../components/session_comp/players/PlayerCard";
 import { useSession } from "../../../../hooks/useSession";
+import { useAuth } from "../../../../hooks/useAuth";
+import AddPlayerModal from "../../../../components/session_comp/players/AddPlayerModal";
+import { SKILL_LEVEL_LABELS } from "../../../../components/community_comp/players/AddStaticPlayer";
 
 const getPlayerMetric = (player, metric) => {
   const value =
@@ -23,7 +26,14 @@ const getPlayerMetric = (player, metric) => {
 const isAdminRole = (role) => ["owner", "admin", "host"].includes(role);
 
 const AllPlayers = () => {
-  const { sessionPlayers: players, refreshPlayers, isSessionLoading } = useSession();
+  const { fetchWithAuth } = useAuth();
+  const {
+    communityId,
+    sessionId,
+    sessionPlayers: players,
+    refreshPlayers,
+    isSessionLoading,
+  } = useSession();
 
   // Functional States for Filter Pipeline
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,6 +41,32 @@ const AllPlayers = () => {
     key: null,
     direction: "desc",
   });
+
+  // Modal State Management
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newPlayerNames, setNewPlayerNames] = useState(""); // Tracks multiline text
+  const [skillLevel, setSkillLevel] = useState(
+    Object.keys(SKILL_LEVEL_LABELS)[0] || "",
+  ); // Tracks selected dropdown value
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Close modal and clear field handler
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setNewPlayerNames("");
+    setSkillLevel(Object.keys(SKILL_LEVEL_LABELS)[0] || "");
+  }, []);
+
+  // Keyboard shortcut visibility hooks
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") closeModal();
+    };
+    if (isModalOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, closeModal]);
 
   const getAcceptedPlayers = async () => {
     try {
@@ -40,11 +76,9 @@ const AllPlayers = () => {
     }
   };
 
-  // Handles updating active state sorting configurations
   const handleSortToggle = (key) => {
     setSortConfig((prev) => {
-      if (prev.key === key) {
-        // Toggle direction if clicking same sort metric, or reset
+      if (prev.key === "games") {
         if (prev.direction === "desc") return { key, direction: "asc" };
         return { key: null, direction: "desc" };
       }
@@ -52,16 +86,13 @@ const AllPlayers = () => {
     });
   };
 
-  // Processed, Filtered, and Sorted Collection computation engine
   const processedPlayers = useMemo(() => {
-    // 1. Text Search filtering execution step
     let result = players.filter((player) => {
       const username =
         player.sessionPlayer?.communityPlayer?.username || "Unknown";
       return username.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
-    // 2. Metrics sorting processing execution step
     if (sortConfig.key !== null) {
       result.sort((a, b) => {
         const metricKey =
@@ -78,7 +109,6 @@ const AllPlayers = () => {
     return result;
   }, [players, searchQuery, sortConfig]);
 
-  // Split configurations for sub-sections safely
   const adminGroup = useMemo(() => {
     return processedPlayers.filter((p) => isAdminRole(p.sessionPlayer?.role));
   }, [processedPlayers]);
@@ -86,6 +116,66 @@ const AllPlayers = () => {
   const regularGroup = useMemo(() => {
     return processedPlayers.filter((p) => !isAdminRole(p.sessionPlayer?.role));
   }, [processedPlayers]);
+
+  const addStaticPlayerInSession = async (e) => {
+    if (e) e.preventDefault();
+    if (!newPlayerNames.trim() || isSubmitting) return;
+
+    const usernamesArray = newPlayerNames
+      .split("\n")
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
+
+    if (usernamesArray.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const createStaticRes = await fetchWithAuth(
+        `http://localhost:8000/api/communities/${communityId}/players/static`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            usernames: usernamesArray,
+            skillLevel: skillLevel, // Forwarding key down to backend API
+          }),
+        },
+      );
+
+      if (!createStaticRes.ok)
+        throw new Error("Failed to create static profiles");
+
+      const createdPlayersData = await createStaticRes.json();
+      const targetPlayersArray = Array.isArray(createdPlayersData)
+        ? createdPlayersData
+        : createdPlayersData?.players;
+
+      if (!targetPlayersArray || !Array.isArray(targetPlayersArray)) {
+        throw new Error(
+          "Invalid response format from player initialization backend",
+        );
+      }
+
+      const sessionAcceptPromises = targetPlayersArray.map((user) => {
+        const communityPlayerId = user.players?.[0]?.id || user.id;
+        if (!communityPlayerId) return Promise.resolve();
+
+        return fetchWithAuth(
+          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/${communityPlayerId}/accept`,
+          { method: "POST" },
+        );
+      });
+
+      await Promise.all(sessionAcceptPromises);
+
+      await refreshPlayers();
+      closeModal();
+    } catch (error) {
+      console.error("Error setting up static session players:", error);
+      alert(error.message || "Failed to add users to session.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isSessionLoading) {
     return (
@@ -99,7 +189,6 @@ const AllPlayers = () => {
     <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 px-4 sm:px-0">
       {/* ACTIONS CONTROLS HEADER */}
       <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Search Input with Integrated Icon */}
         <div className="relative flex-1 max-w-full sm:max-w-[320px]">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
             <Search size={15} />
@@ -121,11 +210,14 @@ const AllPlayers = () => {
           )}
         </div>
 
-        {/* Metric Filter Tags */}
         <div className="flex items-center gap-x-2 self-end sm:self-auto">
-          <button className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+          >
             Add player
           </button>
+
           <button
             onClick={() => handleSortToggle("games")}
             className={`flex items-center gap-x-1.5 border px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-all shadow-sm outline-none ${
@@ -172,14 +264,12 @@ const AllPlayers = () => {
 
       {/* MAIN DIRECTORY INTERFACE */}
       <main className="flex flex-col gap-y-6">
-        {/* Global Empty State */}
         {players.length > 0 && processedPlayers.length === 0 && (
           <div className="border border-stone-200 rounded-xl bg-stone-50/50 p-8 text-center text-sm font-medium text-stone-400 italic">
             No matching players found for "{searchQuery}"
           </div>
         )}
 
-        {/* OWNER / ADMIN / HOST SECTION */}
         {adminGroup.length > 0 && (
           <div className="flex flex-col gap-y-3">
             <div className="flex items-center gap-x-2 px-1">
@@ -209,7 +299,6 @@ const AllPlayers = () => {
           </div>
         )}
 
-        {/* PLAYER / STATIC SECTION */}
         {regularGroup.length > 0 && (
           <div className="flex flex-col gap-y-3">
             <div className="flex items-center gap-x-2 px-1">
@@ -239,13 +328,24 @@ const AllPlayers = () => {
           </div>
         )}
 
-        {/* Missing Absolute Base Case Scenario Handling */}
         {players.length === 0 && (
           <div className="border border-stone-200 border-dashed rounded-xl p-10 text-center text-sm text-stone-400 italic bg-white shadow-sm">
             No registered players found in this session.
           </div>
         )}
       </main>
+
+      <AddPlayerModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onSubmit={addStaticPlayerInSession}
+        newPlayerNames={newPlayerNames}
+        setNewPlayerNames={setNewPlayerNames}
+        skillLevel={skillLevel}
+        setSkillLevel={setSkillLevel}
+        SKILL_LEVEL_LABELS={SKILL_LEVEL_LABELS}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

@@ -287,32 +287,34 @@ const PlayerSettings = ({
                 </select>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => setIsGameHistoryOpen(true)}
-              className="w-full text-[10px] font-medium py-1 rounded cursor-pointer bg-stone-200 hover:bg-stone-300"
-            >
-              Game History
-            </button>
-            {canManagePlayers && (
+            <div>
               <button
                 type="button"
-                disabled={isUpdating}
-                onClick={handleToggleVisibility}
-                className={`w-full text-[10px] font-medium py-1 rounded cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-                  player?.isHide
-                    ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                }`}
+                onClick={() => setIsGameHistoryOpen(true)}
+                className="w-full text-[10px] font-medium py-1 rounded cursor-pointer bg-stone-200 hover:bg-stone-300"
               >
-                {isUpdating
-                  ? "Updating..."
-                  : visibilityAction === "hide"
-                    ? "Hide player"
-                    : "Unhide player"}
+                Game History
               </button>
-            )}
+              {canManagePlayers && (
+                <button
+                  type="button"
+                  disabled={isUpdating}
+                  onClick={handleToggleVisibility}
+                  className={`w-full text-[10px] font-medium py-1 rounded cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+                    player?.isHide
+                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  }`}
+                >
+                  {isUpdating
+                    ? "Updating..."
+                    : visibilityAction === "hide"
+                      ? "Hide player"
+                      : "Unhide player"}
+                </button>
+              )}
+            </div>
+
             <div className="flex gap-x-1.5 pt-1">
               <button
                 type="submit"
