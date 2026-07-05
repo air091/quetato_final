@@ -1,6 +1,10 @@
 import React from "react";
 import { useAuth } from "../../hooks/useAuth";
 import PlayerAvatar from "../PlayerAvatar";
+import {
+  formatCommunityDate,
+  formatElapsedTime,
+} from "../../utils/dateFormatter";
 
 const ActivityCard = ({ session }) => {
   const { user } = useAuth();
@@ -18,7 +22,7 @@ const ActivityCard = ({ session }) => {
   return (
     <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 mx-auto w-full max-w-[720px] cursor-pointer">
       {/* 1. Header Area: Avatar, Title, Host, Status */}
-      <header className="flex items-center gap-x-2">
+      <header className="flex items-end gap-x-2">
         <div className="relative">
           <PlayerAvatar
             username={session?.community.name}
@@ -37,12 +41,12 @@ const ActivityCard = ({ session }) => {
           <span className="block leading-4 font-bold text-[18px]">
             {session?.community.name}
           </span>
-          <div className="flex items-center gap-x-4">
-            <span className="block font-medium text-stone-500">
+          <div className="flex items-center gap-x-2">
+            <span className="block font-medium text-stone-500 text-[14px]">
               {session?.creator.username}
             </span>
-            <span className="block font-medium text-stone-500">
-              {session?.createdAt}
+            <span className="block font-medium text-stone-500 text-[14px]">
+              {formatCommunityDate(session?.createdAt)}
             </span>
           </div>
         </div>

@@ -13,3 +13,21 @@ export const formatElapsedTime = (pastIsoString) => {
     .map((v) => String(v).padStart(2, "0"))
     .join(":");
 };
+
+export const formatCommunityDate = (dateInput) => {
+  if (!dateInput) return "";
+
+  const date = new Date(dateInput);
+
+  // Guard against invalid dates passing through
+  if (isNaN(date.getTime())) return "";
+
+  // Options configuration for standard international formats
+  const options = {
+    month: "short", // "Jul"
+    day: "2-digit", // "05"
+    year: "numeric", // "2026"
+  };
+
+  return new Intl.DateTimeFormat("en-US", options).format(date);
+};

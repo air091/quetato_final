@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import PlayerSettings from "./PlayerSettings";
 import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
+import { formatElapsedTime } from "../../../utils/dateFormatter";
 
 // NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
 
