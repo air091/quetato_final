@@ -89,14 +89,49 @@ export const updateCommunityByOwner = async (
 };
 
 export const deleteCommunity = async (communityId, ownerId) => {
+  // 1. Fetch the community to verify ownership permissions
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: { id: true, ownerId: true },
   });
 
   if (!community) throw new AppError("Community not found", 404);
-
   if (community.ownerId !== ownerId) throw new AppError("Forbidden", 403);
 
-  await prisma.community.delete({ where: { id: communityId } });
+  // 2. Identify all 'static' users linked uniquely to this specific community
+  const staticPlayers = await prisma.communityPlayer.findMany({
+    where: {
+      communityId: communityId,
+      communityPlayer: {
+        type: "static", // Target only system-generated static accounts
+      },
+    },
+    select: {
+      userId: true,
+    },
+  });
+
+  const staticUserIds = staticPlayers.map((p) => p.userId);
+
+  // 3. Execute deletions inside a batch transaction isolation window
+  await prisma.$transaction(async (tx) => {
+    // First: Delete the core community.
+    // Cascade settings handling onDelete: Cascade will drop all related sessions,
+    // courts, slots, and community player join records automatically.
+    await tx.community.delete({
+      where: { id: communityId },
+    });
+
+    // Second: Scrub out the lingering static user profiles from the system
+    if (staticUserIds.length > 0) {
+      await tx.user.deleteMany({
+        where: {
+          id: {
+            in: staticUserIds,
+          },
+          type: "static", // Bulletproof runtime validation check
+        },
+      });
+    }
+  });
 };
