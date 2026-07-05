@@ -5,7 +5,7 @@ import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 
 const Dashboard = () => {
-  const { fetchWithAuth } = useAuth();
+  const { fetchWithAuth, user } = useAuth();
   const [players, setPlayers] = useState([]);
   const { communityId } = useParams();
 
@@ -186,10 +186,18 @@ const Dashboard = () => {
               const totalGames = player?.totalCommunityGames ?? 0;
               const totalPoints = player?.totalCommunityPoints ?? totalWins;
 
+              // Safely check if this is the current logged-in user
+              const isCurrentUser =
+                user && player?.communityPlayer?.id === user?.id;
+
               return (
                 <tr
                   key={player?.id}
-                  className="hover:bg-stone-50/40 transition-colors duration-150"
+                  className={`transition-colors duration-150 ${
+                    isCurrentUser
+                      ? "bg-amber-50/60 hover:bg-amber-50"
+                      : "hover:bg-stone-50/40"
+                  }`}
                 >
                   {/* Primary Identifier */}
                   <td className="p-4 text-sm">
@@ -199,9 +207,16 @@ const Dashboard = () => {
                         size="md"
                       />
                       <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-stone-900 truncate">
-                          {player?.communityPlayer?.username}
-                        </span>
+                        <div className="flex items-center gap-x-2">
+                          <span className="font-semibold text-stone-900 truncate">
+                            {player?.communityPlayer?.username}
+                          </span>
+                          {isCurrentUser && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">
+                              You
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-0.5">
                           <span
                             className={`px-1.5 py-0.5 rounded-md capitalize border ${

@@ -138,65 +138,81 @@ const All = () => {
               .filter(
                 (player) => player.role === "owner" || player.role === "admin",
               )
-              .map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-stone-50/70 transition-colors border border-transparent hover:border-stone-100"
-                >
-                  <div className="flex items-center gap-x-3">
-                    <PlayerAvatar
-                      username={player?.communityPlayer?.username}
-                      size="xl"
-                    />
-                    <div>
-                      <h5 className="font-semibold text-sm text-stone-900 leading-tight">
-                        {player?.communityPlayer?.username}
-                      </h5>
-                      <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
-                        <span
-                          className={`px-2 py-0.5 rounded-md capitalize ${
-                            player.role === "owner"
-                              ? "bg-amber-50 text-amber-700 border border-amber-100"
-                              : "bg-blue-50 text-blue-700 border border-blue-100"
-                          }`}
+              .map((player) => {
+                const isCurrentUser =
+                  user && player?.communityPlayer?.id === user?.id;
+
+                return (
+                  <div
+                    key={player.id}
+                    className={`flex items-center justify-between p-2.5 rounded-xl transition-colors border ${
+                      isCurrentUser
+                        ? "bg-amber-50/60 border-amber-100/70 hover:bg-amber-50"
+                        : "border-transparent hover:border-stone-100 hover:bg-stone-50/70"
+                    }`}
+                  >
+                    <div className="flex items-center gap-x-3">
+                      <PlayerAvatar
+                        username={player?.communityPlayer?.username}
+                        size="xl"
+                      />
+                      <div>
+                        <div className="flex items-center gap-x-2">
+                          <h5 className="font-semibold text-sm text-stone-900 leading-tight">
+                            {player?.communityPlayer?.username}
+                          </h5>
+                          {isCurrentUser && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                          <span
+                            className={`px-2 py-0.5 rounded-md capitalize ${
+                              player.role === "owner"
+                                ? "bg-amber-50 text-amber-700 border border-amber-100"
+                                : "bg-blue-50 text-blue-700 border border-blue-100"
+                            }`}
+                          >
+                            {player.role}
+                          </span>
+                          <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
+                            {player?.communityPlayer?.skillLevel || "UNRANKED"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-x-2">
+                      {!isCurrentUser && (
+                        <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                          Add Friend
+                        </button>
+                      )}
+
+                      <div className="relative">
+                        <button
+                          onClick={(e) => handleToggleMenu(e, player)}
+                          className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                         >
-                          {player.role}
-                        </span>
-                        <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
-                          {player?.communityPlayer?.skillLevel || "UNRANKED"}
-                        </span>
+                          <EllipsisVertical size={16} />
+                        </button>
+
+                        {activeMenu?.playerId === player.id && (
+                          <PlayerSettings
+                            player={player}
+                            type={player?.communityPlayer?.type}
+                            toggleButtonRef={activeMenu}
+                            onClose={() => setActiveMenu(null)}
+                            onUpdatePlayerStatus={getAllSession}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-x-2">
-                    {user.id !== player?.communityPlayer?.id && (
-                      <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
-                        Add Friend
-                      </button>
-                    )}
-
-                    <div className="relative">
-                      <button
-                        onClick={(e) => handleToggleMenu(e, player)}
-                        className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
-                      >
-                        <EllipsisVertical size={16} />
-                      </button>
-
-                      {activeMenu?.playerId === player.id && (
-                        <PlayerSettings
-                          player={player}
-                          type={player?.communityPlayer?.type}
-                          toggleButtonRef={activeMenu}
-                          onClose={() => setActiveMenu(null)}
-                          onUpdatePlayerStatus={getAllSession}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       </div>
@@ -233,65 +249,82 @@ const All = () => {
           <div className="overflow-hidden flex flex-col gap-y-1 px-1">
             {players
               .filter((player) => player.role === "player")
-              .map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-white"
-                >
-                  <div className="flex items-center gap-x-3">
-                    <PlayerAvatar
-                      username={player?.communityPlayer?.username}
-                      size="xl"
-                    />
-                    <div>
-                      <h5 className="font-semibold text-sm text-stone-900 leading-tight">
-                        {player?.communityPlayer?.username}
-                      </h5>
-                      <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
-                        <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
-                          {player?.communityPlayer?.skillLevel || "UNRANKED"}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-md capitalize border ${
-                            player?.communityPlayer?.type === "static"
-                              ? "bg-purple-50 text-purple-700 border-purple-100"
-                              : "bg-stone-50 text-stone-600 border-stone-200"
-                          }`}
+              .map((player) => {
+                const isCurrentUser =
+                  user && player?.communityPlayer?.id === user?.id;
+
+                return (
+                  <div
+                    key={player.id}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
+                      isCurrentUser
+                        ? "bg-amber-50/60 border-amber-100/70 hover:bg-amber-50"
+                        : "bg-white border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-x-3">
+                      <PlayerAvatar
+                        username={player?.communityPlayer?.username}
+                        size="xl"
+                      />
+                      <div>
+                        <div className="flex items-center gap-x-2">
+                          <h5 className="font-semibold text-sm text-stone-900 leading-tight">
+                            {player?.communityPlayer?.username}
+                          </h5>
+                          {isCurrentUser && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                          <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
+                            {player?.communityPlayer?.skillLevel || "UNRANKED"}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-md capitalize border ${
+                              player?.communityPlayer?.type === "static"
+                                ? "bg-purple-50 text-purple-700 border-purple-100"
+                                : "bg-stone-50 text-stone-600 border-stone-200"
+                            }`}
+                          >
+                            {player?.communityPlayer?.type || "Regular"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-x-2">
+                      {!isCurrentUser &&
+                        player?.communityPlayer?.type !== "static" && (
+                          <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                            Add Friend
+                          </button>
+                        )}
+
+                      <div className="relative">
+                        <button
+                          onClick={(e) => handleToggleMenu(e, player)}
+                          className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                         >
-                          {player?.communityPlayer?.type || "Regular"}
-                        </span>
+                          <EllipsisVertical size={16} />
+                        </button>
+
+                        {activeMenu?.playerId === player.id && (
+                          <PlayerSettings
+                            player={player}
+                            type={player?.communityPlayer?.type}
+                            toggleButtonRef={activeMenu}
+                            onClose={() => setActiveMenu(null)}
+                            onUpdatePlayerStatus={getAllSession}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-x-2">
-                    {player?.communityPlayer?.type !== "static" && (
-                      <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
-                        Add Friend
-                      </button>
-                    )}
-
-                    <div className="relative">
-                      <button
-                        onClick={(e) => handleToggleMenu(e, player)}
-                        className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
-                      >
-                        <EllipsisVertical size={16} />
-                      </button>
-
-                      {activeMenu?.playerId === player.id && (
-                        <PlayerSettings
-                          player={player}
-                          type={player?.communityPlayer?.type}
-                          toggleButtonRef={activeMenu}
-                          onClose={() => setActiveMenu(null)}
-                          onUpdatePlayerStatus={getAllSession}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         </div>
       </div>

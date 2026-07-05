@@ -53,7 +53,7 @@ const extractCourts = (payload) => {
   const courtPayload = payload?.courts ?? payload?.data ?? payload;
   const rawCourts = Array.isArray(courtPayload)
     ? courtPayload
-    : courtPayload?.courts ?? courtPayload?.results ?? payload?.results ?? [];
+    : (courtPayload?.courts ?? courtPayload?.results ?? payload?.results ?? []);
   const rawCounts =
     courtPayload?.counts ?? payload?.counts ?? payload?.data?.counts ?? {};
 
@@ -576,7 +576,6 @@ const SessionDashboard = () => {
                 topPlayers.map((player, index) => {
                   const games = getPlayerMetric(player, "totalGames");
                   const wins = getPlayerMetric(player, "totalWins");
-
                   return (
                     <div
                       key={player.id}
