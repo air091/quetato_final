@@ -5,7 +5,7 @@ import { prisma } from "../libs/prisma.js";
 export const getAllSessionPlayers = async (
   communityId,
   sessionId,
-  options = { includeHidden: false },
+  authorizedId,
 ) => {
   if (!communityId || !sessionId)
     throw new AppError("Community ID and session ID are required", 400);
@@ -22,10 +22,24 @@ export const getAllSessionPlayers = async (
   }
 
   // 🌟 Dynamic filters setup
+  const authorizedPlayer = authorizedId
+    ? await prisma.communityPlayer.findUnique({
+        where: {
+          communityId_userId: {
+            communityId,
+            userId: authorizedId,
+          },
+        },
+        select: { id: true, role: true },
+      })
+    : null;
+  const managerRoles = ["owner", "admin", "host"];
+  const includeHidden = managerRoles.includes(authorizedPlayer?.role);
+
   const whereFilter = { sessionId: session.id };
 
   // If we do NOT want to include hidden players, filter them out in the database query
-  if (!options.includeHidden) {
+  if (!includeHidden) {
     whereFilter.isHide = false;
   }
 
@@ -151,6 +165,28 @@ export const getAllSessionPlayers = async (
   });
 };
 
+export const getSessionPlayerAccess = async (communityId, authorizedId) => {
+  if (!communityId || !authorizedId) {
+    return { currentUserRole: null, canManagePlayers: false };
+  }
+
+  const authorizedPlayer = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { role: true },
+  });
+
+  const managerRoles = ["owner", "admin", "host"];
+  return {
+    currentUserRole: authorizedPlayer?.role || null,
+    canManagePlayers: managerRoles.includes(authorizedPlayer?.role),
+  };
+};
+
 export const acceptPlayer = async (
   communityId,
   sessionId,
@@ -253,7 +289,7 @@ export const hideAuthorizedPlayerInSession = async (
   });
 
   if (!session) {
-    throw new Error("Session not found within the specified community.");
+    throw new AppError("Session not found within the specified community.", 404);
   }
 
   // 2. Authorization check: Ensure the operator is part of the community and holds an administrative role
@@ -264,13 +300,14 @@ export const hideAuthorizedPlayerInSession = async (
         userId: authorizedId,
       },
     },
-    select: { role: true },
+    select: { id: true, role: true },
   });
 
   const validRoles = ["owner", "admin", "host"];
   if (!operatorRole || !validRoles.includes(operatorRole.role)) {
-    throw new Error(
+    throw new AppError(
       "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
+      403,
     );
   }
 
@@ -282,8 +319,16 @@ export const hideAuthorizedPlayerInSession = async (
   });
 
   if (!targetSessionPlayer || targetSessionPlayer.sessionId !== sessionId) {
-    throw new Error(
+    throw new AppError(
       "The target player record is not registered in this session.",
+      404,
+    );
+  }
+
+  if (["queued", "playing"].includes(targetSessionPlayer.gameStatus)) {
+    throw new AppError(
+      "Cannot hide player while they are queued or playing on a court.",
+      400,
     );
   }
 
@@ -311,6 +356,81 @@ export const hideAuthorizedPlayerInSession = async (
     return {
       success: true,
       message: "Player hidden in the session successfully.",
+      updatedPlayer,
+    };
+  });
+};
+
+export const unhideAuthorizedPlayerInSession = async (
+  communityId,
+  sessionId,
+  sessionPlayerId,
+  authorizedId,
+) => {
+  const session = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      communityId: communityId,
+    },
+  });
+
+  if (!session) {
+    throw new AppError("Session not found within the specified community.", 404);
+  }
+
+  const operatorRole = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { id: true, role: true },
+  });
+
+  const validRoles = ["owner", "admin", "host"];
+  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+    throw new AppError(
+      "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
+      403,
+    );
+  }
+
+  const targetSessionPlayer = await prisma.sessionPlayer.findUnique({
+    where: {
+      id: sessionPlayerId,
+    },
+  });
+
+  if (!targetSessionPlayer || targetSessionPlayer.sessionId !== sessionId) {
+    throw new AppError(
+      "The target player record is not registered in this session.",
+      404,
+    );
+  }
+
+  if (!targetSessionPlayer.isHide) {
+    return {
+      success: true,
+      message: "Player is already visible in this session.",
+      updatedPlayer: targetSessionPlayer,
+    };
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const updatedPlayer = await tx.sessionPlayer.update({
+      where: {
+        id: sessionPlayerId,
+      },
+      data: {
+        isHide: false,
+        updatedBy: operatorRole.id,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Player restored in the session successfully.",
       updatedPlayer,
     };
   });

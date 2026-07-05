@@ -10,6 +10,7 @@ import { useParams } from "react-router-dom";
 import PlayerGameHistory from "../PlayerGameHistory";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../PlayerAvatar";
+import { useSession } from "../../../hooks/useSession";
 
 // Map to look up readable labels for read-only user views
 const SKILL_LEVEL_LABELS = {
@@ -33,6 +34,7 @@ const PlayerSettings = ({
 }) => {
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
+  const { canManagePlayers, hidePlayer, unhidePlayer } = useSession();
   const { communityId, sessionId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isGameHistoryOpen, setIsGameHistoryOpen] = useState(false);
@@ -42,6 +44,7 @@ const PlayerSettings = ({
     player?.sessionPlayer?.communityPlayer?.skillLevel || "BEG";
   const sessionRole = player?.sessionPlayer?.role;
   const canRemovePlayer = !PROTECTED_SESSION_ROLES.includes(sessionRole);
+  const visibilityAction = player?.isHide ? "unhide" : "hide";
 
   const [username, setUsername] = useState(initialUsername);
   const [skillLevel, setSkillLevel] = useState(initialSkillLevel);
@@ -161,6 +164,39 @@ const PlayerSettings = ({
     ],
   );
 
+  const handleToggleVisibility = useCallback(async () => {
+    const sessionPlayerId = player?.id;
+    if (!sessionPlayerId || !canManagePlayers || isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+
+      if (player?.isHide) {
+        await unhidePlayer(sessionPlayerId);
+      } else {
+        await hidePlayer(sessionPlayerId);
+      }
+
+      if (typeof onUpdatePlayerStatus === "function") {
+        onUpdatePlayerStatus();
+      }
+      onClose();
+    } catch (error) {
+      console.error("Update player visibility failed:", error.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [
+    player?.id,
+    player?.isHide,
+    canManagePlayers,
+    isUpdating,
+    hidePlayer,
+    unhidePlayer,
+    onUpdatePlayerStatus,
+    onClose,
+  ]);
+
   if (!isReady) return null;
 
   return (
@@ -259,6 +295,24 @@ const PlayerSettings = ({
             >
               Game History
             </button>
+            {canManagePlayers && (
+              <button
+                type="button"
+                disabled={isUpdating}
+                onClick={handleToggleVisibility}
+                className={`w-full text-[10px] font-medium py-1 rounded cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+                  player?.isHide
+                    ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                }`}
+              >
+                {isUpdating
+                  ? "Updating..."
+                  : visibilityAction === "hide"
+                    ? "Hide player"
+                    : "Unhide player"}
+              </button>
+            )}
             <div className="flex gap-x-1.5 pt-1">
               <button
                 type="submit"

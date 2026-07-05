@@ -93,6 +93,7 @@ export const addPricing = async (
     where: {
       sessionId,
       status: "accepted",
+      isHide: false,
     },
     select: {
       id: true,

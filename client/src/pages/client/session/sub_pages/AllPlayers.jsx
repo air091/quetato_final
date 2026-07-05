@@ -6,10 +6,9 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { useAuth } from "../../../../hooks/useAuth";
-import { useParams } from "react-router-dom";
+import { useState, useMemo } from "react";
 import PlayerCard from "../../../../components/session_comp/players/PlayerCard";
+import { useSession } from "../../../../hooks/useSession";
 
 const getPlayerMetric = (player, metric) => {
   const value =
@@ -24,9 +23,7 @@ const getPlayerMetric = (player, metric) => {
 const isAdminRole = (role) => ["owner", "admin", "host"].includes(role);
 
 const AllPlayers = () => {
-  const { communityId, sessionId } = useParams();
-  const { fetchWithAuth } = useAuth();
-  const [players, setPlayers] = useState([]);
+  const { sessionPlayers: players, refreshPlayers, isSessionLoading } = useSession();
 
   // Functional States for Filter Pipeline
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,49 +32,13 @@ const AllPlayers = () => {
     direction: "desc",
   });
 
-  const loadAcceptedPlayers = useCallback(async () => {
-    const response = await fetchWithAuth(
-      `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players`,
-      { method: "GET" },
-    );
-
-    if (!response || !response.ok) {
-      throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
-    }
-
-    const data = await response.json();
-
-    if (data.status !== "success" && !data.success) {
-      throw new Error(data?.message || "Failed to fetch players");
-    }
-
-    return data.players || [];
-  }, [communityId, sessionId, fetchWithAuth]);
-
-  const getAcceptedPlayers = useCallback(async () => {
+  const getAcceptedPlayers = async () => {
     try {
-      const nextPlayers = await loadAcceptedPlayers();
-      setPlayers(nextPlayers);
+      await refreshPlayers();
     } catch (error) {
       console.error("Fetch players failed:", error.message);
     }
-  }, [loadAcceptedPlayers]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    loadAcceptedPlayers()
-      .then((nextPlayers) => {
-        if (isCurrent) setPlayers(nextPlayers);
-      })
-      .catch((error) => {
-        console.error("Fetch players failed:", error.message);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [loadAcceptedPlayers]);
+  };
 
   // Handles updating active state sorting configurations
   const handleSortToggle = (key) => {
@@ -125,6 +86,14 @@ const AllPlayers = () => {
   const regularGroup = useMemo(() => {
     return processedPlayers.filter((p) => !isAdminRole(p.sessionPlayer?.role));
   }, [processedPlayers]);
+
+  if (isSessionLoading) {
+    return (
+      <div className="rounded-xl border border-stone-200 bg-white p-8 text-center text-sm font-medium text-stone-400 shadow-sm">
+        Loading players...
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 px-4 sm:px-0">
@@ -224,7 +193,11 @@ const AllPlayers = () => {
               {adminGroup.map((player) => (
                 <article
                   key={player.id}
-                  className="relative rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md"
+                  className={`relative rounded-xl border bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md ${
+                    player?.isHide
+                      ? "border-red-200 bg-red-50/30"
+                      : "border-stone-200"
+                  }`}
                 >
                   <PlayerCard
                     player={player}
@@ -250,7 +223,11 @@ const AllPlayers = () => {
               {regularGroup.map((player) => (
                 <article
                   key={player.id}
-                  className="relative rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md"
+                  className={`relative rounded-xl border bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md ${
+                    player?.isHide
+                      ? "border-red-200 bg-red-50/30"
+                      : "border-stone-200"
+                  }`}
                 >
                   <PlayerCard
                     player={player}

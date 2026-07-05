@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { EllipsisVertical, Gamepad2, Trophy } from "lucide-react";
+import { EllipsisVertical, EyeOff, Trophy } from "lucide-react";
 import PlayerAvater from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerSettings from "../game/PlayerSettings";
@@ -105,6 +105,13 @@ const PlayerCard = ({ player, onRefreshData }) => {
                   className="rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700"
                 >
                   {skillLevel}
+                </span>
+              )}
+
+              {player?.isHide && (
+                <span className="inline-flex items-center gap-x-1 rounded-md bg-red-50 px-1.5 py-0.5 text-red-700">
+                  <EyeOff size={10} />
+                  Hidden
                 </span>
               )}
             </div>

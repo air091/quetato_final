@@ -45,6 +45,7 @@ import {
   getStaticPlayersNotInSessionController,
   hideAuthorizedPlayerInSessionController,
   removePlayerFromSessionController,
+  unhideAuthorizedPlayerInSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import {
   getPlayerGameHistoryController,
@@ -130,6 +131,11 @@ router.post(
 router.patch(
   "/:communityId/sessions/:sessionId/players/:sessionPlayerId/hide",
   hideAuthorizedPlayerInSessionController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/unhide",
+  unhideAuthorizedPlayerInSessionController,
 );
 
 router.delete(

@@ -88,7 +88,7 @@ const Payment = () => {
         }
       }
 
-      setPlayers(playerData.players ?? []);
+      setPlayers((playerData.players ?? []).filter((player) => !player?.isHide));
     } catch (error) {
       console.error("Fetch payment workspace details failed:", error);
     }

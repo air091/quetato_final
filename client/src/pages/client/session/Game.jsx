@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer, {
   PlayerTimer,
@@ -17,6 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { Gamepad2 } from "lucide-react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
+import { useSession } from "../../../hooks/useSession";
 
 const resolveSessionPlayerId = (player) =>
   player?.id || player?.sessionPlayerId || null;
@@ -32,75 +32,24 @@ const setPlayerGameStatus = (player, sessionPlayerId, gameStatus) => {
 
 const Game = () => {
   const { fetchWithAuth } = useAuth();
-  const { communityId, sessionId } = useParams();
-  const [sessionData, setSessionData] = useState({
-    players: [],
-    matchCourts: [],
-    queueCourts: [],
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    communityId,
+    sessionId,
+    sessionData,
+    setSessionData,
+    visibleSessionPlayers,
+    isSessionLoading,
+    refreshSessionContext,
+  } = useSession();
 
   // Track currently dragged node to project clean mirror overlays
   const [activePlayerData, setActivePlayerData] = useState(null);
 
   const fetchDashboardContext = useCallback(
-    async (isSilentRefetch = false) => {
-      if (!communityId || !sessionId) return;
-      try {
-        if (!isSilentRefetch) setIsLoading(true);
-        const baseUrl = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`;
-
-        const [playersRes, matchRes, queueRes] = await Promise.all([
-          fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
-          fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
-          fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
-        ]);
-
-        if (!playersRes.ok || !matchRes.ok || !queueRes.ok)
-          throw new Error("Resource endpoint returned an HTTP error status");
-
-        const [playersData, matchData, queueData] = await Promise.all([
-          playersRes.json(),
-          matchRes.json(),
-          queueRes.json(),
-        ]);
-
-        const extractedMatch =
-          matchData.courts ||
-          matchData.data ||
-          (Array.isArray(matchData) ? matchData : []);
-        const extractedQueue =
-          queueData.courts ||
-          queueData.data ||
-          (Array.isArray(queueData) ? queueData : []);
-
-        setSessionData({
-          players:
-            playersData.players ||
-            (Array.isArray(playersData) ? playersData : []),
-          matchCourts: Array.isArray(extractedMatch)
-            ? { courts: extractedMatch, counts: matchData.counts }
-            : extractedMatch,
-          queueCourts: Array.isArray(extractedQueue)
-            ? { courts: extractedQueue, counts: queueData.counts }
-            : extractedQueue,
-        });
-      } catch (error) {
-        console.error("Dashboard engine data loading error:", error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [communityId, sessionId, fetchWithAuth],
+    (isSilentRefetch = false) =>
+      refreshSessionContext({ silent: isSilentRefetch }),
+    [refreshSessionContext],
   );
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      fetchDashboardContext(false);
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [fetchDashboardContext]);
 
   const assignPlayerToSlot = useCallback(
     async (targetCourtId, sessionPlayerId, targetPosition) => {
@@ -408,7 +357,7 @@ const Game = () => {
   const handleDragStart = (event) => {
     const { active } = event;
     const player = active.data.current?.player;
-    if (player) {
+    if (player && !player?.isHide) {
       const username =
         player?.sessionPlayer?.communityPlayer?.username ||
         player?.communityPlayer?.username ||
@@ -425,7 +374,7 @@ const Game = () => {
     if (!over) return;
 
     const player = active.data.current?.player;
-    if (!player) return;
+    if (!player || player?.isHide) return;
 
     // 1. Get the true SessionPlayer CUID required by both backend validation and slots
     const stableSessionPlayerId = resolveSessionPlayerId(player);
@@ -697,7 +646,7 @@ const Game = () => {
     [communityId, sessionId, fetchWithAuth, fetchDashboardContext],
   );
 
-  if (isLoading) {
+  if (isSessionLoading) {
     return (
       <div className="p-8 text-center text-sm font-medium text-gray-500 animate-pulse">
         Loading session dashboard...
@@ -725,7 +674,7 @@ const Game = () => {
     >
       <div className="flex gap-x-2 h-full">
         <PlayersContainer
-          players={sessionData.players}
+          players={visibleSessionPlayers}
           onRefreshData={() => fetchDashboardContext(true)}
           communityId={communityId}
           sessionId={sessionId}
@@ -734,7 +683,7 @@ const Game = () => {
         <div className="flex-1 flex flex-col gap-y-2 overflow-y-auto py-2">
           <MatchCourt
             matchCourts={sessionData.matchCourts}
-            players={sessionData.players}
+            players={visibleSessionPlayers}
             onRemovePlayer={handleRemovePlayer}
             onAddCourt={handleAddMatchCourt}
             onUpdateCourtName={handleUpdateCourtName}
@@ -747,7 +696,7 @@ const Game = () => {
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
-            players={sessionData.players}
+            players={visibleSessionPlayers}
             onRemovePlayer={handleRemovePlayer}
             onAddCourt={handleAddQueueCourt}
             onUpdateCourtName={handleUpdateCourtName}

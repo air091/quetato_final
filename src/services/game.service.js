@@ -618,6 +618,7 @@ export const assignPlayerToSlot = async (
           id: sessionPlayerId,
           sessionId: sessionId,
           status: "accepted",
+          isHide: false,
         },
       }),
     ]);

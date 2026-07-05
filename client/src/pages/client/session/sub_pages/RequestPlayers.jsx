@@ -3,9 +3,11 @@ import PlayerAvatar from "../../../../components/PlayerAvatar";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
 import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { useSession } from "../../../../hooks/useSession";
 
 const RequestPlayers = () => {
   const { fetchWithAuth } = useAuth();
+  const { refreshSessionContext } = useSession();
   const { communityId, sessionId } = useParams();
   const [staticPlayers, setStaticPlayers] = useState([]);
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
@@ -69,11 +71,18 @@ const RequestPlayers = () => {
 
         // Fetch fresh state from the source
         await getStaticPlayersNotInSession();
+        await refreshSessionContext({ silent: true });
       } catch (error) {
         console.error("Fetch available static players failed:", error.message);
       }
     },
-    [communityId, sessionId, fetchWithAuth, getStaticPlayersNotInSession],
+    [
+      communityId,
+      sessionId,
+      fetchWithAuth,
+      getStaticPlayersNotInSession,
+      refreshSessionContext,
+    ],
   );
 
   return (

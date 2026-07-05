@@ -158,7 +158,7 @@ const SessionDashboard = () => {
 
     return {
       dashboard: dashboardJson.dashboard,
-      players: playersJson?.players || [],
+      players: (playersJson?.players || []).filter((player) => !player?.isHide),
       matchCourts: extractCourts(matchJson),
       queueCourts: extractCourts(queueJson),
       pricingData:
@@ -174,7 +174,7 @@ const SessionDashboard = () => {
         if (!isCurrent || !nextData) return;
         setErrorMessage("");
         setDashboard(nextData.dashboard);
-        setPlayers(nextData.players);
+        setPlayers(nextData.players.filter((player) => !player?.isHide));
         setMatchCourts(nextData.matchCourts);
         setQueueCourts(nextData.queueCourts);
         setPricingData(nextData.pricingData);
@@ -343,7 +343,9 @@ const SessionDashboard = () => {
                   .then((nextData) => {
                     if (!nextData) return;
                     setDashboard(nextData.dashboard);
-                    setPlayers(nextData.players);
+                    setPlayers(
+                      nextData.players.filter((player) => !player?.isHide),
+                    );
                     setMatchCourts(nextData.matchCourts);
                     setQueueCourts(nextData.queueCourts);
                     setPricingData(nextData.pricingData);

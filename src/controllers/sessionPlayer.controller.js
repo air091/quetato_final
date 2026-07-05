@@ -2,8 +2,10 @@ import { request, response } from "express";
 import {
   acceptPlayer,
   getAllSessionPlayers,
+  getSessionPlayerAccess,
   hideAuthorizedPlayerInSession,
   removePlayerFromSession,
+  unhideAuthorizedPlayerInSession,
 } from "../services/sessionPlayer.service.js";
 import { AppError } from "../libs/errorHandle.js";
 import { getStaticPlayersNotInSession } from "../services/player.service.js";
@@ -11,9 +13,12 @@ import { getStaticPlayersNotInSession } from "../services/player.service.js";
 export const getAllSessionPlayersController = async (request, response) => {
   try {
     const { communityId, sessionId } = request.params;
-    const players = await getAllSessionPlayers(communityId, sessionId);
+    const [players, access] = await Promise.all([
+      getAllSessionPlayers(communityId, sessionId, request.user.sub),
+      getSessionPlayerAccess(communityId, request.user.sub),
+    ]);
 
-    return response.status(200).json({ success: true, players });
+    return response.status(200).json({ success: true, players, ...access });
   } catch (error) {
     console.error("Get all session players failed", error);
     let errMessage = "Internal server error";
@@ -101,6 +106,35 @@ export const hideAuthorizedPlayerInSessionController = async (
     return response.status(200).json({ success: true, result });
   } catch (error) {
     console.error("Hide authorized player in session failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const unhideAuthorizedPlayerInSessionController = async (
+  request,
+  response,
+) => {
+  try {
+    const { communityId, sessionId, sessionPlayerId } = request.params;
+    const result = await unhideAuthorizedPlayerInSession(
+      communityId,
+      sessionId,
+      sessionPlayerId,
+      request.user.sub,
+    );
+    return response.status(200).json({ success: true, result });
+  } catch (error) {
+    console.error("Unhide authorized player in session failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 

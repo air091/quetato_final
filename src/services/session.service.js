@@ -390,6 +390,9 @@ export const getSessionDashboard = async (communityId, sessionId) => {
       },
       // 2. Fetch the players registered for this specific session
       players: {
+        where: {
+          isHide: false,
+        },
         select: {
           id: true,
           status: true,
