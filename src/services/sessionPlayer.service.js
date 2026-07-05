@@ -233,6 +233,84 @@ export const acceptPlayer = async (
   });
 };
 
+export const hideAuthorizedPlayerInSession = async (
+  communityId,
+  sessionId,
+  sessionPlayerId, // Using the record ID passed from parameters
+  authorizedId,
+) => {
+  // 1. Verify the targeted session exists and belongs to the community
+  const session = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      communityId: communityId,
+    },
+  });
+
+  if (!session) {
+    throw new Error("Session not found within the specified community.");
+  }
+
+  // 2. Authorization check: Ensure the operator is part of the community and holds an administrative role
+  const operatorRole = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { role: true },
+  });
+
+  const validRoles = ["owner", "admin", "host"];
+  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+    throw new Error(
+      "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
+    );
+  }
+
+  // 3. Find the target SessionPlayer record by its primary key ID
+  const targetSessionPlayer = await prisma.sessionPlayer.findUnique({
+    where: {
+      id: sessionPlayerId,
+    },
+  });
+
+  if (!targetSessionPlayer || targetSessionPlayer.sessionId !== sessionId) {
+    throw new Error(
+      "The target player record is not registered in this session.",
+    );
+  }
+
+  // 4. Guard: Check if the player is already hidden to avoid redundant network updates
+  if (targetSessionPlayer.isHide) {
+    return {
+      success: true,
+      message: "Player is already hidden in this session.",
+      updatedPlayer: targetSessionPlayer,
+    };
+  }
+
+  // 5. Execute visibility update in an isolated transaction block
+  return await prisma.$transaction(async (tx) => {
+    const updatedPlayer = await tx.sessionPlayer.update({
+      where: {
+        id: sessionPlayerId,
+      },
+      data: {
+        isHide: true,
+        updatedBy: operatorRole.id, // Logging the ID of the administrator making the configuration change
+      },
+    });
+
+    return {
+      success: true,
+      message: "Player hidden in the session successfully.",
+      updatedPlayer,
+    };
+  });
+};
+
 export const removePlayerFromSession = async (
   communityId,
   sessionId,
