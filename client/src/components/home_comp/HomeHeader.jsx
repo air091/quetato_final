@@ -5,42 +5,48 @@ import { NavLink } from "react-router-dom";
 const HomeHeader = () => {
   return (
     <div className="w-full max-w-[720px] mx-auto">
-      <header>
-        <h1 className="text-[18] font-medium my-2">Home</h1>
+      <header className="mb-4">
+        <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
+          Home
+        </h1>
       </header>
-      <nav className="mt-2">
-        <ul className="flex items-center justify-center gap-x-16 py-8 border rounded-xl">
+
+      <nav>
+        <ul className="grid grid-cols-3 gap-3 p-3 bg-white border border-stone-200 rounded-xl shadow-sm">
           <li>
             <NavLink
               to="/community/find"
-              className="flex flex-col justify-center items-center border p-4 gap-y-2 font-medium rounded-lg hover:bg-gray-300"
+              className="flex flex-col justify-center items-center h-full p-4 gap-y-2 text-xs sm:text-sm font-semibold text-stone-700 bg-stone-50/50 border border-stone-200/70 rounded-lg hover:bg-stone-100 hover:text-stone-900 hover:border-stone-300 transition-all duration-150 select-none text-center"
             >
-              <span>
-                <Compass size={34} />
-              </span>
-              Find Community
+              <Compass
+                size={26}
+                className="text-stone-500 group-hover:text-stone-800"
+              />
+              <span>Find Community</span>
             </NavLink>
           </li>
           <li>
             <NavLink
               to="/find-friends"
-              className="flex flex-col justify-center items-center border p-4 gap-y-2 font-medium rounded-lg hover:bg-gray-300"
+              className="flex flex-col justify-center items-center h-full p-4 gap-y-2 text-xs sm:text-sm font-semibold text-stone-700 bg-stone-50/50 border border-stone-200/70 rounded-lg hover:bg-stone-100 hover:text-stone-900 hover:border-stone-300 transition-all duration-150 select-none text-center"
             >
-              <span>
-                <Handshake size={34} />
-              </span>
-              Find Friends
+              <Handshake
+                size={26}
+                className="text-stone-500 group-hover:text-stone-800"
+              />
+              <span>Find Friends</span>
             </NavLink>
           </li>
           <li>
             <NavLink
               to="/create-community"
-              className="flex flex-col justify-center items-center border p-4 gap-y-2 font-medium rounded-lg hover:bg-gray-300"
+              className="flex flex-col justify-center items-center h-full p-4 gap-y-2 text-xs sm:text-sm font-semibold text-stone-700 bg-stone-50/50 border border-stone-200/70 rounded-lg hover:bg-stone-100 hover:text-stone-900 hover:border-stone-300 transition-all duration-150 select-none text-center"
             >
-              <span>
-                <LayersPlus size={34} />
-              </span>
-              Create Community
+              <LayersPlus
+                size={26}
+                className="text-stone-500 group-hover:text-stone-800"
+              />
+              <span>Create Community</span>
             </NavLink>
           </li>
         </ul>
