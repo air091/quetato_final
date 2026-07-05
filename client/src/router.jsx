@@ -25,6 +25,7 @@ import AllPlayers from "./pages/client/session/sub_pages/AllPlayers";
 import RequestPlayers from "./pages/client/session/sub_pages/RequestPlayers";
 import SessionDashboard from "./pages/client/session/Dashboard";
 import CommunitySettings from "./pages/client/community/sub_pages/CommunitySettings";
+import CommunityCreate from "./pages/client/community/CommunityCreate";
 
 const router = createBrowserRouter([
   {
@@ -68,6 +69,10 @@ const router = createBrowserRouter([
           {
             path: "find",
             element: <CommunityFind />,
+          },
+          {
+            path: "create-community",
+            element: <CommunityCreate />,
           },
           {
             path: ":communityId",

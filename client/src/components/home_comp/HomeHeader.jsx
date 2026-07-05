@@ -5,14 +5,8 @@ import { NavLink } from "react-router-dom";
 const HomeHeader = () => {
   return (
     <div className="w-full max-w-[720px] mx-auto">
-      <header className="mb-4">
-        <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
-          Home
-        </h1>
-      </header>
-
       <nav>
-        <ul className="grid grid-cols-3 gap-3 p-3 bg-white border border-stone-200 rounded-xl shadow-sm">
+        <ul className="grid grid-cols-3 gap-3 p-3 bg-white border border-stone-200 rounded-xl shadow-sm mt-4">
           <li>
             <NavLink
               to="/community/find"

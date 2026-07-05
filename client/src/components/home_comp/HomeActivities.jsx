@@ -47,7 +47,7 @@ const HomeActivities = () => {
     <div className="w-full max-w-[720px] mx-auto mt-8 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-sm text-stone-800 uppercase tracking-wider">
-          Recent Public Sessions
+          Public Sessions
         </h3>
         {showLoading && (
           <span className="flex items-center gap-x-1.5 text-xs text-stone-400 font-medium">

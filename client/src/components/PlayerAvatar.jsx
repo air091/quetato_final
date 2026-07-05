@@ -19,15 +19,27 @@ const SIZE_MAP = {
   xl: { dimensions: "w-16 h-16", font: "text-[24px] font-bold" },
 };
 
+// Maps simple string variants to Tailwind boundary border radius classes
+const ROUNDED_MAP = {
+  md: "rounded-md",
+  lg: "rounded-lg",
+  xl: "rounded-xl",
+  full: "rounded-full",
+};
+
 const PlayerAvatar = ({
   username = "Unknown Player",
-  size = "md", // 🌟 Changed prop name to "size" to prevent variable collisions
+  size = "md",
+  rounded = "full", // 🌟 Added new prop with "full" fallback to maintain design system defaults
   customImageUrl,
 }) => {
   // Resolve the sizing safely or fallback to medium structure
   const currentSize = SIZE_MAP[size] || SIZE_MAP.md;
-  const baseImgClasses =
-    "rounded-full object-cover border shadow-xs select-none pointer-events-none";
+
+  // Resolve border radius style class safely
+  const roundedClass = ROUNDED_MAP[rounded] || ROUNDED_MAP.full;
+
+  const baseImgClasses = `object-cover border shadow-xs select-none pointer-events-none ${roundedClass}`;
 
   // If the player already has a custom uploaded avatar image, use it instead
   if (customImageUrl) {
@@ -35,7 +47,7 @@ const PlayerAvatar = ({
       <img
         src={customImageUrl}
         alt={`${username}'s profile`}
-        className={`${baseImgClasses} ${currentSize.dimensions}`} // 🌟 Uses standard dimension classes map
+        className={`${baseImgClasses} ${currentSize.dimensions}`}
       />
     );
   }
@@ -61,7 +73,7 @@ const PlayerAvatar = ({
 
   return (
     <div
-      className={`flex items-center justify-center rounded-full border shadow-xs select-none pointer-events-none uppercase font-mono ${
+      className={`flex items-center justify-center border shadow-xs select-none pointer-events-none uppercase font-mono ${roundedClass} ${
         currentSize.dimensions
       } ${currentSize.font} ${colorClass}`}
     >

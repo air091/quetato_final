@@ -144,17 +144,20 @@ const Sidebar = ({ isOpen, onClose }) => {
 
           {/* CREATE COMMUNITY BUTTON */}
           <li className="mt-2">
-            <button
+            <NavLink
+              to="create-community"
               title={!isOpen ? "Create community" : undefined}
-              className={`w-full flex items-center border border-stone-200 p-2.5 cursor-pointer rounded-xl font-medium text-stone-700 bg-white shadow-sm hover:bg-stone-50 hover:border-stone-300 transition-all ${
-                isOpen ? "gap-x-2 justify-center text-sm" : "justify-center"
-              }`}
+              className={({ isActive }) =>
+                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                  isOpen ? "gap-x-4 justify-start" : "justify-center"
+                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+              }
             >
               <Plus size={18} className="shrink-0" />
               <span className={isOpen ? "block" : "hidden"}>
                 Create community
               </span>
-            </button>
+            </NavLink>
           </li>
         </ul>
 
