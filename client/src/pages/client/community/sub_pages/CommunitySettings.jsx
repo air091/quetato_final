@@ -95,7 +95,7 @@ const CommunitySettings = () => {
       if (!response.ok) throw new Error("Failed to delete the community");
 
       // 2. Route the operator safely back out to home layout dashboard view
-      navigate("/");
+      navigate("/community/sessions");
     } catch (error) {
       console.error("Error deleting community:", error);
       alert(

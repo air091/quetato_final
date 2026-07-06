@@ -155,7 +155,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             {myCommunities?.map((myCommunity) => (
               <li key={myCommunity.id}>
                 <NavLink
-                  to={`/community/${myCommunity.id}`}
+                  to={`/community/${myCommunity.id}/sessions`}
                   title={!isOpen ? myCommunity.name : undefined}
                   className={({ isActive }) =>
                     `flex items-center rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
