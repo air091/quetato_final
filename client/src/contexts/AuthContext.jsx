@@ -8,9 +8,8 @@ import React, {
 } from "react";
 
 export const AuthContext = createContext(null);
-
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api/auth";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const API_URL = `${BASE_URL}/api/auth`;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
