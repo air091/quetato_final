@@ -3,45 +3,18 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { API_URL } from "../../contexts/AuthContext";
+import { useCommunity } from "../../hooks/useCommunity";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { accessToken } = useAuth();
-  const [myCommunities, setMyCommunities] = useState([]);
+  const { myCommunities, getMyCommunities } = useCommunity();
   const sidebarRef = useRef(null);
 
-  const getMyCommunity = useCallback(async () => {
-    if (!accessToken) return;
-
-    try {
-      const response = await fetch(
-        `${API_URL}/api/communities/my-communities`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          credentials: "include",
-        },
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data?.message || "Internal server error");
-      }
-
-      setMyCommunities(data.myCommunities || []);
-    } catch (error) {
-      console.error("Failed to fetch communities:", error);
-    }
-  }, [accessToken]);
-
   useEffect(() => {
-    getMyCommunity();
-  }, [getMyCommunity]);
+    if (accessToken) {
+      getMyCommunities();
+    }
+  }, [accessToken, getMyCommunities]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

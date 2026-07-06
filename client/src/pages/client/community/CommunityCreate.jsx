@@ -3,10 +3,14 @@ import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import { Loader2 } from "lucide-react"; // Imported for submittion indicator state
 import { API_URL } from "../../../contexts/AuthContext";
+import { useCommunity } from "../../../hooks/useCommunity";
+import { useNavigate } from "react-router-dom";
 
 const CommunityCreate = () => {
   const { fetchWithAuth } = useAuth();
   const [community, setCommunity] = useState({ name: "", description: "" });
+  const { getMyCommunities } = useCommunity();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handle standard input updates dynamically
@@ -36,9 +40,11 @@ const CommunityCreate = () => {
 
         if (response && response.ok) {
           const data = await response.json();
-          console.log("Success:", data);
-          // Optional: Redirect the user or clear state here
-          // e.g., navigate(`/communities/${data.id}`);
+          await getMyCommunities();
+
+          if (data?.community.id) {
+            navigate(`/community/${data.community.id}/sessions`);
+          }
         }
       } catch (error) {
         console.error("Error creating community:", error);
@@ -46,7 +52,7 @@ const CommunityCreate = () => {
         setIsSubmitting(false);
       }
     },
-    [community, fetchWithAuth, isSubmitting],
+    [community, fetchWithAuth, isSubmitting, getMyCommunities, navigate],
   );
 
   return (

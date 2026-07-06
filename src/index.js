@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: "https://quetato-sport.vercel.app",
+    origin: "http://localhost:5173",
     credentials: true,
   }),
 );
