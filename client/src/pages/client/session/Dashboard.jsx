@@ -11,11 +11,9 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
-import { useAuth } from "../../../hooks/useAuth";
-import { API_URL } from "../../../contexts/AuthContext";
+import { useSession } from "../../../hooks/useSession";
 
 const currencySymbols = {
   PHP: "PHP",
@@ -45,24 +43,6 @@ const getUsername = (player) =>
 
 const getPlayerMetric = (player, key) =>
   Number(player?.stats?.[key] ?? player?.[key] ?? 0) || 0;
-
-// Optimized layout extractor with strict array fallback guardrails
-const extractCourts = (payload) => {
-  if (!payload) return { courts: [], counts: {} };
-  if (Array.isArray(payload)) return { courts: payload, counts: {} };
-
-  const courtPayload = payload?.courts ?? payload?.data ?? payload;
-  const rawCourts = Array.isArray(courtPayload)
-    ? courtPayload
-    : (courtPayload?.courts ?? courtPayload?.results ?? payload?.results ?? []);
-  const rawCounts =
-    courtPayload?.counts ?? payload?.counts ?? payload?.data?.counts ?? {};
-
-  return {
-    courts: Array.isArray(rawCourts) ? rawCourts : [],
-    counts: rawCounts && typeof rawCounts === "object" ? rawCounts : {},
-  };
-};
 
 const StatCard = ({ label, value, detail, icon: Icon, tone = "stone" }) => {
   const toneClasses = {
@@ -114,85 +94,37 @@ const ProgressBar = ({ value, total, tone = "bg-stone-900" }) => {
 };
 
 const SessionDashboard = () => {
-  const { communityId, sessionId } = useParams();
-  const { fetchWithAuth } = useAuth();
-  const [dashboard, setDashboard] = useState(null);
-  const [players, setPlayers] = useState([]);
-  const [matchCourts, setMatchCourts] = useState({ courts: [], counts: {} });
-  const [queueCourts, setQueueCourts] = useState({ courts: [], counts: {} });
-  const [pricingData, setPricingData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+  const { sessionData, isSessionLoading, sessionError, refreshSessionContext } =
+    useSession();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
-    if (!communityId || !sessionId) return null;
+  const dashboard = sessionData.dashboard;
+  const players = useMemo(
+    () => (sessionData.players || []).filter((player) => !player?.isHide),
+    [sessionData.players],
+  );
+  const matchCourts = useMemo(
+    () => sessionData.matchCourts || { courts: [], counts: {} },
+    [sessionData.matchCourts],
+  );
+  const queueCourts = useMemo(
+    () => sessionData.queueCourts || { courts: [], counts: {} },
+    [sessionData.queueCourts],
+  );
+  const pricingData = sessionData.pricingData;
+  const isLoading = isSessionLoading && !dashboard;
+  const errorMessage = sessionError && !dashboard ? sessionError : "";
 
-    const baseUrl = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}`;
-    const [dashboardRes, playersRes, matchRes, queueRes, pricingRes] =
-      await Promise.all([
-        fetchWithAuth(`${baseUrl}/dashboard`, { method: "GET" }),
-        fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
-        fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
-        fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
-        fetchWithAuth(`${baseUrl}/pricing`, {
-          method: "POST",
-          body: JSON.stringify({}),
-        }),
-      ]);
-
-    if (!dashboardRes.ok || !playersRes.ok || !matchRes.ok || !queueRes.ok) {
-      throw new Error("One or more session dashboard resources failed to load");
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshSessionContext({ silent: true });
+    } catch (error) {
+      console.error("Dashboard refresh failed:", error);
+    } finally {
+      setIsRefreshing(false);
     }
-
-    const [dashboardJson, playersJson, matchJson, queueJson, pricingJson] =
-      await Promise.all([
-        dashboardRes.json(),
-        playersRes.json(),
-        matchRes.json(),
-        queueRes.json(),
-        pricingRes.ok ? pricingRes.json() : Promise.resolve(null),
-      ]);
-
-    if (!dashboardJson?.success) {
-      throw new Error(dashboardJson?.message || "Failed to load dashboard");
-    }
-
-    return {
-      dashboard: dashboardJson.dashboard,
-      players: (playersJson?.players || []).filter((player) => !player?.isHide),
-      matchCourts: extractCourts(matchJson),
-      queueCourts: extractCourts(queueJson),
-      pricingData:
-        pricingJson?.result?.result || pricingJson?.result || pricingJson,
-    };
-  }, [communityId, sessionId, fetchWithAuth]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    loadDashboard()
-      .then((nextData) => {
-        if (!isCurrent || !nextData) return;
-        setErrorMessage("");
-        setDashboard(nextData.dashboard);
-        setPlayers(nextData.players.filter((player) => !player?.isHide));
-        setMatchCourts(nextData.matchCourts);
-        setQueueCourts(nextData.queueCourts);
-        setPricingData(nextData.pricingData);
-      })
-      .catch((error) => {
-        if (isCurrent) {
-          setErrorMessage(error.message || "Dashboard failed to load");
-        }
-      })
-      .finally(() => {
-        if (isCurrent) setIsLoading(false);
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [loadDashboard]);
+  };
 
   const metrics = useMemo(() => {
     const totalPlayers = players.length;
@@ -338,31 +270,12 @@ const SessionDashboard = () => {
 
             <button
               type="button"
-              onClick={() => {
-                setIsLoading(true);
-                loadDashboard()
-                  .then((nextData) => {
-                    if (!nextData) return;
-                    setDashboard(nextData.dashboard);
-                    setPlayers(
-                      nextData.players.filter((player) => !player?.isHide),
-                    );
-                    setMatchCourts(nextData.matchCourts);
-                    setQueueCourts(nextData.queueCourts);
-                    setPricingData(nextData.pricingData);
-                    setErrorMessage("");
-                  })
-                  .catch((error) =>
-                    setErrorMessage(
-                      error.message || "Dashboard failed to refresh",
-                    ),
-                  )
-                  .finally(() => setIsLoading(false));
-              }}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
             >
               <RefreshCcw size={14} />
-              Refresh
+              {isRefreshing ? "Refreshing" : "Refresh"}
             </button>
           </div>
 

@@ -12,21 +12,22 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useState, useMemo } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { API_URL } from "../../../contexts/AuthContext";
+import { useSession } from "../../../hooks/useSession";
 
 const Payment = () => {
-  const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
-  const [players, setPlayers] = useState([]);
+  const { communityId, sessionId, sessionData, refreshSessionContext } =
+    useSession();
   const [updatingPlayerId, setUpdatingPlayerId] = useState(null);
+  const [optimisticPaymentStatuses, setOptimisticPaymentStatuses] = useState(
+    {},
+  );
 
   // Pricing Configuration States
-  const [pricing, setPricing] = useState(null);
-  const [breakdownMap, setBreakdownMap] = useState(new Map());
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [pricingFormData, setPricingFormData] = useState({
     entranceFee: "",
@@ -39,67 +40,44 @@ const Payment = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-  // Combined fetcher to grab both player listing & pricing matrix calculations
+  const pricingDetails = useMemo(() => {
+    const res = sessionData.pricingData?.result || sessionData.pricingData;
+    return res || {};
+  }, [sessionData.pricingData]);
+
+  const pricing = pricingDetails?.pricing || null;
+
+  const breakdownMap = useMemo(
+    () =>
+      new Map(
+        (pricingDetails?.breakdown?.playerFees || []).map((item) => [
+          item.sessionPlayerId,
+          item,
+        ]),
+      ),
+    [pricingDetails],
+  );
+
+  const players = useMemo(() => {
+    return (sessionData.players ?? [])
+      .filter((player) => !player?.isHide)
+      .map((player) =>
+        optimisticPaymentStatuses[player.id]
+          ? { ...player, gameStatus: optimisticPaymentStatuses[player.id] }
+          : player,
+      );
+  }, [sessionData.players, optimisticPaymentStatuses]);
+
+  // Refresh the shared session workspace without blanking this page.
   const getPaymentDetails = useCallback(async () => {
     if (!communityId || !sessionId) return;
 
     try {
-      const playerResponse = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players`,
-        { method: "GET" },
-      );
-
-      if (!playerResponse.ok) throw new Error("Failed to fetch players");
-
-      const playerData = await playerResponse.json();
-      if (!playerData.success) throw new Error(playerData?.message);
-
-      const pricingResponse = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/pricing`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
-
-      if (pricingResponse.ok) {
-        const pricingData = await pricingResponse.json();
-        if (pricingData.success && pricingData.result) {
-          const res = pricingData.result.result || pricingData.result;
-          setPricing(res.pricing);
-
-          if (res.pricing) {
-            setPricingFormData({
-              entranceFee: res.pricing.entranceFee ?? "",
-              perGameFee: res.pricing.perGameFee ?? "",
-              currency: res.pricing.currency || "PHP",
-            });
-          }
-
-          if (res.breakdown?.playerFees) {
-            const feesMap = new Map(
-              res.breakdown.playerFees.map((item) => [
-                item.sessionPlayerId,
-                item,
-              ]),
-            );
-            setBreakdownMap(feesMap);
-          }
-        }
-      }
-
-      setPlayers(
-        (playerData.players ?? []).filter((player) => !player?.isHide),
-      );
+      await refreshSessionContext({ silent: true });
     } catch (error) {
       console.error("Fetch payment workspace details failed:", error);
     }
-  }, [communityId, sessionId, fetchWithAuth]);
-
-  useEffect(() => {
-    getPaymentDetails();
-  }, [getPaymentDetails]);
+  }, [communityId, sessionId, refreshSessionContext]);
 
   // Handle Base Pricing Submission
   const handlePricingSubmit = async (e) => {
@@ -159,13 +137,16 @@ const Payment = () => {
       if (!data.success)
         throw new Error(data?.message || "Failed to update payment status");
 
-      setPlayers((currentPlayers) =>
-        currentPlayers.map((player) =>
-          player.id === sessionPlayerId
-            ? { ...player, gameStatus: shouldMarkPaid ? "paid" : "waiting" }
-            : player,
-        ),
-      );
+      setOptimisticPaymentStatuses((currentStatuses) => ({
+        ...currentStatuses,
+        [sessionPlayerId]: shouldMarkPaid ? "paid" : "waiting",
+      }));
+      await refreshSessionContext({ silent: true });
+      setOptimisticPaymentStatuses((currentStatuses) => {
+        const remainingStatuses = { ...currentStatuses };
+        delete remainingStatuses[sessionPlayerId];
+        return remainingStatuses;
+      });
     } catch (error) {
       console.error("Update payment status failed:", error);
     } finally {
@@ -310,7 +291,17 @@ const Payment = () => {
         </div>
         <button
           type="button"
-          onClick={() => setIsConfiguring(!isConfiguring)}
+          onClick={() => {
+            const nextIsConfiguring = !isConfiguring;
+            if (nextIsConfiguring && pricing) {
+              setPricingFormData({
+                entranceFee: pricing.entranceFee ?? "",
+                perGameFee: pricing.perGameFee ?? "",
+                currency: pricing.currency || "PHP",
+              });
+            }
+            setIsConfiguring(nextIsConfiguring);
+          }}
           className={`flex items-center justify-center gap-x-1.5 px-3.5 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer outline-none ${
             isConfiguring
               ? "border-stone-900 bg-stone-900 text-white shadow-sm"

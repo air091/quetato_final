@@ -25,6 +25,8 @@ export const SessionProvider = ({ children }) => {
   const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
   const [sessionData, setSessionData] = useState({
+    dashboard: null,
+    pricingData: null,
     players: [],
     matchCourts: emptyCourtState,
     queueCourts: emptyCourtState,
@@ -47,27 +49,50 @@ export const SessionProvider = ({ children }) => {
         if (!silent) setIsSessionLoading(true);
         setSessionError("");
 
-        const [playersRes, matchRes, queueRes] = await Promise.all([
-          fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
-          fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
-          fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
-        ]);
+        const [dashboardRes, playersRes, matchRes, queueRes, pricingRes] =
+          await Promise.all([
+            fetchWithAuth(`${baseUrl}/dashboard`, { method: "GET" }),
+            fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
+            fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
+            fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
+            fetchWithAuth(`${baseUrl}/pricing`, {
+              method: "POST",
+              body: JSON.stringify({}),
+            }),
+          ]);
 
-        if (!playersRes?.ok || !matchRes?.ok || !queueRes?.ok) {
+        if (
+          !dashboardRes?.ok ||
+          !playersRes?.ok ||
+          !matchRes?.ok ||
+          !queueRes?.ok
+        ) {
           throw new Error("Failed to load session resources");
         }
 
-        const [playersData, matchData, queueData] = await Promise.all([
-          playersRes.json(),
-          matchRes.json(),
-          queueRes.json(),
-        ]);
+        const [dashboardData, playersData, matchData, queueData, pricingData] =
+          await Promise.all([
+            dashboardRes.json(),
+            playersRes.json(),
+            matchRes.json(),
+            queueRes.json(),
+            pricingRes?.ok ? pricingRes.json() : Promise.resolve(null),
+          ]);
+
+        if (!dashboardData?.success) {
+          throw new Error(
+            dashboardData?.message || "Failed to load session dashboard",
+          );
+        }
 
         if (!playersData?.success) {
           throw new Error(playersData?.message || "Failed to load players");
         }
 
         const nextSessionData = {
+          dashboard: dashboardData.dashboard || null,
+          pricingData:
+            pricingData?.result?.result || pricingData?.result || pricingData,
           players: playersData.players || [],
           matchCourts: normalizeCourtsPayload(matchData),
           queueCourts: normalizeCourtsPayload(queueData),

@@ -8,15 +8,25 @@ import { prisma } from "./libs/prisma.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
+  "https://quetato-sport.vercel.app",
+  "http://localhost:5173",
+].filter(Boolean);
 
 app.use(
   cors({
-    origin: "https://quetato-sport.vercel.app",
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
-
-// http://localhost:5173
 
 app.use(express.json());
 app.set("trust proxy", true);

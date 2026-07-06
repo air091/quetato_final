@@ -124,6 +124,7 @@ export const refresh = async (payload) => {
   });
 
   if (!tokenRecord) throw new AppError("No record", 401);
+  if (tokenRecord.isRevoked) throw new AppError("Token revoked", 401);
   if (tokenRecord.expiresAt < new Date())
     throw new AppError("Token expired", 401);
 

@@ -9,6 +9,29 @@ import {
 } from "../services/auth.service.js";
 import { AppError } from "../libs/errorHandle.js";
 
+const isSecureDeployment = () =>
+  process.env.NODE_ENV === "production" ||
+  process.env.RENDER ||
+  process.env.RENDER_EXTERNAL_URL ||
+  process.env.FRONTEND_URL?.startsWith("https://") ||
+  process.env.CLIENT_URL?.startsWith("https://");
+
+const getSessionCookieOptions = () => ({
+  httpOnly: true,
+  secure: isSecureDeployment(),
+  sameSite: isSecureDeployment() ? "none" : "lax",
+  maxAge: 1000 * 60 * 60 * 24 * 7,
+  path: "/",
+});
+
+const getClearSessionCookieOptions = () => {
+  const { maxAge, ...options } = getSessionCookieOptions();
+  return {
+    ...options,
+    expires: new Date(0),
+  };
+};
+
 export const registerController = async (request, response) => {
   try {
     const { username, email, password } = request.body;
@@ -23,13 +46,7 @@ export const registerController = async (request, response) => {
       agent,
     });
 
-    response.cookie("session", tokens.refresh, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    response.cookie("session", tokens.refresh, getSessionCookieOptions());
 
     return response.status(200).json({ success: true, tokens });
   } catch (error) {
@@ -57,13 +74,7 @@ export const loginController = async (request, response) => {
 
     const tokens = await login({ email, password, agent, ipAddress });
 
-    response.cookie("session", tokens.refresh, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    response.cookie("session", tokens.refresh, getSessionCookieOptions());
 
     return response.status(200).json({ success: true, tokens });
   } catch (error) {
@@ -115,6 +126,12 @@ export const refreshController = async (request, response) => {
 
     const tokens = await refresh({ token, ipAddress, agent });
 
+    response.cookie(
+      "session",
+      tokens.newRefresh,
+      getSessionCookieOptions(),
+    );
+
     return response.status(201).json({ success: true, tokens });
   } catch (error) {
     console.error("Refresh failed", error);
@@ -139,13 +156,7 @@ export const logoutController = async (request, response) => {
       await logout(token);
     }
 
-    response.cookie("session", "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      expires: new Date(0),
-      path: "/",
-    });
+    response.cookie("session", "", getClearSessionCookieOptions());
 
     return response.status(200).json({ success: true });
   } catch (error) {

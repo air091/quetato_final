@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer, {
   PlayerTimer,
@@ -45,6 +45,7 @@ const Game = () => {
 
   // Track currently dragged node to project clean mirror overlays
   const [activePlayerData, setActivePlayerData] = useState(null);
+  const slotAssignmentVersionRef = useRef(0);
 
   const fetchDashboardContext = useCallback(
     (isSilentRefetch = false) =>
@@ -407,6 +408,8 @@ const Game = () => {
     }
 
     const previousSessionData = structuredClone(sessionData);
+    const assignmentVersion = slotAssignmentVersionRef.current + 1;
+    slotAssignmentVersionRef.current = assignmentVersion;
 
     // Extract the username string cleanly from the dragged item
     const resolvedUsername =
@@ -423,13 +426,12 @@ const Game = () => {
         return {
           ...currentCourtsObj,
           courts: currentCourtsObj.courts.map((court) => {
-            if (court.id !== courtId) return court;
-
             // Remove player from any existing position on this court layout
             const cleanedSlots = (court.slots || []).filter(
               (s) =>
                 (s?.sessionPlayerId || s?.sessionPlayer?.id) !==
-                stableSessionPlayerId,
+                  stableSessionPlayerId &&
+                !(court.id === courtId && s?.position === position),
             );
 
             // 🟢 THE FIX: Nest the object structure so the component's username check succeeds
@@ -456,7 +458,10 @@ const Game = () => {
 
             return {
               ...court,
-              slots: [...cleanedSlots, targetSlotStructure],
+              slots:
+                court.id === courtId
+                  ? [...cleanedSlots, targetSlotStructure]
+                  : cleanedSlots,
             };
           }),
         };
@@ -488,10 +493,14 @@ const Game = () => {
         position,
       );
 
-      await fetchDashboardContext(true);
+      if (assignmentVersion === slotAssignmentVersionRef.current) {
+        await fetchDashboardContext(true);
+      }
     } catch (error) {
       console.error("Backend slot assignment synchronization failed:", error);
-      setSessionData(previousSessionData); // Fallback transaction rollback if server errors out
+      if (assignmentVersion === slotAssignmentVersionRef.current) {
+        setSessionData(previousSessionData); // Fallback transaction rollback if server errors out
+      }
     }
   };
 
