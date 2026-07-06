@@ -1,14 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { SessionContext } from "./SessionContextValue";
-
-const API_BASE_URL = "http://localhost:8000/api/communities";
+import { API_URL } from "./AuthContext";
 
 const emptyCourtState = { courts: [], counts: {} };
 
@@ -40,7 +34,7 @@ export const SessionProvider = ({ children }) => {
 
   const baseUrl = useMemo(() => {
     if (!communityId || !sessionId) return "";
-    return `${API_BASE_URL}/${communityId}/sessions/${sessionId}`;
+    return `${API_URL}/${communityId}/sessions/${sessionId}`;
   }, [communityId, sessionId]);
 
   const refreshSessionContext = useCallback(
@@ -103,7 +97,9 @@ export const SessionProvider = ({ children }) => {
         });
 
         if (!response?.ok) {
-          throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
         }
 
         const data = await response.json();
