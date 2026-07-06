@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer, {
   PlayerTimer,
@@ -22,12 +22,384 @@ import { API_URL } from "../../../contexts/AuthContext";
 const resolveSessionPlayerId = (player) =>
   player?.id || player?.sessionPlayerId || null;
 
+const resolveSlotSessionPlayerId = (slot) =>
+  slot?.sessionPlayerId || resolveSessionPlayerId(slot?.sessionPlayer);
+
 const setPlayerGameStatus = (player, sessionPlayerId, gameStatus) => {
   if (resolveSessionPlayerId(player) !== sessionPlayerId) return player;
 
   return {
     ...player,
     gameStatus,
+  };
+};
+
+const getPlayerUsername = (player) =>
+  player?.sessionPlayer?.communityPlayer?.username ||
+  player?.communityPlayer?.username ||
+  player?.username ||
+  "Unknown Player";
+
+const getSlotStatus = (court, courtType) =>
+  (court?.type || courtType) === "match" &&
+  (court?.status === "started" || court?.status === "paused")
+    ? "playing"
+    : "queued";
+
+const createOptimisticSlotPlayer = (
+  player,
+  sessionPlayerId,
+  gameStatus,
+  timestamp,
+) => {
+  const username = getPlayerUsername(player);
+  const communityPlayer = {
+    ...(player?.sessionPlayer?.communityPlayer || player?.communityPlayer || {}),
+    username,
+  };
+
+  return {
+    ...player,
+    id: sessionPlayerId,
+    sessionPlayerId,
+    gameStatus,
+    updateStatus: timestamp,
+    updatedAt: timestamp,
+    username,
+    communityPlayer,
+    sessionPlayer: {
+      ...(player?.sessionPlayer || {}),
+      communityPlayer,
+    },
+  };
+};
+
+const createOptimisticSlot = ({
+  baseSlot,
+  courtId,
+  position,
+  sessionPlayerId,
+  sessionPlayer,
+}) => ({
+  ...(baseSlot || {}),
+  id: baseSlot?.id || `opt-${courtId}-${position}-${sessionPlayerId}`,
+  courtId,
+  position,
+  team: position % 2 === 0 ? "a" : "b",
+  sessionPlayerId,
+  sessionPlayer,
+});
+
+const findCourtLocation = (sessionData, courtId) => {
+  for (const [courtsKey, courtType] of [
+    ["matchCourts", "match"],
+    ["queueCourts", "queue"],
+  ]) {
+    const court = sessionData?.[courtsKey]?.courts?.find(
+      (candidateCourt) => candidateCourt.id === courtId,
+    );
+
+    if (court) return { courtsKey, courtType, court };
+  }
+
+  return null;
+};
+
+const findSlotLocation = (sessionData, predicate) => {
+  for (const [courtsKey, courtType] of [
+    ["matchCourts", "match"],
+    ["queueCourts", "queue"],
+  ]) {
+    for (const court of sessionData?.[courtsKey]?.courts || []) {
+      const slot = (court.slots || []).find((candidateSlot) =>
+        predicate(candidateSlot, court),
+      );
+
+      if (slot) return { courtsKey, courtType, court, slot };
+    }
+  }
+
+  return null;
+};
+
+const sortSlotsByPosition = (slots) =>
+  [...slots].sort((left, right) => (left?.position ?? 0) - (right?.position ?? 0));
+
+const applyOptimisticSlotAssignment = (
+  sessionData,
+  { targetType, courtId, position, player, sessionPlayerId, timestamp },
+) => {
+  const targetCourtLocation = findCourtLocation(sessionData, courtId);
+  const targetCourt = targetCourtLocation?.court;
+  const sourceLocation = findSlotLocation(
+    sessionData,
+    (slot) => resolveSlotSessionPlayerId(slot) === sessionPlayerId,
+  );
+  const occupiedLocation = findSlotLocation(
+    sessionData,
+    (slot, court) => court.id === courtId && slot.position === position,
+  );
+  const occupiedPlayerId = resolveSlotSessionPlayerId(occupiedLocation?.slot);
+  const hasDistinctOccupiedPlayer =
+    occupiedPlayerId && occupiedPlayerId !== sessionPlayerId;
+  const isSwap = Boolean(sourceLocation && hasDistinctOccupiedPlayer);
+  const targetStatus = getSlotStatus(targetCourt, targetType);
+  const sourceStatus = sourceLocation
+    ? getSlotStatus(sourceLocation.court, sourceLocation.courtType)
+    : "waiting";
+  const targetSlotPlayer = createOptimisticSlotPlayer(
+    player,
+    sessionPlayerId,
+    targetStatus,
+    timestamp,
+  );
+  const occupiedPlayer =
+    occupiedLocation?.slot?.sessionPlayer ||
+    sessionData.players.find(
+      (candidatePlayer) =>
+        resolveSessionPlayerId(candidatePlayer) === occupiedPlayerId,
+    );
+  const occupiedSourceSlotPlayer =
+    isSwap && occupiedPlayer
+      ? createOptimisticSlotPlayer(
+          occupiedPlayer,
+          occupiedPlayerId,
+          sourceStatus,
+          timestamp,
+        )
+      : null;
+
+  const updateCourtsList = (currentCourtsObj) => {
+    if (!currentCourtsObj?.courts) return currentCourtsObj;
+
+    return {
+      ...currentCourtsObj,
+      courts: currentCourtsObj.courts.map((court) => {
+        const cleanedSlots = (court.slots || []).filter((slot) => {
+          const slotPlayerId = resolveSlotSessionPlayerId(slot);
+          if (slotPlayerId === sessionPlayerId) return false;
+          if (court.id === courtId && slot.position === position) return false;
+          return true;
+        });
+
+        const nextSlots = [...cleanedSlots];
+
+        if (court.id === courtId) {
+          nextSlots.push(
+            createOptimisticSlot({
+              baseSlot: sourceLocation?.slot || occupiedLocation?.slot,
+              courtId,
+              position,
+              sessionPlayerId,
+              sessionPlayer: targetSlotPlayer,
+            }),
+          );
+        }
+
+        if (isSwap && court.id === sourceLocation.court.id) {
+          nextSlots.push(
+            createOptimisticSlot({
+              baseSlot: occupiedLocation.slot,
+              courtId: sourceLocation.court.id,
+              position: sourceLocation.slot.position,
+              sessionPlayerId: occupiedPlayerId,
+              sessionPlayer: occupiedSourceSlotPlayer,
+            }),
+          );
+        }
+
+        return { ...court, slots: sortSlotsByPosition(nextSlots) };
+      }),
+    };
+  };
+
+  return {
+    ...sessionData,
+    matchCourts: updateCourtsList(sessionData.matchCourts),
+    queueCourts: updateCourtsList(sessionData.queueCourts),
+    players: sessionData.players.map((candidatePlayer) => {
+      const candidatePlayerId = resolveSessionPlayerId(candidatePlayer);
+
+      if (candidatePlayerId === sessionPlayerId) {
+        return setPlayerGameStatus(candidatePlayer, sessionPlayerId, targetStatus);
+      }
+
+      if (hasDistinctOccupiedPlayer && candidatePlayerId === occupiedPlayerId) {
+        return setPlayerGameStatus(
+          candidatePlayer,
+          occupiedPlayerId,
+          isSwap ? sourceStatus : "waiting",
+        );
+      }
+
+      return candidatePlayer;
+    }),
+  };
+};
+
+const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
+  if (!Array.isArray(backendSlots) || backendSlots.length === 0) {
+    return sessionData;
+  }
+
+  const validBackendSlots = backendSlots.filter((slot) => slot?.sessionPlayerId);
+  const backendSlotByPlayerId = new Map(
+    validBackendSlots.map((slot) => [slot.sessionPlayerId, slot]),
+  );
+  const currentSlotByPlayerId = new Map();
+
+  for (const courtsObj of [sessionData.matchCourts, sessionData.queueCourts]) {
+    for (const court of courtsObj?.courts || []) {
+      for (const slot of court.slots || []) {
+        const sessionPlayerId = resolveSlotSessionPlayerId(slot);
+
+        if (backendSlotByPlayerId.has(sessionPlayerId)) {
+          currentSlotByPlayerId.set(sessionPlayerId, slot);
+        }
+      }
+    }
+  }
+
+  const reconcileCourtsList = (currentCourtsObj) => {
+    if (!currentCourtsObj?.courts) return currentCourtsObj;
+
+    return {
+      ...currentCourtsObj,
+      courts: currentCourtsObj.courts.map((court) => {
+        const untouchedSlots = (court.slots || []).filter(
+          (slot) => !backendSlotByPlayerId.has(resolveSlotSessionPlayerId(slot)),
+        );
+        const reconciledSlots = validBackendSlots
+          .filter((backendSlot) => backendSlot.courtId === court.id)
+          .map((backendSlot) => ({
+            ...(currentSlotByPlayerId.get(backendSlot.sessionPlayerId) || {}),
+            id: backendSlot.id,
+            courtId: backendSlot.courtId,
+            position: backendSlot.position,
+            team: backendSlot.team,
+            sessionPlayerId: backendSlot.sessionPlayerId,
+          }));
+
+        return {
+          ...court,
+          slots: sortSlotsByPosition([...untouchedSlots, ...reconciledSlots]),
+        };
+      }),
+    };
+  };
+
+  return {
+    ...sessionData,
+    matchCourts: reconcileCourtsList(sessionData.matchCourts),
+    queueCourts: reconcileCourtsList(sessionData.queueCourts),
+  };
+};
+
+const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
+  const queueCourt = sessionData.queueCourts?.courts?.find(
+    (court) => court.id === queueCourtId,
+  );
+
+  if (!queueCourt) {
+    return { canTransfer: false, nextSessionData: sessionData };
+  }
+
+  const queueSlotsToMove = (queueCourt.slots || [])
+    .filter((slot) => resolveSlotSessionPlayerId(slot))
+    .sort((left, right) => left.position - right.position);
+
+  if (queueSlotsToMove.length === 0) {
+    return { canTransfer: false, nextSessionData: sessionData };
+  }
+
+  const targetMatchCourt = sessionData.matchCourts?.courts?.find((court) => {
+    const occupiedSlots = (court.slots || []).filter((slot) =>
+      resolveSlotSessionPlayerId(slot),
+    );
+
+    return court.startedAt === null && occupiedSlots.length < 4;
+  });
+
+  if (!targetMatchCourt) {
+    return { canTransfer: false, nextSessionData: sessionData };
+  }
+
+  const occupiedPositions = (targetMatchCourt.slots || [])
+    .filter((slot) => resolveSlotSessionPlayerId(slot))
+    .map((slot) => slot.position);
+  const openPositions = [0, 1, 2, 3].filter(
+    (position) => !occupiedPositions.includes(position),
+  );
+  const transferSlots = queueSlotsToMove.slice(0, openPositions.length);
+  const movedPlayerIds = transferSlots
+    .map((slot) => resolveSlotSessionPlayerId(slot))
+    .filter(Boolean);
+
+  if (transferSlots.length === 0) {
+    return { canTransfer: false, nextSessionData: sessionData };
+  }
+
+  const nextMatchCourts = {
+    ...sessionData.matchCourts,
+    courts: (sessionData.matchCourts?.courts || []).map((court) => {
+      if (court.id !== targetMatchCourt.id) return court;
+
+      const optimisticSlots = transferSlots.map((sourceSlot, index) => {
+        const sessionPlayerId = resolveSlotSessionPlayerId(sourceSlot);
+        const sourcePlayer =
+          sourceSlot.sessionPlayer ||
+          sessionData.players.find(
+            (player) => resolveSessionPlayerId(player) === sessionPlayerId,
+          );
+
+        return createOptimisticSlot({
+          baseSlot: null,
+          courtId: court.id,
+          position: openPositions[index],
+          sessionPlayerId,
+          sessionPlayer: createOptimisticSlotPlayer(
+            sourcePlayer,
+            sessionPlayerId,
+            "queued",
+            timestamp,
+          ),
+        });
+      });
+
+      return {
+        ...court,
+        slots: sortSlotsByPosition([...(court.slots || []), ...optimisticSlots]),
+      };
+    }),
+  };
+
+  const nextQueueCourts = {
+    ...sessionData.queueCourts,
+    courts: (sessionData.queueCourts?.courts || []).map((court) => {
+      if (court.id !== queueCourtId) return court;
+
+      return {
+        ...court,
+        slots: (court.slots || []).filter(
+          (slot) => !movedPlayerIds.includes(resolveSlotSessionPlayerId(slot)),
+        ),
+      };
+    }),
+  };
+
+  return {
+    canTransfer: true,
+    movedPlayerIds,
+    nextSessionData: {
+      ...sessionData,
+      matchCourts: nextMatchCourts,
+      queueCourts: nextQueueCourts,
+      players: sessionData.players.map((player) =>
+        movedPlayerIds.includes(resolveSessionPlayerId(player))
+          ? setPlayerGameStatus(player, resolveSessionPlayerId(player), "queued")
+          : player,
+      ),
+    },
   };
 };
 
@@ -46,6 +418,24 @@ const Game = () => {
   // Track currently dragged node to project clean mirror overlays
   const [activePlayerData, setActivePlayerData] = useState(null);
   const slotAssignmentVersionRef = useRef(0);
+  const queueTransferVersionRef = useRef(0);
+  const queueTransferRequestRef = useRef(null);
+  const latestSessionDataRef = useRef(sessionData);
+
+  useEffect(() => {
+    latestSessionDataRef.current = sessionData;
+  }, [sessionData]);
+
+  const commitSessionData = useCallback(
+    (updater) => {
+      setSessionData((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        latestSessionDataRef.current = next;
+        return next;
+      });
+    },
+    [setSessionData],
+  );
 
   const fetchDashboardContext = useCallback(
     (isSilentRefetch = false) =>
@@ -96,10 +486,10 @@ const Game = () => {
   );
 
   const handleRemovePlayer = async (courtId, slotId) => {
-    const previousSessionData = structuredClone(sessionData);
+    const previousSessionData = structuredClone(latestSessionDataRef.current);
     const removedPlayerId = [
-      sessionData.matchCourts,
-      sessionData.queueCourts,
+      previousSessionData.matchCourts,
+      previousSessionData.queueCourts,
     ].reduce((foundPlayerId, courtsObj) => {
       if (foundPlayerId) return foundPlayerId;
 
@@ -154,47 +544,54 @@ const Game = () => {
     }));
 
     try {
+      let targetCourtId = courtId;
       let targetSlotId = slotId;
 
-      // 🟢 FIX: If a temporary ID is found, download real IDs right now and find the real replacement ID
+      // If a temporary ID is found, download real IDs right now and find the real replacement ID.
       if (typeof targetSlotId === "string" && targetSlotId.startsWith("opt-")) {
         console.warn(
           "Temporary ID detected during removal. Resolving real database IDs...",
         );
 
+        if (queueTransferRequestRef.current) {
+          await queueTransferRequestRef.current.catch(() => null);
+        }
+
         // 1. Wait for the server data to download and refresh state completely
-        await fetchDashboardContext(true);
+        const refreshedSessionData = await fetchDashboardContext(true);
 
         // 2. Scan the freshly fetched database courts data to track down the newly created slot ID
-        let resolvedRealId = null;
+        let resolvedRealSlot = null;
         const scanForRealId = (courtObj) => {
           courtObj?.courts?.forEach((c) => {
-            if (c.id === courtId) {
-              c.slots?.forEach((s) => {
-                // Match by the player who was sitting in that position
-                if (s.sessionPlayerId === removedPlayerId) {
-                  resolvedRealId = s.id;
-                }
-              });
-            }
+            c.slots?.forEach((s) => {
+              // Match by the player who was sitting in that position.
+              if (
+                s.sessionPlayerId === removedPlayerId &&
+                typeof s.id === "string" &&
+                !s.id.startsWith("opt-")
+              ) {
+                resolvedRealSlot = s;
+              }
+            });
           });
         };
 
-        // Check current state data references
-        scanForRealId(sessionData.matchCourts);
-        scanForRealId(sessionData.queueCourts);
+        scanForRealId(refreshedSessionData?.matchCourts);
+        scanForRealId(refreshedSessionData?.queueCourts);
 
-        if (!resolvedRealId) {
+        if (!resolvedRealSlot) {
           throw new Error(
             "Could not find real database slot ID after refetching context.",
           );
         }
 
-        targetSlotId = resolvedRealId;
+        targetCourtId = resolvedRealSlot.courtId || targetCourtId;
+        targetSlotId = resolvedRealSlot.id;
       }
 
-      // 🟢 3. Immediately hit the backend endpoint using the newly resolved ID on the SAME click
-      await removePlayerToSlot(courtId, targetSlotId);
+      // Immediately hit the backend endpoint using the newly resolved ID on the same click.
+      await removePlayerToSlot(targetCourtId, targetSlotId);
       await fetchDashboardContext(true);
     } catch (error) {
       console.error("Removal engine execution failure:", error);
@@ -269,12 +666,19 @@ const Game = () => {
         setSessionData(previousSessionData); // Rollback
       }
     },
-    [communityId, sessionId, sessionData, fetchWithAuth, fetchDashboardContext],
+    [
+      communityId,
+      sessionId,
+      sessionData,
+      fetchWithAuth,
+      fetchDashboardContext,
+      setSessionData,
+    ],
   );
 
   const handleEndMatchCourt = useCallback(
     async (courtId, winningTeam) => {
-      // 🌟 UPDATED: Accept winningTeam argument
+      // Accept winningTeam argument.
       if (!communityId || !sessionId || !courtId) return;
 
       // Ensure a team selection is valid before sending
@@ -336,7 +740,7 @@ const Game = () => {
         const response = await fetchWithAuth(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ winningTeam: winningTeam.toLowerCase() }), // 🌟 ADDED: Send winningTeam in body
+          body: JSON.stringify({ winningTeam: winningTeam.toLowerCase() }),
         });
 
         if (!response.ok) {
@@ -352,7 +756,14 @@ const Game = () => {
         setSessionData(previousSessionData); // Rollback state on network error
       }
     },
-    [communityId, sessionId, sessionData, fetchWithAuth, fetchDashboardContext],
+    [
+      communityId,
+      sessionId,
+      sessionData,
+      fetchWithAuth,
+      fetchDashboardContext,
+      setSessionData,
+    ],
   );
 
   // Cache data block parameters right when node is selected
@@ -407,99 +818,42 @@ const Game = () => {
       return;
     }
 
-    const previousSessionData = structuredClone(sessionData);
+    const previousSessionData = structuredClone(latestSessionDataRef.current);
     const assignmentVersion = slotAssignmentVersionRef.current + 1;
     slotAssignmentVersionRef.current = assignmentVersion;
 
-    // Extract the username string cleanly from the dragged item
-    const resolvedUsername =
-      player?.sessionPlayer?.communityPlayer?.username ||
-      player?.communityPlayer?.username ||
-      player?.username ||
-      "Unknown Player";
-
     // 2. Perform optimistic UI updates
-    setSessionData((prev) => {
-      const updateCourtsListOptimistically = (currentCourtsObj) => {
-        if (!currentCourtsObj?.courts) return currentCourtsObj;
-
-        return {
-          ...currentCourtsObj,
-          courts: currentCourtsObj.courts.map((court) => {
-            // Remove player from any existing position on this court layout
-            const cleanedSlots = (court.slots || []).filter(
-              (s) =>
-                (s?.sessionPlayerId || s?.sessionPlayer?.id) !==
-                  stableSessionPlayerId &&
-                !(court.id === courtId && s?.position === position),
-            );
-
-            // 🟢 THE FIX: Nest the object structure so the component's username check succeeds
-            const targetSlotStructure = {
-              id: `opt-${position}`, // Temporary UI key string
-              position: position,
-              team: position % 2 === 0 ? "a" : "b",
-              courtId: courtId,
-              sessionPlayerId: stableSessionPlayerId,
-              sessionPlayer: {
-                id: stableSessionPlayerId,
-                // MatchCourt reads: matchedPoolPlayer.sessionPlayer.communityPlayer.username
-                sessionPlayer: {
-                  communityPlayer: {
-                    username: resolvedUsername,
-                  },
-                },
-                communityPlayer: {
-                  username: resolvedUsername,
-                },
-                username: resolvedUsername,
-              },
-            };
-
-            return {
-              ...court,
-              slots:
-                court.id === courtId
-                  ? [...cleanedSlots, targetSlotStructure]
-                  : cleanedSlots,
-            };
-          }),
-        };
-      };
-
-      return {
-        ...prev,
-        matchCourts:
-          targetType === "match"
-            ? updateCourtsListOptimistically(prev.matchCourts)
-            : prev.matchCourts,
-        queueCourts:
-          targetType === "queue"
-            ? updateCourtsListOptimistically(prev.queueCourts)
-            : prev.queueCourts,
-
-        // Update status tag flags in the roster view panel safely
-        players: prev.players.map((player) =>
-          setPlayerGameStatus(player, stableSessionPlayerId, "queued"),
-        ),
-      };
-    });
+    commitSessionData((prev) =>
+      applyOptimisticSlotAssignment(prev, {
+        targetType,
+        courtId,
+        position,
+        player,
+        sessionPlayerId: stableSessionPlayerId,
+        timestamp: new Date().toISOString(),
+      }),
+    );
 
     // 3. Send request to the backend service
     try {
-      await assignPlayerToSlot(
+      const assignmentResult = await assignPlayerToSlot(
         courtId,
         stableSessionPlayerId, // Sends valid SessionPlayer ID string
         position,
       );
 
       if (assignmentVersion === slotAssignmentVersionRef.current) {
-        await fetchDashboardContext(true);
+        commitSessionData((prev) =>
+          reconcileAssignedSlotIds(
+            prev,
+            assignmentResult?.updatedSlotsState,
+          ),
+        );
       }
     } catch (error) {
       console.error("Backend slot assignment synchronization failed:", error);
       if (assignmentVersion === slotAssignmentVersionRef.current) {
-        setSessionData(previousSessionData); // Fallback transaction rollback if server errors out
+        commitSessionData(previousSessionData); // Fallback transaction rollback if server errors out
       }
     }
   };
@@ -606,7 +960,7 @@ const Game = () => {
       matchCourts: updateNameInList(prev.matchCourts),
       queueCourts: updateNameInList(prev.queueCourts), // Handles queue courts if they use it too
     }));
-  }, []);
+  }, [setSessionData]);
 
   const handleDeleteCourt = useCallback((courtId) => {
     const filterOutCourt = (currentCourtsObj) => {
@@ -622,38 +976,86 @@ const Game = () => {
       matchCourts: filterOutCourt(prev.matchCourts),
       queueCourts: filterOutCourt(prev.queueCourts),
     }));
-  }, []);
+  }, [setSessionData]);
 
   const handleTransferQueue = useCallback(
     async (queueCourtId) => {
       if (!communityId || !sessionId || !queueCourtId) return;
 
+      const previousSessionData = structuredClone(latestSessionDataRef.current);
+      const transferVersion = queueTransferVersionRef.current + 1;
+      queueTransferVersionRef.current = transferVersion;
+      const optimisticTransfer = buildOptimisticQueueTransfer(
+        previousSessionData,
+        queueCourtId,
+        new Date().toISOString(),
+      );
+
+      if (optimisticTransfer.canTransfer) {
+        commitSessionData(optimisticTransfer.nextSessionData);
+      }
+
+      let transferRequest = null;
+
       try {
         const url = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/transfer-queue`;
-
-        const response = await fetchWithAuth(url, {
+        transferRequest = fetchWithAuth(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ queueCourtId }), // 👈 Sends the selected queue court ID in the payload
+          body: JSON.stringify({ queueCourtId }),
         });
+        queueTransferRequestRef.current = transferRequest;
+
+        const response = await transferRequest;
 
         if (!response.ok) {
-          const errData = await response.json();
+          const errData = await response.json().catch(() => ({}));
           throw new Error(
             errData.message || "Failed to transfer queue players",
           );
         }
 
-        // 2. Silently refetch court slots configurations to render the migration updates
-        await fetchDashboardContext(true);
+        const data = await response.json();
+
+        if (transferVersion !== queueTransferVersionRef.current) {
+          return;
+        }
+
+        if (optimisticTransfer.canTransfer) {
+          if (Array.isArray(data?.data?.movedSlots)) {
+            commitSessionData((prev) =>
+              reconcileAssignedSlotIds(prev, data.data.movedSlots),
+            );
+          } else {
+            await fetchDashboardContext(true);
+          }
+        } else {
+          await fetchDashboardContext(true);
+        }
       } catch (error) {
         console.error("Transfer Error:", error);
+        if (
+          optimisticTransfer.canTransfer &&
+          transferVersion === queueTransferVersionRef.current
+        ) {
+          commitSessionData(previousSessionData);
+        }
         alert(error.message || "Something went wrong during the transfer.");
+      } finally {
+        if (queueTransferRequestRef.current === transferRequest) {
+          queueTransferRequestRef.current = null;
+        }
       }
     },
-    [communityId, sessionId, fetchWithAuth, fetchDashboardContext],
+    [
+      communityId,
+      sessionId,
+      fetchWithAuth,
+      fetchDashboardContext,
+      commitSessionData,
+    ],
   );
 
   if (isSessionLoading) {
@@ -664,7 +1066,7 @@ const Game = () => {
     );
   }
 
-  // 🌟 Dynamic background mapping based on required gameStatuses rules
+  // Dynamic background mapping based on required gameStatuses rules.
   const statusBgClasses = {
     waiting: "bg-stone-200 border-gray-500 text-gray-800",
     queued: "bg-amber-200 border-amber-500 text-amber-900",

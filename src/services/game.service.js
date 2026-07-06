@@ -1023,6 +1023,7 @@ export const transferQueueToMatch = async (
       message: `Successfully transferred ${movedSlotsLog.length} player(s) from "${queueCourt.name}" to "${availableMatchCourt.name}"`,
       targetCourtId: availableMatchCourt.id,
       transferredCount: movedSlotsLog.length,
+      movedSlots: movedSlotsLog,
     };
   });
 };
