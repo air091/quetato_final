@@ -131,35 +131,8 @@ export const refresh = async (payload) => {
   const isMatch = await bcrypt.compare(payload.token, tokenRecord.hashedToken);
   if (!isMatch) throw new AppError("Invalid token", 401);
 
-  await prisma.refreshToken.updateMany({
-    where: {
-      userId: refreshPayload.sub,
-      isRevoked: false,
-    },
-    data: { isRevoked: true },
-  });
-
-  // token rotation
-
-  const newJti = randomUUID();
-  const newRefresh = signRefresh({ jti: newJti, sub: tokenRecord.userId });
-  const newHashedRefresh = await bcrypt.hash(newRefresh, 10);
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
-
-  await prisma.refreshToken.create({
-    data: {
-      jti: newJti,
-      userId: tokenRecord.userId,
-      hashedToken: newHashedRefresh,
-      ipAddress: payload.ipAddress,
-      userAgent: payload.agent,
-      expiresAt,
-    },
-    select: { jti: true },
-  });
-
   const accessToken = signAccess({ sub: refreshPayload.sub });
-  return { newRefresh, accessToken };
+  return { accessToken };
 };
 
 export const logout = async (token) => {

@@ -1,6 +1,5 @@
-import React, {
+import {
   createContext,
-  useContext,
   useState,
   useEffect,
   useCallback,
@@ -11,6 +10,65 @@ export const AuthContext = createContext(null);
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export const API_URL = BASE_URL;
 const AUTH_URL = `${BASE_URL}/api/auth`;
+const ACCESS_TOKEN_STORAGE_KEY = "quetato_access_token";
+const USER_STORAGE_KEY = "quetato_user";
+
+const getStoredAccessToken = () =>
+  window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+
+const storeAccessToken = (token) => {
+  if (token) {
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  } else {
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  }
+};
+
+const getStoredUser = () => {
+  try {
+    const storedUser = window.localStorage.getItem(USER_STORAGE_KEY);
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch {
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+    return null;
+  }
+};
+
+const storeUser = (nextUser) => {
+  if (nextUser) {
+    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+  } else {
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+  }
+};
+
+const clearStoredAuth = () => {
+  storeAccessToken(null);
+  storeUser(null);
+};
+
+const getAccessTokenPayload = (token) => {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+
+    const normalizedPayload = payload
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const decodedPayload = window.atob(normalizedPayload);
+    return JSON.parse(decodedPayload);
+  } catch {
+    return null;
+  }
+};
+
+const isAccessTokenValid = (token) => {
+  const payload = token ? getAccessTokenPayload(token) : null;
+  if (!payload?.exp) return false;
+
+  return payload.exp * 1000 > Date.now() + 30_000;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -20,12 +78,44 @@ export const AuthProvider = ({ children }) => {
   // Guard flag to prevent React Strict Mode / Re-renders from double-firing the initialization logic
   const isInitialMount = useRef(true);
 
+  const resetAuthState = useCallback(() => {
+    clearStoredAuth();
+    setAccessToken(null);
+    setUser(null);
+  }, []);
+
+  // 1. Refresh Session (Handles Token Rotation Payload)
+  const refreshSession = useCallback(async () => {
+    try {
+      const response = await fetch(`${AUTH_URL}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success)
+        throw new Error(data.message || "Refresh failed");
+
+      const nextAccessToken = data.tokens.accessToken || data.tokens.access;
+
+      storeAccessToken(nextAccessToken);
+      setAccessToken(nextAccessToken);
+      return nextAccessToken;
+    } catch (error) {
+      resetAuthState();
+      throw error;
+    }
+  }, [resetAuthState]);
+
   // Helper for making authenticated requests
   const fetchWithAuth = useCallback(
     async (url, options = {}) => {
-      let currentToken = accessToken;
+      let currentToken = isAccessTokenValid(accessToken)
+        ? accessToken
+        : getStoredAccessToken();
 
-      if (!currentToken) {
+      if (!isAccessTokenValid(currentToken)) {
         try {
           currentToken = await refreshSession();
         } catch {
@@ -56,39 +146,15 @@ export const AuthProvider = ({ children }) => {
             credentials: "include",
           }); // Retry
         } catch (refreshError) {
-          logout();
+          resetAuthState();
           throw refreshError;
         }
       }
 
       return response;
     },
-    [accessToken],
+    [accessToken, refreshSession, resetAuthState],
   );
-
-  // 1. Refresh Session (Handles Token Rotation Payload)
-  const refreshSession = async () => {
-    try {
-      const response = await fetch(`${AUTH_URL}/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.success)
-        throw new Error(data.message || "Refresh failed");
-
-      const nextAccessToken = data.tokens.accessToken || data.tokens.access;
-
-      setAccessToken(nextAccessToken);
-      return nextAccessToken;
-    } catch (error) {
-      setAccessToken(null);
-      setUser(null);
-      throw error;
-    }
-  };
 
   // 2. Fetch User Profile
   const fetchProfile = useCallback(async () => {
@@ -98,6 +164,7 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
       if (response.ok && data.success) {
+        storeUser(data.user);
         setUser(data.user);
       }
     } catch (error) {
@@ -115,16 +182,36 @@ export const AuthProvider = ({ children }) => {
 
     const initializeAuth = async () => {
       try {
-        await refreshSession();
-        await fetchProfile();
-      } catch (e) {
+        const storedToken = getStoredAccessToken();
+        const storedUser = getStoredUser();
+
+        if (isAccessTokenValid(storedToken) && storedUser) {
+          setAccessToken(storedToken);
+          setUser(storedUser);
+          return;
+        }
+
+        if (isAccessTokenValid(storedToken)) {
+          setAccessToken(storedToken);
+          await fetchProfile();
+          return;
+        }
+
+        const nextToken = await refreshSession();
+        if (getStoredUser()) {
+          setUser(getStoredUser());
+        } else if (nextToken) {
+          await fetchProfile();
+        }
+      } catch {
         // Safe rejection: No cookie session present on load
+        resetAuthState();
       } finally {
         setLoading(false);
       }
     };
     initializeAuth();
-  }, [fetchProfile]);
+  }, [fetchProfile, refreshSession, resetAuthState]);
 
   // 4. Register Action
   const register = async (username, email, password) => {
@@ -143,6 +230,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok || !data.success) throw new Error(data.message);
 
       const nextToken = data.tokens.access;
+      storeAccessToken(nextToken);
       setAccessToken(nextToken);
 
       const profileResponse = await fetch(`${AUTH_URL}/profile`, {
@@ -154,6 +242,7 @@ export const AuthProvider = ({ children }) => {
       });
       const profileData = await profileResponse.json();
       if (profileResponse.ok && profileData.success) {
+        storeUser(profileData.user);
         setUser(profileData.user);
       }
 
@@ -180,6 +269,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok || !data.success) throw new Error(data.message);
 
       const nextToken = data.tokens.access;
+      storeAccessToken(nextToken);
       setAccessToken(nextToken);
 
       const profileResponse = await fetch(`${AUTH_URL}/profile`, {
@@ -191,6 +281,7 @@ export const AuthProvider = ({ children }) => {
       });
       const profileData = await profileResponse.json();
       if (profileResponse.ok && profileData.success) {
+        storeUser(profileData.user);
         setUser(profileData.user);
       }
 
@@ -210,8 +301,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error on server:", error);
     } finally {
-      setAccessToken(null);
-      setUser(null);
+      resetAuthState();
     }
   };
 
