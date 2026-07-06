@@ -329,7 +329,7 @@ const AllPlayers = () => {
         )}
 
         {players.length === 0 && (
-          <div className="border border-stone-200 border-dashed rounded-xl p-10 text-center text-sm text-stone-400 italic bg-white shadow-sm">
+          <div className="border border-stone-200 border-dashed rounded-xl p-10 text-center text-sm text-stone-400 italic bg-white fshadow-sm">
             No registered players found in this session.
           </div>
         )}
