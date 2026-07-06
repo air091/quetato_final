@@ -3,6 +3,7 @@ import PlayerAvatar from "../../../../components/PlayerAvatar";
 import { useOutletContext, useParams, useNavigate } from "react-router-dom"; // Added useNavigate
 import { useAuth } from "../../../../hooks/useAuth";
 import { Camera, Edit2, Trash, Loader2 } from "lucide-react"; // Added Loader2 for visual delete feedback
+import { API_URL } from "../../../../contexts/AuthContext";
 
 const CommunitySettings = () => {
   const { communityId } = useParams();
@@ -49,7 +50,7 @@ const CommunitySettings = () => {
 
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}`,
+        `${API_URL}/api/communities/${communityId}`,
         {
           method: "PATCH",
           body: JSON.stringify({
@@ -87,7 +88,7 @@ const CommunitySettings = () => {
     setIsDeleting(true);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}`,
+        `${API_URL}/api/communities/${communityId}`,
         { method: "DELETE" },
       );
 

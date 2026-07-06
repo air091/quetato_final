@@ -14,6 +14,7 @@ import PlayerSettings from "./PlayerSettings";
 import { PlayerTimer } from "./PlayersContainer";
 import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const DraggableSlotPlayer = ({
   username,
@@ -196,7 +197,7 @@ const CourtSlot = ({
       if (!communityId || !sessionId || !stablePlayerId) return;
       try {
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
         );
         if (response.ok) {
           const resJson = await response.json();
@@ -376,7 +377,7 @@ const MatchCourtCard = ({
     setIsPausing(true);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${matchCourt.id}/pause`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${matchCourt.id}/pause`,
         { method: "PATCH" },
       );
       if (response.ok) {

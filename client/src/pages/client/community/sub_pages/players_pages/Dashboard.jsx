@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
+import { API_URL } from "../../../../../contexts/AuthContext";
 
 const Dashboard = () => {
   const { fetchWithAuth, user } = useAuth();
@@ -17,7 +18,7 @@ const Dashboard = () => {
     if (!communityId) return;
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/players/total-community-games`,
+        `${API_URL}/api/communities/${communityId}/players/total-community-games`,
         { method: "GET" },
       );
       if (!response.ok) throw new Error("Http error", response.status);

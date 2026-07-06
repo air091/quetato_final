@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import Modal from "../../createPortal";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const AddSessionModal = ({
   accessToken,
@@ -29,7 +30,7 @@ const AddSessionModal = ({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/communities/${communityId}/sessions`,
+        `${API_URL}/api/communities/${communityId}/sessions`,
         {
           method: "POST",
           headers: {

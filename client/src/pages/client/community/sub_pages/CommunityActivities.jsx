@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import AddSessionModal from "../../../../components/community_comp/activities/AddSessionModal";
 import EditSessionModal from "../../../../components/community_comp/activities/EditSessionModal";
+import { API_URL } from "../../../../contexts/AuthContext";
 
 const CommunityActivities = () => {
   const { accessToken } = useAuth();
@@ -53,7 +54,7 @@ const CommunityActivities = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/communities/${communityId}/sessions?${queryParams.toString()}`,
+        `${API_URL}/api/communities/${communityId}/sessions?${queryParams.toString()}`,
         {
           method: "GET",
           headers: {
@@ -87,7 +88,7 @@ const CommunityActivities = () => {
 
       try {
         const response = await fetch(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}`,
           {
             method: "DELETE",
             headers: {

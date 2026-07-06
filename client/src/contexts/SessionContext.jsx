@@ -4,6 +4,8 @@ import { useAuth } from "../hooks/useAuth";
 import { SessionContext } from "./SessionContextValue";
 import { API_URL } from "./AuthContext";
 
+const API_BASE_URL = `${API_URL}/api/communities`;
+
 const emptyCourtState = { courts: [], counts: {} };
 
 const normalizeCourtsPayload = (payload) => {
@@ -34,7 +36,7 @@ export const SessionProvider = ({ children }) => {
 
   const baseUrl = useMemo(() => {
     if (!communityId || !sessionId) return "";
-    return `${API_URL}/${communityId}/sessions/${sessionId}`;
+    return `${API_BASE_URL}/${communityId}/sessions/${sessionId}`;
   }, [communityId, sessionId]);
 
   const refreshSessionContext = useCallback(

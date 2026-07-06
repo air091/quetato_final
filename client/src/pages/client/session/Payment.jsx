@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../../components/PlayerAvatar";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const Payment = () => {
   const { communityId, sessionId } = useParams();
@@ -44,7 +45,7 @@ const Payment = () => {
 
     try {
       const playerResponse = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players`,
         { method: "GET" },
       );
 
@@ -54,7 +55,7 @@ const Payment = () => {
       if (!playerData.success) throw new Error(playerData?.message);
 
       const pricingResponse = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/pricing`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/pricing`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -88,7 +89,9 @@ const Payment = () => {
         }
       }
 
-      setPlayers((playerData.players ?? []).filter((player) => !player?.isHide));
+      setPlayers(
+        (playerData.players ?? []).filter((player) => !player?.isHide),
+      );
     } catch (error) {
       console.error("Fetch payment workspace details failed:", error);
     }
@@ -105,7 +108,7 @@ const Payment = () => {
 
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/pricing`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/pricing`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -145,7 +148,7 @@ const Payment = () => {
     try {
       const action = shouldMarkPaid ? "paid" : "unpaid";
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/${action}`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/${action}`,
         { method: "PATCH" },
       );
 

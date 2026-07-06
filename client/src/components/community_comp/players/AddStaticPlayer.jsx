@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import { API_URL } from "../../../contexts/AuthContext";
 
 // Skill level labels dictionary
 export const SKILL_LEVEL_LABELS = {
@@ -46,7 +47,7 @@ const AddStaticPlayer = ({
     setLoading(true);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/players/static`,
+        `${API_URL}/api/communities/${communityId}/players/static`,
         {
           method: "POST",
           body: JSON.stringify({

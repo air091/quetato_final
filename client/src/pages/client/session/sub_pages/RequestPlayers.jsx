@@ -4,6 +4,7 @@ import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
 import { ArrowUpDown, ChevronDown } from "lucide-react";
 import { useSession } from "../../../../hooks/useSession";
+import { API_URL } from "../../../../contexts/AuthContext";
 
 const RequestPlayers = () => {
   const { fetchWithAuth } = useAuth();
@@ -16,7 +17,7 @@ const RequestPlayers = () => {
     if (!communityId || !sessionId) return;
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/static`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/static`,
         { method: "GET" },
       );
 
@@ -45,7 +46,7 @@ const RequestPlayers = () => {
       if (!communityId || !sessionId || !communityPlayerId) return;
       try {
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/${communityPlayerId}/accept`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/${communityPlayerId}/accept`,
           { method: "POST" },
         );
 

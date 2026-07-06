@@ -2,6 +2,7 @@ import { Compass, House, Newspaper, Plus } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { API_URL } from "../../contexts/AuthContext";
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { accessToken } = useAuth();
@@ -13,7 +14,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/communities/my-communities`,
+        `${API_URL}/api/communities/my-communities`,
         {
           method: "GET",
           headers: {

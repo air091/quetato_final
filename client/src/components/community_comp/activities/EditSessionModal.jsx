@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../../createPortal";
 import { X } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const EditSessionModal = ({
   accessToken,
@@ -47,7 +48,7 @@ const EditSessionModal = ({
   const updateSession = async () => {
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${session?.id}`,
+        `${API_URL}/api/communities/${communityId}/sessions/${session?.id}`,
         {
           method: "PATCH",
           body: JSON.stringify(sessionData),
@@ -81,7 +82,7 @@ const EditSessionModal = ({
       try {
         const endpoint = isAvailable ? "end" : "start";
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${session.id}/${endpoint}`,
+          `${API_URL}/api/communities/${communityId}/sessions/${session.id}/${endpoint}`,
           { method: "PUT" },
         );
 

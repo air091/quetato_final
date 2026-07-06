@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth"; // Adjust path as needed
 import ActivityCard from "./ActivityCard";
 import { CalendarX, Loader2 } from "lucide-react";
+import { API_URL } from "../../contexts/AuthContext";
 
 const HomeActivities = () => {
   const { accessToken, loading, fetchWithAuth } = useAuth();
@@ -15,7 +16,7 @@ const HomeActivities = () => {
       setIsFetching(true);
       try {
         const response = await fetchWithAuth(
-          "http://localhost:8000/api/communities/sessions/public",
+          `${API_URL}/api/communities/sessions/public`,
         );
 
         if (response && response.ok) {

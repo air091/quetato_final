@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { X, Trophy, Frown, Calendar, Clock } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+import { API_URL } from "../../contexts/AuthContext";
 
 const PlayerGameHistory = ({ player, onClose }) => {
   const { fetchWithAuth } = useAuth();
@@ -28,7 +29,7 @@ const PlayerGameHistory = ({ player, onClose }) => {
       try {
         setLoading(true);
         const res = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/history`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/history`,
           { method: "GET" },
         );
         if (!res.ok) throw new Error("Http error", res.status);

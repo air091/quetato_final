@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const CourtSettings = ({
   court,
@@ -82,7 +83,7 @@ const CourtSettings = ({
     setIsSaving(true);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${updateCourtEndpoint}`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${updateCourtEndpoint}`,
         {
           method: "PATCH",
           headers: {
@@ -122,7 +123,7 @@ const CourtSettings = ({
     console.log(court.id);
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${deleteCourtEndpoint}`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${court.id}/${deleteCourtEndpoint}`,
         {
           method: "DELETE",
         },

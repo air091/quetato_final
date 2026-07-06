@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import { Loader2 } from "lucide-react"; // Imported for submittion indicator state
+import { API_URL } from "../../../contexts/AuthContext";
 
 const CommunityCreate = () => {
   const { fetchWithAuth } = useAuth();
@@ -25,16 +26,13 @@ const CommunityCreate = () => {
 
       setIsSubmitting(true);
       try {
-        const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              name: community.name,
-              description: community.description,
-            }),
-          },
-        );
+        const response = await fetchWithAuth(`${API_URL}/api/communities`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: community.name,
+            description: community.description,
+          }),
+        });
 
         if (response && response.ok) {
           const data = await response.json();

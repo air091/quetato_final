@@ -17,6 +17,7 @@ import {
 import { Gamepad2 } from "lucide-react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useSession } from "../../../hooks/useSession";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const resolveSessionPlayerId = (player) =>
   player?.id || player?.sessionPlayerId || null;
@@ -54,7 +55,7 @@ const Game = () => {
   const assignPlayerToSlot = useCallback(
     async (targetCourtId, sessionPlayerId, targetPosition) => {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/slots/assign`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/slots/assign`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,7 +79,7 @@ const Game = () => {
   const removePlayerToSlot = useCallback(
     async (courtId, slotId) => {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/slots/${slotId}/remove`,
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/slots/${slotId}/remove`,
         {
           method: "DELETE",
         },
@@ -246,7 +247,7 @@ const Game = () => {
         });
 
         // 2. HTTP Request matching your patch endpoint structure
-        const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/start`;
+        const url = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/start`;
         const response = await fetchWithAuth(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -330,7 +331,7 @@ const Game = () => {
         });
 
         // 2. HTTP Request matching your route structure and body expectation
-        const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/end`;
+        const url = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${courtId}/end`;
         const response = await fetchWithAuth(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -510,7 +511,7 @@ const Game = () => {
 
   const createMatchCourtOnBackend = useCallback(async () => {
     const response = await fetchWithAuth(
-      `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/match`,
+      `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/match`,
       { method: "POST", headers: { "Content-Type": "application/json" } },
     );
     if (!response.ok) throw new Error("Failed to add new match court");
@@ -519,7 +520,7 @@ const Game = () => {
 
   const createQueueCourtOnBackend = useCallback(async () => {
     const response = await fetchWithAuth(
-      `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/queue`,
+      `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/queue`,
       { method: "POST", headers: { "Content-Type": "application/json" } },
     );
     if (!response.ok) throw new Error("Failed to add new queue court");
@@ -619,7 +620,7 @@ const Game = () => {
       if (!communityId || !sessionId || !queueCourtId) return;
 
       try {
-        const url = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/courts/transfer-queue`;
+        const url = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/transfer-queue`;
 
         const response = await fetchWithAuth(url, {
           method: "POST",

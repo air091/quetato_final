@@ -5,6 +5,7 @@ import { ChevronDown, EllipsisVertical } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
 import AddStaticPlayer from "../../../../../components/community_comp/players/AddStaticPlayer";
+import { API_URL } from "../../../../../contexts/AuthContext";
 
 const All = () => {
   const { fetchWithAuth, user } = useAuth();
@@ -22,7 +23,7 @@ const All = () => {
 
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/players`,
+        `${API_URL}/api/communities/${communityId}/players`,
         { method: "GET" },
       );
 

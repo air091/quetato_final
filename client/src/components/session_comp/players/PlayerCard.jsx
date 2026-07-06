@@ -4,6 +4,7 @@ import { EllipsisVertical, EyeOff, Trophy } from "lucide-react";
 import PlayerAvater from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerSettings from "../game/PlayerSettings";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const PlayerCard = ({ player, onRefreshData }) => {
   const { communityId, sessionId } = useParams();
@@ -41,7 +42,7 @@ const PlayerCard = ({ player, onRefreshData }) => {
 
       try {
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
         );
 
         // Handle standard JSend structure checking response status/success flags

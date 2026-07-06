@@ -7,6 +7,7 @@ import PlayerAvatar from "../../PlayerAvatar";
 import PlayerSettings from "./PlayerSettings"; // 🌟 Imported
 import { PlayerTimer } from "./PlayersContainer";
 import { useAuth } from "../../../hooks/useAuth";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const DraggableSlotPlayer = ({
   username,
@@ -206,7 +207,7 @@ const CourtSlot = ({
       if (!communityId || !sessionId || !stablePlayerId) return;
       try {
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
         );
         if (response.ok) {
           const resJson = await response.json();

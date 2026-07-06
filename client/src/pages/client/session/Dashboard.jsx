@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
+import { API_URL } from "../../../contexts/AuthContext";
 
 const currencySymbols = {
   PHP: "PHP",
@@ -126,7 +127,7 @@ const SessionDashboard = () => {
   const loadDashboard = useCallback(async () => {
     if (!communityId || !sessionId) return null;
 
-    const baseUrl = `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}`;
+    const baseUrl = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}`;
     const [dashboardRes, playersRes, matchRes, queueRes, pricingRes] =
       await Promise.all([
         fetchWithAuth(`${baseUrl}/dashboard`, { method: "GET" }),

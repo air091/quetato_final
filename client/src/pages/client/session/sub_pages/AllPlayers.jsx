@@ -12,6 +12,7 @@ import { useSession } from "../../../../hooks/useSession";
 import { useAuth } from "../../../../hooks/useAuth";
 import AddPlayerModal from "../../../../components/session_comp/players/AddPlayerModal";
 import { SKILL_LEVEL_LABELS } from "../../../../components/community_comp/players/AddStaticPlayer";
+import { API_URL } from "../../../../contexts/AuthContext";
 
 const getPlayerMetric = (player, metric) => {
   const value =
@@ -131,7 +132,7 @@ const AllPlayers = () => {
     setIsSubmitting(true);
     try {
       const createStaticRes = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/players/static`,
+        `${API_URL}/api/communities/${communityId}/players/static`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -160,7 +161,7 @@ const AllPlayers = () => {
         if (!communityPlayerId) return Promise.resolve();
 
         return fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/${communityPlayerId}/accept`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/${communityPlayerId}/accept`,
           { method: "POST" },
         );
       });

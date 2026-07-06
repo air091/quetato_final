@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../PlayerAvatar";
+import { API_URL } from "../../../contexts/AuthContext";
 
 // Map to look up readable labels for read-only user views
 const SKILL_LEVEL_LABELS = {
@@ -97,7 +98,7 @@ const PlayerSettings = ({
     try {
       setIsUpdating(true);
       const res = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/players/${playerId}/static`,
+        `${API_URL}/api/communities/${communityId}/players/${playerId}/static`,
         {
           method: "PUT",
           body: JSON.stringify({
@@ -127,8 +128,8 @@ const PlayerSettings = ({
     // Determine explicit endpoint action tag or method depending on if they are static or user
     const isStatic = type === "static";
     const endpoint = isStatic
-      ? `http://localhost:8000/api/communities/${communityId}/players/${player?.communityPlayer?.id}/static`
-      : `http://localhost:8000/api/communities/${communityId}/players/${player?.communityPlayer?.id}/kick`;
+      ? `${API_URL}/api/communities/${communityId}/players/${player?.communityPlayer?.id}/static`
+      : `${API_URL}/api/communities/${communityId}/players/${player?.communityPlayer?.id}/kick`;
     // Or DELETE depending on your Kick implementation backend rules
 
     try {

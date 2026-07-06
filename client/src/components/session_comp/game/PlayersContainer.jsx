@@ -6,6 +6,7 @@ import PlayerSettings from "./PlayerSettings";
 import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import { formatElapsedTime } from "../../../utils/dateFormatter";
+import { API_URL } from "../../../contexts/AuthContext";
 
 // NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
 
@@ -248,7 +249,7 @@ const DraggablePlayer = ({
       if (!communityId || !sessionId || !stablePlayerId) return;
       try {
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${stablePlayerId}/history`,
         );
         if (response.ok) {
           const resJson = await response.json();

@@ -11,6 +11,7 @@ import PlayerGameHistory from "../PlayerGameHistory";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../PlayerAvatar";
 import { useSession } from "../../../hooks/useSession";
+import { API_URL } from "../../../contexts/AuthContext";
 
 // Map to look up readable labels for read-only user views
 const SKILL_LEVEL_LABELS = {
@@ -98,7 +99,7 @@ const PlayerSettings = ({
       setIsUpdating(true);
       const targetId = player?.sessionPlayer?.communityPlayer?.id;
       const res = await fetchWithAuth(
-        `http://localhost:8000/api/communities/${communityId}/players/${targetId}/static`,
+        `${API_URL}/api/communities/${communityId}/players/${targetId}/static`,
         {
           method: "PUT",
           body: JSON.stringify({
@@ -130,7 +131,7 @@ const PlayerSettings = ({
       try {
         setIsUpdating(true);
         const response = await fetchWithAuth(
-          `http://localhost:8000/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/remove`,
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/remove`,
           { method: "DELETE" },
         );
 

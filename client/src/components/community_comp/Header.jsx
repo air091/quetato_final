@@ -1,6 +1,7 @@
 import { EllipsisVertical } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import PlayerAvatar from "../PlayerAvatar";
+import { API_URL } from "../../contexts/AuthContext";
 
 const Header = ({ communityId, accessToken }) => {
   const [community, setCommunity] = useState();
@@ -9,7 +10,7 @@ const Header = ({ communityId, accessToken }) => {
     if (!accessToken) return;
     try {
       const response = await fetch(
-        `http://localhost:8000/api/communities/${communityId}`,
+        `${API_URL}/api/communities/${communityId}`,
         {
           method: "GET",
           headers: {
