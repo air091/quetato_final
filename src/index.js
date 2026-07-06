@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routers/auth.route.js";
 import communityRoutes from "./routers/community.route.js";
+import { prisma } from "./libs/prisma.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
