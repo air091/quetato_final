@@ -9,7 +9,8 @@ import React, {
 
 export const AuthContext = createContext(null);
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-export const API_URL = `${BASE_URL}/api/auth`;
+export const API_URL = BASE_URL;
+const AUTH_URL = `${BASE_URL}/api/auth`;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   // 1. Refresh Session (Handles Token Rotation Payload)
   const refreshSession = async () => {
     try {
-      const response = await fetch(`${API_URL}/refresh`, {
+      const response = await fetch(`${AUTH_URL}/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -92,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   // 2. Fetch User Profile
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(`${API_URL}/profile`);
+      const response = await fetchWithAuth(`${AUTH_URL}/profile`);
       if (!response) return;
 
       const data = await response.json();
@@ -131,7 +132,7 @@ export const AuthProvider = ({ children }) => {
     // Explicitly bypass initialization hook when changing auth state dynamically
     isInitialMount.current = false;
     try {
-      const response = await fetch(`${API_URL}/register`, {
+      const response = await fetch(`${AUTH_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -144,7 +145,7 @@ export const AuthProvider = ({ children }) => {
       const nextToken = data.tokens.access;
       setAccessToken(nextToken);
 
-      const profileResponse = await fetch(`${API_URL}/profile`, {
+      const profileResponse = await fetch(`${AUTH_URL}/profile`, {
         headers: {
           Authorization: `Bearer ${nextToken}`,
           "Content-Type": "application/json",
@@ -168,7 +169,7 @@ export const AuthProvider = ({ children }) => {
     // Explicitly bypass initialization hook when changing auth state dynamically
     isInitialMount.current = false;
     try {
-      const response = await fetch(`${API_URL}/login`, {
+      const response = await fetch(`${AUTH_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -181,7 +182,7 @@ export const AuthProvider = ({ children }) => {
       const nextToken = data.tokens.access;
       setAccessToken(nextToken);
 
-      const profileResponse = await fetch(`${API_URL}/profile`, {
+      const profileResponse = await fetch(`${AUTH_URL}/profile`, {
         headers: {
           Authorization: `Bearer ${nextToken}`,
           "Content-Type": "application/json",
@@ -203,7 +204,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     isInitialMount.current = false;
     try {
-      await fetchWithAuth(`${API_URL}/logout`, {
+      await fetchWithAuth(`${AUTH_URL}/logout`, {
         method: "POST",
       });
     } catch (error) {
