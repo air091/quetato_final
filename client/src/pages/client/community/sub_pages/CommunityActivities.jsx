@@ -15,7 +15,7 @@ import EditSessionModal from "../../../../components/community_comp/activities/E
 import { API_URL } from "../../../../contexts/AuthContext";
 
 const CommunityActivities = () => {
-  const { accessToken } = useAuth();
+  const { accessToken, fetchWithAuth } = useAuth();
   const { communityId } = useParams();
   const [sessions, setSessions] = useState([]);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
@@ -53,16 +53,14 @@ const CommunityActivities = () => {
         queryParams.append("search", debouncedSearch.trim());
       }
 
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}/sessions?${queryParams.toString()}`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
         },
       );
+      if (!response) return;
+
       if (!response.ok) throw new Error("Http error", response.status);
 
       const data = await response.json();
@@ -73,7 +71,14 @@ const CommunityActivities = () => {
     } catch (error) {
       console.error("Get all sessions failed", error);
     }
-  }, [accessToken, communityId, sortBy, order, status, debouncedSearch]);
+  }, [
+    communityId,
+    sortBy,
+    order,
+    status,
+    debouncedSearch,
+    fetchWithAuth,
+  ]);
 
   const deleteSession = useCallback(
     async (sessionId) => {
@@ -87,17 +92,14 @@ const CommunityActivities = () => {
       });
 
       try {
-        const response = await fetch(
+        const response = await fetchWithAuth(
           `${API_URL}/api/communities/${communityId}/sessions/${sessionId}`,
           {
             method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            credentials: "include",
           },
         );
+
+        if (!response) return;
 
         if (!response.ok) {
           throw new Error("Failed to delete the session");
@@ -110,7 +112,7 @@ const CommunityActivities = () => {
         alert("Could not delete session. Please try again.");
       }
     },
-    [accessToken, communityId],
+    [accessToken, communityId, fetchWithAuth],
   );
 
   useEffect(() => {

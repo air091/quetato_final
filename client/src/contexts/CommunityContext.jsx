@@ -9,7 +9,7 @@ export const CommunityContext = createContext(null);
 
 // 2. Define the Provider Component
 export const CommunityProvider = ({ children }) => {
-  const { accessToken } = useAuth();
+  const { accessToken, fetchWithAuth } = useAuth();
   const [myCommunities, setMyCommunities] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,17 +19,14 @@ export const CommunityProvider = ({ children }) => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${API_URL}/api/communities/my-communities`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          credentials: "include",
         },
       );
+
+      if (!response) return;
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -47,7 +44,7 @@ export const CommunityProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, fetchWithAuth]);
 
   // Provide state and updaters to children components
   return (

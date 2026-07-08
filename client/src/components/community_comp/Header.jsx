@@ -2,23 +2,23 @@ import { EllipsisVertical } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import PlayerAvatar from "../PlayerAvatar";
 import { API_URL } from "../../contexts/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 
 const Header = ({ communityId, accessToken }) => {
+  const { fetchWithAuth } = useAuth();
   const [community, setCommunity] = useState();
 
   const getCommunityById = useCallback(async () => {
     if (!accessToken) return;
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
         },
       );
+      if (!response) return;
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -32,11 +32,11 @@ const Header = ({ communityId, accessToken }) => {
     } catch (error) {
       console.error("Get community by ID failed", error);
     }
-  }, [accessToken]);
+  }, [accessToken, communityId, fetchWithAuth]);
 
   useEffect(() => {
     getCommunityById();
-  }, []);
+  }, [getCommunityById]);
 
   return (
     <header className="flex items-center justify-center px-6 py-4 border-b border-stone-100 bg-white">

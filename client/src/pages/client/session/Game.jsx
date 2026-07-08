@@ -56,7 +56,9 @@ const createOptimisticSlotPlayer = (
 ) => {
   const username = getPlayerUsername(player);
   const communityPlayer = {
-    ...(player?.sessionPlayer?.communityPlayer || player?.communityPlayer || {}),
+    ...(player?.sessionPlayer?.communityPlayer ||
+      player?.communityPlayer ||
+      {}),
     username,
   };
 
@@ -125,7 +127,9 @@ const findSlotLocation = (sessionData, predicate) => {
 };
 
 const sortSlotsByPosition = (slots) =>
-  [...slots].sort((left, right) => (left?.position ?? 0) - (right?.position ?? 0));
+  [...slots].sort(
+    (left, right) => (left?.position ?? 0) - (right?.position ?? 0),
+  );
 
 const applyOptimisticSlotAssignment = (
   sessionData,
@@ -223,7 +227,11 @@ const applyOptimisticSlotAssignment = (
       const candidatePlayerId = resolveSessionPlayerId(candidatePlayer);
 
       if (candidatePlayerId === sessionPlayerId) {
-        return setPlayerGameStatus(candidatePlayer, sessionPlayerId, targetStatus);
+        return setPlayerGameStatus(
+          candidatePlayer,
+          sessionPlayerId,
+          targetStatus,
+        );
       }
 
       if (hasDistinctOccupiedPlayer && candidatePlayerId === occupiedPlayerId) {
@@ -244,7 +252,9 @@ const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
     return sessionData;
   }
 
-  const validBackendSlots = backendSlots.filter((slot) => slot?.sessionPlayerId);
+  const validBackendSlots = backendSlots.filter(
+    (slot) => slot?.sessionPlayerId,
+  );
   const backendSlotByPlayerId = new Map(
     validBackendSlots.map((slot) => [slot.sessionPlayerId, slot]),
   );
@@ -269,7 +279,8 @@ const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
       ...currentCourtsObj,
       courts: currentCourtsObj.courts.map((court) => {
         const untouchedSlots = (court.slots || []).filter(
-          (slot) => !backendSlotByPlayerId.has(resolveSlotSessionPlayerId(slot)),
+          (slot) =>
+            !backendSlotByPlayerId.has(resolveSlotSessionPlayerId(slot)),
         );
         const reconciledSlots = validBackendSlots
           .filter((backendSlot) => backendSlot.courtId === court.id)
@@ -370,7 +381,10 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
 
       return {
         ...court,
-        slots: sortSlotsByPosition([...(court.slots || []), ...optimisticSlots]),
+        slots: sortSlotsByPosition([
+          ...(court.slots || []),
+          ...optimisticSlots,
+        ]),
       };
     }),
   };
@@ -398,7 +412,11 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
       queueCourts: nextQueueCourts,
       players: sessionData.players.map((player) =>
         movedPlayerIds.includes(resolveSessionPlayerId(player))
-          ? setPlayerGameStatus(player, resolveSessionPlayerId(player), "queued")
+          ? setPlayerGameStatus(
+              player,
+              resolveSessionPlayerId(player),
+              "queued",
+            )
           : player,
       ),
     },
@@ -419,7 +437,10 @@ const getProjectedCourtRelationshipPlayers = (
     sessionPlayerId,
     timestamp: new Date().toISOString(),
   });
-  const projectedCourt = findCourtLocation(projectedSessionData, courtId)?.court;
+  const projectedCourt = findCourtLocation(
+    projectedSessionData,
+    courtId,
+  )?.court;
 
   return (projectedCourt?.slots || [])
     .filter((slot) => resolveSlotSessionPlayerId(slot))
@@ -536,12 +557,17 @@ const Game = () => {
     relationshipToastTimerRef.current = setTimeout(() => {
       setRelationshipToast(null);
       relationshipToastTimerRef.current = null;
-    }, 8000);
+    }, 10000);
   }, []);
 
   const fetchRelationshipToastData = useCallback(
     async (sessionPlayerId, relatedPlayers) => {
-      if (!communityId || !sessionId || !sessionPlayerId || !relatedPlayers.length) {
+      if (
+        !communityId ||
+        !sessionId ||
+        !sessionPlayerId ||
+        !relatedPlayers.length
+      ) {
         return [];
       }
 
@@ -987,10 +1013,7 @@ const Game = () => {
 
       if (assignmentVersion === slotAssignmentVersionRef.current) {
         commitSessionData((prev) =>
-          reconcileAssignedSlotIds(
-            prev,
-            assignmentResult?.updatedSlotsState,
-          ),
+          reconcileAssignedSlotIds(prev, assignmentResult?.updatedSlotsState),
         );
 
         const relationships = await fetchRelationshipToastData(
@@ -1094,39 +1117,47 @@ const Game = () => {
     }
   };
 
-  const handleUpdateCourtName = useCallback((courtId, newName) => {
-    const updateNameInList = (currentCourtsObj) => {
-      if (!currentCourtsObj?.courts) return currentCourtsObj;
-      return {
-        ...currentCourtsObj,
-        courts: currentCourtsObj.courts.map((court) =>
-          court.id === courtId ? { ...court, name: newName } : court,
-        ),
+  const handleUpdateCourtName = useCallback(
+    (courtId, newName) => {
+      const updateNameInList = (currentCourtsObj) => {
+        if (!currentCourtsObj?.courts) return currentCourtsObj;
+        return {
+          ...currentCourtsObj,
+          courts: currentCourtsObj.courts.map((court) =>
+            court.id === courtId ? { ...court, name: newName } : court,
+          ),
+        };
       };
-    };
 
-    setSessionData((prev) => ({
-      ...prev,
-      matchCourts: updateNameInList(prev.matchCourts),
-      queueCourts: updateNameInList(prev.queueCourts), // Handles queue courts if they use it too
-    }));
-  }, [setSessionData]);
+      setSessionData((prev) => ({
+        ...prev,
+        matchCourts: updateNameInList(prev.matchCourts),
+        queueCourts: updateNameInList(prev.queueCourts), // Handles queue courts if they use it too
+      }));
+    },
+    [setSessionData],
+  );
 
-  const handleDeleteCourt = useCallback((courtId) => {
-    const filterOutCourt = (currentCourtsObj) => {
-      if (!currentCourtsObj?.courts) return currentCourtsObj;
-      return {
-        ...currentCourtsObj,
-        courts: currentCourtsObj.courts.filter((court) => court.id !== courtId),
+  const handleDeleteCourt = useCallback(
+    (courtId) => {
+      const filterOutCourt = (currentCourtsObj) => {
+        if (!currentCourtsObj?.courts) return currentCourtsObj;
+        return {
+          ...currentCourtsObj,
+          courts: currentCourtsObj.courts.filter(
+            (court) => court.id !== courtId,
+          ),
+        };
       };
-    };
 
-    setSessionData((prev) => ({
-      ...prev,
-      matchCourts: filterOutCourt(prev.matchCourts),
-      queueCourts: filterOutCourt(prev.queueCourts),
-    }));
-  }, [setSessionData]);
+      setSessionData((prev) => ({
+        ...prev,
+        matchCourts: filterOutCourt(prev.matchCourts),
+        queueCourts: filterOutCourt(prev.queueCourts),
+      }));
+    },
+    [setSessionData],
+  );
 
   const handleTransferQueue = useCallback(
     async (queueCourtId) => {
@@ -1235,7 +1266,7 @@ const Game = () => {
       onDragEnd={handleDragEnd}
     >
       {relationshipToast && (
-        <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-emerald-200 bg-white shadow-xl">
+        <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-red-500 bg-red-100 shadow-xl">
           <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-gray-950">

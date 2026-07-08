@@ -12,6 +12,7 @@ export const API_URL = BASE_URL;
 const AUTH_URL = `${BASE_URL}/api/auth`;
 const ACCESS_TOKEN_STORAGE_KEY = "quetato_access_token";
 const USER_STORAGE_KEY = "quetato_user";
+const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60_000;
 
 const getStoredAccessToken = () =>
   window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
@@ -70,6 +71,11 @@ const isAccessTokenValid = (token) => {
   return payload.exp * 1000 > Date.now() + 30_000;
 };
 
+const getAccessTokenExpiresAt = (token) => {
+  const payload = token ? getAccessTokenPayload(token) : null;
+  return payload?.exp ? payload.exp * 1000 : null;
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
@@ -77,42 +83,73 @@ export const AuthProvider = ({ children }) => {
 
   // Guard flag to prevent React Strict Mode / Re-renders from double-firing the initialization logic
   const isInitialMount = useRef(true);
+  const accessTokenRef = useRef(null);
+  const refreshPromiseRef = useRef(null);
+  const refreshTimerRef = useRef(null);
+
+  const applyAccessToken = useCallback((token) => {
+    accessTokenRef.current = token || null;
+    storeAccessToken(token || null);
+    setAccessToken(token || null);
+  }, []);
+
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, []);
 
   const resetAuthState = useCallback(() => {
+    clearRefreshTimer();
     clearStoredAuth();
+    accessTokenRef.current = null;
     setAccessToken(null);
     setUser(null);
-  }, []);
+  }, [clearRefreshTimer]);
 
   // 1. Refresh Session (Handles Token Rotation Payload)
   const refreshSession = useCallback(async () => {
-    try {
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
+
+    refreshPromiseRef.current = (async () => {
       const response = await fetch(`${AUTH_URL}/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.success)
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
         throw new Error(data.message || "Refresh failed");
+      }
 
       const nextAccessToken = data.tokens.accessToken || data.tokens.access;
+      if (!nextAccessToken) {
+        throw new Error("Refresh did not return an access token");
+      }
 
-      storeAccessToken(nextAccessToken);
-      setAccessToken(nextAccessToken);
+      applyAccessToken(nextAccessToken);
       return nextAccessToken;
+    })();
+
+    try {
+      return await refreshPromiseRef.current;
     } catch (error) {
       resetAuthState();
       throw error;
+    } finally {
+      refreshPromiseRef.current = null;
     }
-  }, [resetAuthState]);
+  }, [applyAccessToken, resetAuthState]);
 
   // Helper for making authenticated requests
   const fetchWithAuth = useCallback(
     async (url, options = {}) => {
-      let currentToken = isAccessTokenValid(accessToken)
-        ? accessToken
+      let currentToken = isAccessTokenValid(accessTokenRef.current)
+        ? accessTokenRef.current
         : getStoredAccessToken();
 
       if (!isAccessTokenValid(currentToken)) {
@@ -136,7 +173,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       // Handle Access Token Expiration mid-session
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         try {
           const newToken = await refreshSession();
           headers["Authorization"] = `Bearer ${newToken}`;
@@ -153,7 +190,7 @@ export const AuthProvider = ({ children }) => {
 
       return response;
     },
-    [accessToken, refreshSession, resetAuthState],
+    [refreshSession, resetAuthState],
   );
 
   // 2. Fetch User Profile
@@ -186,13 +223,13 @@ export const AuthProvider = ({ children }) => {
         const storedUser = getStoredUser();
 
         if (isAccessTokenValid(storedToken) && storedUser) {
-          setAccessToken(storedToken);
+          applyAccessToken(storedToken);
           setUser(storedUser);
           return;
         }
 
         if (isAccessTokenValid(storedToken)) {
-          setAccessToken(storedToken);
+          applyAccessToken(storedToken);
           await fetchProfile();
           return;
         }
@@ -211,7 +248,27 @@ export const AuthProvider = ({ children }) => {
       }
     };
     initializeAuth();
-  }, [fetchProfile, refreshSession, resetAuthState]);
+  }, [applyAccessToken, fetchProfile, refreshSession, resetAuthState]);
+
+  useEffect(() => {
+    clearRefreshTimer();
+
+    const expiresAt = getAccessTokenExpiresAt(accessToken);
+    if (!expiresAt) return;
+
+    const refreshDelay = Math.max(
+      expiresAt - Date.now() - ACCESS_TOKEN_REFRESH_BUFFER_MS,
+      0,
+    );
+
+    refreshTimerRef.current = setTimeout(() => {
+      refreshSession().catch(() => {
+        // refreshSession resets auth state on failure.
+      });
+    }, refreshDelay);
+
+    return clearRefreshTimer;
+  }, [accessToken, clearRefreshTimer, refreshSession]);
 
   // 4. Register Action
   const register = async (username, email, password) => {
@@ -230,8 +287,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok || !data.success) throw new Error(data.message);
 
       const nextToken = data.tokens.access;
-      storeAccessToken(nextToken);
-      setAccessToken(nextToken);
+      applyAccessToken(nextToken);
 
       const profileResponse = await fetch(`${AUTH_URL}/profile`, {
         headers: {
@@ -269,8 +325,7 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok || !data.success) throw new Error(data.message);
 
       const nextToken = data.tokens.access;
-      storeAccessToken(nextToken);
-      setAccessToken(nextToken);
+      applyAccessToken(nextToken);
 
       const profileResponse = await fetch(`${AUTH_URL}/profile`, {
         headers: {

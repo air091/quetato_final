@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import Modal from "../../createPortal";
 import { API_URL } from "../../../contexts/AuthContext";
+import { useAuth } from "../../../hooks/useAuth";
 
 const AddSessionModal = ({
   accessToken,
@@ -10,6 +11,7 @@ const AddSessionModal = ({
   isCreateSessionModalOpen,
   setIsCreateSessionModalOpen,
 }) => {
+  const { fetchWithAuth } = useAuth();
   const [session, setSession] = useState({
     name: "",
     sport: "badminton",
@@ -29,18 +31,15 @@ const AddSessionModal = ({
     };
 
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}/sessions`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          credentials: "include",
           body: JSON.stringify(formattedPayload), // Cleaned up: sends the entire object directly
         },
       );
+
+      if (!response) return;
 
       if (!response.ok) throw new Error("HTTP failed: " + response.status);
 
@@ -63,7 +62,14 @@ const AddSessionModal = ({
       console.error("Error creating session:", error);
     }
     // ✅ FIX: Added necessary dependencies
-  }, [accessToken, communityId, session]);
+  }, [
+    accessToken,
+    communityId,
+    fetchWithAuth,
+    getAllSessions,
+    session,
+    setIsCreateSessionModalOpen,
+  ]);
 
   const handleOnChange = (event) => {
     const { name, value } = event.target;
