@@ -14,7 +14,7 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, X } from "lucide-react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useSession } from "../../../hooks/useSession";
 import { API_URL } from "../../../contexts/AuthContext";
@@ -39,6 +39,8 @@ const getPlayerUsername = (player) =>
   player?.communityPlayer?.username ||
   player?.username ||
   "Unknown Player";
+
+const formatTimes = (count) => `${count} ${count === 1 ? "time" : "times"}`;
 
 const getSlotStatus = (court, courtType) =>
   (court?.type || courtType) === "match" &&
@@ -403,6 +405,80 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
   };
 };
 
+const getProjectedCourtRelationshipPlayers = (
+  sessionData,
+  { targetType, courtId, position, player, sessionPlayerId },
+) => {
+  if (targetType !== "match") return [];
+
+  const projectedSessionData = applyOptimisticSlotAssignment(sessionData, {
+    targetType,
+    courtId,
+    position,
+    player,
+    sessionPlayerId,
+    timestamp: new Date().toISOString(),
+  });
+  const projectedCourt = findCourtLocation(projectedSessionData, courtId)?.court;
+
+  return (projectedCourt?.slots || [])
+    .filter((slot) => resolveSlotSessionPlayerId(slot))
+    .filter((slot) => resolveSlotSessionPlayerId(slot) !== sessionPlayerId)
+    .map((slot) => {
+      const relatedSessionPlayerId = resolveSlotSessionPlayerId(slot);
+      const relatedPlayer =
+        slot.sessionPlayer ||
+        projectedSessionData.players.find(
+          (candidatePlayer) =>
+            resolveSessionPlayerId(candidatePlayer) === relatedSessionPlayerId,
+        );
+
+      return {
+        sessionPlayerId: relatedSessionPlayerId,
+        username: getPlayerUsername(relatedPlayer),
+      };
+    });
+};
+
+const countPlayerRelationships = (history = [], relatedPlayers = []) => {
+  return relatedPlayers.map((relatedPlayer) => {
+    const counts = history.reduce(
+      (summary, match) => {
+        const playerTeam = match.playerPersonalTeam;
+        const opponentTeam = playerTeam === "a" ? "b" : "a";
+        const teammates = playerTeam === "a" ? match.teamA : match.teamB;
+        const opponents = opponentTeam === "a" ? match.teamA : match.teamB;
+
+        if (
+          teammates?.some(
+            (teammate) =>
+              teammate.sessionPlayerId === relatedPlayer.sessionPlayerId,
+          )
+        ) {
+          summary.teamed += 1;
+        }
+
+        if (
+          opponents?.some(
+            (opponent) =>
+              opponent.sessionPlayerId === relatedPlayer.sessionPlayerId,
+          )
+        ) {
+          summary.against += 1;
+        }
+
+        return summary;
+      },
+      { teamed: 0, against: 0 },
+    );
+
+    return {
+      ...relatedPlayer,
+      ...counts,
+    };
+  });
+};
+
 const Game = () => {
   const { fetchWithAuth } = useAuth();
   const {
@@ -417,14 +493,71 @@ const Game = () => {
 
   // Track currently dragged node to project clean mirror overlays
   const [activePlayerData, setActivePlayerData] = useState(null);
+  const [relationshipToast, setRelationshipToast] = useState(null);
   const slotAssignmentVersionRef = useRef(0);
   const queueTransferVersionRef = useRef(0);
   const queueTransferRequestRef = useRef(null);
   const latestSessionDataRef = useRef(sessionData);
+  const relationshipToastTimerRef = useRef(null);
 
   useEffect(() => {
     latestSessionDataRef.current = sessionData;
   }, [sessionData]);
+
+  useEffect(() => {
+    return () => {
+      if (relationshipToastTimerRef.current) {
+        clearTimeout(relationshipToastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const dismissRelationshipToast = useCallback(() => {
+    if (relationshipToastTimerRef.current) {
+      clearTimeout(relationshipToastTimerRef.current);
+      relationshipToastTimerRef.current = null;
+    }
+    setRelationshipToast(null);
+  }, []);
+
+  const showRelationshipToast = useCallback((subjectName, relationships) => {
+    if (!relationships?.length) return;
+
+    if (relationshipToastTimerRef.current) {
+      clearTimeout(relationshipToastTimerRef.current);
+    }
+
+    setRelationshipToast({
+      id: Date.now(),
+      subjectName,
+      relationships,
+    });
+
+    relationshipToastTimerRef.current = setTimeout(() => {
+      setRelationshipToast(null);
+      relationshipToastTimerRef.current = null;
+    }, 8000);
+  }, []);
+
+  const fetchRelationshipToastData = useCallback(
+    async (sessionPlayerId, relatedPlayers) => {
+      if (!communityId || !sessionId || !sessionPlayerId || !relatedPlayers.length) {
+        return [];
+      }
+
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/history`,
+      );
+
+      if (!response.ok) return [];
+
+      const data = await response.json().catch(() => null);
+      const history = data?.success ? data.results?.history || [] : [];
+
+      return countPlayerRelationships(history, relatedPlayers);
+    },
+    [communityId, sessionId, fetchWithAuth],
+  );
 
   const commitSessionData = useCallback(
     (updater) => {
@@ -819,6 +952,16 @@ const Game = () => {
     }
 
     const previousSessionData = structuredClone(latestSessionDataRef.current);
+    const relatedPlayers = getProjectedCourtRelationshipPlayers(
+      previousSessionData,
+      {
+        targetType,
+        courtId,
+        position,
+        player,
+        sessionPlayerId: stableSessionPlayerId,
+      },
+    );
     const assignmentVersion = slotAssignmentVersionRef.current + 1;
     slotAssignmentVersionRef.current = assignmentVersion;
 
@@ -849,6 +992,13 @@ const Game = () => {
             assignmentResult?.updatedSlotsState,
           ),
         );
+
+        const relationships = await fetchRelationshipToastData(
+          stableSessionPlayerId,
+          relatedPlayers,
+        );
+
+        showRelationshipToast(getPlayerUsername(player), relationships);
       }
     } catch (error) {
       console.error("Backend slot assignment synchronization failed:", error);
@@ -1084,6 +1234,42 @@ const Game = () => {
       onDragStart={handleDragStart} // <-- Captures item configuration data
       onDragEnd={handleDragEnd}
     >
+      {relationshipToast && (
+        <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-emerald-200 bg-white shadow-xl">
+          <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-950">
+                Match history
+              </p>
+              <p className="text-xs text-gray-500">
+                {relationshipToast.subjectName} with this court
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissRelationshipToast}
+              className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Dismiss match history notification"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="space-y-3 px-4 py-3">
+            {relationshipToast.relationships.map((relationship) => (
+              <div key={relationship.sessionPlayerId} className="text-xs">
+                <p className="font-semibold text-gray-900">
+                  {relationshipToast.subjectName} and {relationship.username}
+                </p>
+                <p className="text-gray-600">
+                  Teamed {formatTimes(relationship.teamed)}. Played against{" "}
+                  {formatTimes(relationship.against)}.
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-x-2 h-full">
         <PlayersContainer
           players={visibleSessionPlayers}
