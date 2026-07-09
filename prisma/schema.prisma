@@ -106,6 +106,12 @@ model Session {
   @@index([createdBy])
 }
 
+enum ApplicationStatus {
+  requested
+  accepted
+  rejected
+}
+
 enum PlayerRoles {
   player
   admin
@@ -117,6 +123,7 @@ model CommunityPlayer {
   id                String @id @default(cuid())
   communityId       String
   userId            String
+  status            ApplicationStatus @default(requested)
   role              PlayerRoles @default(player)
   createdAt         DateTime @default(now())
   community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
@@ -137,17 +144,12 @@ enum GameStatus {
   paid
 }
 
-enum ApplicationStatus {
-  accepted
-  rejected
-}
-
 model SessionPlayer {
   id                String @id @default(cuid())
   sessionId         String
   playerId          String
   gameStatus        GameStatus @default(waiting)
-  status            ApplicationStatus @default(accepted)
+  status            ApplicationStatus @default(requested)
   isHide            Boolean @default(false)
   requestedAt       DateTime?
   acceptedAt        DateTime?
