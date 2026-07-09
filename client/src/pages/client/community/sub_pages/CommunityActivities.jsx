@@ -9,6 +9,7 @@ import {
   ArrowDown,
   Search,
   X,
+  Calendar,
 } from "lucide-react";
 import AddSessionModal from "../../../../components/community_comp/activities/AddSessionModal";
 import EditSessionModal from "../../../../components/community_comp/activities/EditSessionModal";
@@ -142,20 +143,33 @@ const CommunityActivities = ({ communityPlayer }) => {
         {/* Optimized Top Action Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 pb-4 border-b border-stone-200">
           <div>
-            <button
-              onClick={() => setIsCreateSessionModalOpen(true)}
-              className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
-            >
-              Create Session
-            </button>
-
-            <AddSessionModal
-              accessToken={accessToken}
-              communityId={communityId}
-              getAllSessions={getAllSessions}
-              isCreateSessionModalOpen={isCreateSessionModalOpen}
-              setIsCreateSessionModalOpen={setIsCreateSessionModalOpen}
-            />
+            {isManagement ? (
+              <>
+                <button
+                  onClick={() => setIsCreateSessionModalOpen(true)}
+                  className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
+                >
+                  Create Session
+                </button>
+                <AddSessionModal
+                  accessToken={accessToken}
+                  communityId={communityId}
+                  getAllSessions={getAllSessions}
+                  isCreateSessionModalOpen={isCreateSessionModalOpen}
+                  setIsCreateSessionModalOpen={setIsCreateSessionModalOpen}
+                />
+              </>
+            ) : (
+              <div>
+                <h2 className="text-base font-bold text-stone-900 flex items-center gap-x-1.5">
+                  <Calendar size={18} className="text-stone-500" /> Community
+                  Activities
+                </h2>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Explore schedules and look up active matches.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-x-2 w-full sm:w-auto sm:justify-end">
@@ -267,12 +281,17 @@ const CommunityActivities = ({ communityPlayer }) => {
                   return (
                     <tr
                       key={session.id}
-                      onClick={() =>
-                        navigate(
-                          `/community/${communityId}/sessions/${session.id}`,
-                        )
-                      }
-                      className="hover:bg-stone-50/40 cursor-pointer transition-colors duration-150"
+                      onClick={() => {
+                        if (isManagement)
+                          navigate(
+                            `/community/${communityId}/sessions/${session.id}`,
+                          );
+                      }}
+                      className={`transition-colors duration-150 ${
+                        isManagement
+                          ? "hover:bg-stone-50/40 cursor-pointer"
+                          : "cursor-default text-stone-500"
+                      }`}
                     >
                       <td className="p-4 text-sm font-semibold text-stone-900">
                         <span
@@ -348,26 +367,41 @@ const CommunityActivities = ({ communityPlayer }) => {
 
                       {/* ACTIONS COLUMN */}
                       <td className="p-4">
-                        <div className="flex items-center justify-center gap-x-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedSession(session);
-                              setIsEditSessionModalOpen(true);
-                            }}
-                            className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-md transition-colors cursor-pointer outline-none"
-                          >
-                            <SquarePen size={15} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteSession(session?.id);
-                            }}
-                            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer outline-none"
-                          >
-                            <Trash size={15} />
-                          </button>
+                        <div className="flex items-center justify-center">
+                          {isManagement ? (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSession(session);
+                                  setIsEditSessionModalOpen(true);
+                                }}
+                                className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-md transition-colors cursor-pointer outline-none"
+                              >
+                                <SquarePen size={15} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSession(session?.id);
+                                }}
+                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer outline-none"
+                              >
+                                <Trash size={15} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSession(session);
+                                setIsEditSessionModalOpen(true);
+                              }}
+                              className={`p-1.5 text-stone-500 text-[12px] font-medium hover:text-stone-800 hover:bg-green-100 rounded-md transition-colors cursor-pointer outline-none ${isGuest ? "hidden" : null}`}
+                            >
+                              Join
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -389,14 +423,16 @@ const CommunityActivities = ({ communityPlayer }) => {
           </div>
         </div>
 
-        <EditSessionModal
-          accessToken={accessToken}
-          communityId={communityId}
-          getAllSessions={getAllSessions}
-          isEditSessionModalOpen={isEditSessionModalOpen}
-          setIsEditSessionModalOpen={setIsEditSessionModalOpen}
-          session={selectedSession}
-        />
+        {isManagement && (
+          <EditSessionModal
+            accessToken={accessToken}
+            communityId={communityId}
+            getAllSessions={getAllSessions}
+            isEditSessionModalOpen={isEditSessionModalOpen}
+            setIsEditSessionModalOpen={setIsEditSessionModalOpen}
+            session={selectedSession}
+          />
+        )}
       </main>
     </>
   );
