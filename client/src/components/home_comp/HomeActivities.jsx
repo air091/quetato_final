@@ -10,7 +10,7 @@ const HomeActivities = () => {
   const [sessions, setSessions] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const navigate = useNavigate();
-
+  console.log(sessions);
   useEffect(() => {
     if (loading || !accessToken) return;
 
@@ -93,7 +93,9 @@ const HomeActivities = () => {
           {sessions.map((session) => (
             <div
               key={session.id}
-              onClick={() => navigate(``)}
+              onClick={() =>
+                navigate(`/community/${session.community.id}/sessions`)
+              }
               className="transition-transform duration-150 hover:-translate-y-[1px]"
             >
               <ActivityCard session={session} />
