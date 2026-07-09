@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useAuth } from "../../../../../hooks/useAuth";
-import { useParams } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { ChevronDown, EllipsisVertical } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
 import AddStaticPlayer from "../../../../../components/community_comp/players/AddStaticPlayer";
 import { API_URL } from "../../../../../contexts/AuthContext";
 
-const All = ({ communityPlayer }) => {
+const All = () => {
   const { fetchWithAuth, user } = useAuth();
+
+  const context = useOutletContext();
+  const communityPlayer = context?.communityPlayer;
+
   const { communityId } = useParams();
   const [players, setPlayers] = useState([]);
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
@@ -61,7 +65,9 @@ const All = ({ communityPlayer }) => {
     }
   };
 
-  console.log(communityPlayer);
+  const isManagement =
+    communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
+  const isGuest = !communityPlayer;
 
   return (
     <div className="w-full max-w-[720px] mx-auto select-none bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden my-4">
@@ -72,25 +78,31 @@ const All = ({ communityPlayer }) => {
             Community Members
           </h3>
           <p className="text-xs text-stone-500 mt-0.5">
-            Manage community rosters, roles, and static players.
+            {isManagement
+              ? "Manage community rosters, roles, and static players."
+              : "View community rosters and verified players."}
           </p>
         </div>
 
         <div className="flex items-center gap-x-2 self-end sm:self-auto">
-          <button
-            onClick={() => setIsAddStaticPlayerModalOpen(true)}
-            className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
-          >
-            Add Static Player
-          </button>
+          {isManagement && (
+            <>
+              <button
+                onClick={() => setIsAddStaticPlayerModalOpen(true)}
+                className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
+              >
+                Add Static Player
+              </button>
 
-          <AddStaticPlayer
-            fetchWithAuth={fetchWithAuth}
-            communityId={communityId}
-            getAllSession={getAllSession}
-            isOpen={isAddStaticPlayerModalOpen}
-            setIsOpen={setIsAddStaticPlayerModalOpen}
-          />
+              <AddStaticPlayer
+                fetchWithAuth={fetchWithAuth}
+                communityId={communityId}
+                getAllSession={getAllSession}
+                isOpen={isAddStaticPlayerModalOpen}
+                setIsOpen={setIsAddStaticPlayerModalOpen}
+              />
+            </>
+          )}
 
           <select
             name="sort"
@@ -194,24 +206,26 @@ const All = ({ communityPlayer }) => {
                         </button>
                       )}
 
-                      <div className="relative">
-                        <button
-                          onClick={(e) => handleToggleMenu(e, player)}
-                          className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
-                        >
-                          <EllipsisVertical size={16} />
-                        </button>
+                      {isManagement && (
+                        <div className="relative">
+                          <button
+                            onClick={(e) => handleToggleMenu(e, player)}
+                            className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
+                          >
+                            <EllipsisVertical size={16} />
+                          </button>
 
-                        {activeMenu?.playerId === player.id && (
-                          <PlayerSettings
-                            player={player}
-                            type={player?.communityPlayer?.type}
-                            toggleButtonRef={activeMenu}
-                            onClose={() => setActiveMenu(null)}
-                            onUpdatePlayerStatus={getAllSession}
-                          />
-                        )}
-                      </div>
+                          {activeMenu?.playerId === player.id && (
+                            <PlayerSettings
+                              player={player}
+                              type={player?.communityPlayer?.type}
+                              toggleButtonRef={activeMenu}
+                              onClose={() => setActiveMenu(null)}
+                              onUpdatePlayerStatus={getAllSession}
+                            />
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -307,21 +321,25 @@ const All = ({ communityPlayer }) => {
                         )}
 
                       <div className="relative">
-                        <button
-                          onClick={(e) => handleToggleMenu(e, player)}
-                          className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
-                        >
-                          <EllipsisVertical size={16} />
-                        </button>
+                        {isManagement && (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => handleToggleMenu(e, player)}
+                              className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
+                            >
+                              <EllipsisVertical size={16} />
+                            </button>
 
-                        {activeMenu?.playerId === player.id && (
-                          <PlayerSettings
-                            player={player}
-                            type={player?.communityPlayer?.type}
-                            toggleButtonRef={activeMenu}
-                            onClose={() => setActiveMenu(null)}
-                            onUpdatePlayerStatus={getAllSession}
-                          />
+                            {activeMenu?.playerId === player.id && (
+                              <PlayerSettings
+                                player={player}
+                                type={player?.communityPlayer?.type}
+                                toggleButtonRef={activeMenu}
+                                onClose={() => setActiveMenu(null)}
+                                onUpdatePlayerStatus={getAllSession}
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
