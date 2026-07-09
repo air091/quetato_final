@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Menu } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { NavLink } from "react-router-dom";
+import UserDropdown from "./UserDropdown";
 
 const Header = ({ onMenuClick }) => {
   const { user } = useAuth();
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   return (
     <header className="flex items-center justify-between px-4 py-2 border">
@@ -23,8 +25,12 @@ const Header = ({ onMenuClick }) => {
           </h1>
         </NavLink>
       </div>
-      <div>
+      <div
+        onClick={() => setIsUserDropdownOpen((prev) => !prev)}
+        className="relative"
+      >
         <span className="cursor-pointer">{user.username}</span>
+        {isUserDropdownOpen && <UserDropdown />}
       </div>
     </header>
   );

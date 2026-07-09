@@ -3,11 +3,13 @@ import { useAuth } from "../../hooks/useAuth"; // Adjust path as needed
 import ActivityCard from "./ActivityCard";
 import { CalendarX, Loader2 } from "lucide-react";
 import { API_URL } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const HomeActivities = () => {
   const { accessToken, loading, fetchWithAuth } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (loading || !accessToken) return;
@@ -91,6 +93,7 @@ const HomeActivities = () => {
           {sessions.map((session) => (
             <div
               key={session.id}
+              onClick={() => navigate(``)}
               className="transition-transform duration-150 hover:-translate-y-[1px]"
             >
               <ActivityCard session={session} />
