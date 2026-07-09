@@ -10,7 +10,7 @@ const MainContent = ({ outletContext, communityPlayer }) => {
 
       {/* main */}
       <main className="">
-        <Outlet context={{ ...outletContext, communityPlayer }} />
+        <Outlet context={outletContext} />
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "../../../../hooks/useAuth";
 import {
   SquarePen,
@@ -15,8 +15,11 @@ import AddSessionModal from "../../../../components/community_comp/activities/Ad
 import EditSessionModal from "../../../../components/community_comp/activities/EditSessionModal";
 import { API_URL } from "../../../../contexts/AuthContext";
 
-const CommunityActivities = ({ communityPlayer }) => {
+const CommunityActivities = () => {
   const { accessToken, fetchWithAuth, user } = useAuth();
+  const context = useOutletContext();
+  const communityPlayer = context?.communityPlayer;
+
   const { communityId } = useParams();
   const [sessions, setSessions] = useState([]);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =

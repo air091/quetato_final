@@ -25,7 +25,6 @@ const Community = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(data);
         setCommunityPlayer(data.player); // Actually save the data to state
       } else if (response.status === 404) {
         setCommunityPlayer(null);
@@ -39,9 +38,8 @@ const Community = () => {
 
   useEffect(() => {
     getCommunityPlayer();
-  }, [getCommunityPlayer]); // Safe to include now that getCommunityPlayer is properly memoized
+  }, [getCommunityPlayer]);
 
-  // Optional: Prevent rendering layout elements if user data isn't available yet
   if (!user) {
     return <div>Loading user session...</div>;
   }
@@ -54,10 +52,7 @@ const Community = () => {
         accessToken={accessToken}
       />
 
-      <MainContent
-        outletContext={outletContext}
-        communityPlayer={communityPlayer}
-      />
+      <MainContent outletContext={{ ...outletContext, communityPlayer }} />
     </>
   );
 };

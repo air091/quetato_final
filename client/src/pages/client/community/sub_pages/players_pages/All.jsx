@@ -7,7 +7,7 @@ import PlayerSettings from "../../../../../components/community_comp/players/Pla
 import AddStaticPlayer from "../../../../../components/community_comp/players/AddStaticPlayer";
 import { API_URL } from "../../../../../contexts/AuthContext";
 
-const All = () => {
+const All = ({ communityPlayer }) => {
   const { fetchWithAuth, user } = useAuth();
   const { communityId } = useParams();
   const [players, setPlayers] = useState([]);
@@ -60,6 +60,8 @@ const All = () => {
       });
     }
   };
+
+  console.log(communityPlayer);
 
   return (
     <div className="w-full max-w-[720px] mx-auto select-none bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden my-4">
