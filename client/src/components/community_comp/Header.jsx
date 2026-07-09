@@ -4,7 +4,7 @@ import PlayerAvatar from "../PlayerAvatar";
 import { API_URL } from "../../contexts/AuthContext";
 import { useAuth } from "../../hooks/useAuth";
 
-const Header = ({ communityId, accessToken }) => {
+const Header = ({ communityId, communityPlayer, accessToken }) => {
   const { fetchWithAuth } = useAuth();
   const [community, setCommunity] = useState();
 
@@ -38,6 +38,10 @@ const Header = ({ communityId, accessToken }) => {
     getCommunityById();
   }, [getCommunityById]);
 
+  const isManagement =
+    communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
+  const isGuest = !communityPlayer;
+
   return (
     <header className="flex items-center justify-center px-6 py-4 border-b border-stone-100 bg-white">
       <div className="flex flex-col gap-y-1">
@@ -69,6 +73,11 @@ const Header = ({ communityId, accessToken }) => {
             {community?._count?.sessions === 1 ? "session" : "sessions"}
           </span>
         </div>
+        {isGuest && (
+          <button className="bg-blue-300 py-1 rounded-full my-1 hover:bg-blue-500 hover:text-white cursor-pointer text-[14px]">
+            Join Community
+          </button>
+        )}
       </div>
     </header>
   );

@@ -14,8 +14,8 @@ import AddSessionModal from "../../../../components/community_comp/activities/Ad
 import EditSessionModal from "../../../../components/community_comp/activities/EditSessionModal";
 import { API_URL } from "../../../../contexts/AuthContext";
 
-const CommunityActivities = () => {
-  const { accessToken, fetchWithAuth } = useAuth();
+const CommunityActivities = ({ communityPlayer }) => {
+  const { accessToken, fetchWithAuth, user } = useAuth();
   const { communityId } = useParams();
   const [sessions, setSessions] = useState([]);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
@@ -28,7 +28,6 @@ const CommunityActivities = () => {
   const [order, setOrder] = useState("asc");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
@@ -71,14 +70,7 @@ const CommunityActivities = () => {
     } catch (error) {
       console.error("Get all sessions failed", error);
     }
-  }, [
-    communityId,
-    sortBy,
-    order,
-    status,
-    debouncedSearch,
-    fetchWithAuth,
-  ]);
+  }, [communityId, sortBy, order, status, debouncedSearch, fetchWithAuth]);
 
   const deleteSession = useCallback(
     async (sessionId) => {
@@ -139,6 +131,10 @@ const CommunityActivities = () => {
     const year = date.getFullYear();
     return `${month}-${day}-${year}`;
   };
+
+  const isManagement =
+    communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
+  const isGuest = !communityPlayer;
 
   return (
     <>

@@ -7,11 +7,11 @@ import MainContentUser from "../../../components/community_comp/MainContentUser"
 import { API_URL } from "../../../contexts/AuthContext";
 
 const Community = () => {
-  const { fetchWithAuth, accessToken, user } = useAuth();
+  const { accessToken, user, fetchWithAuth } = useAuth();
   const { communityId } = useParams();
-  const [communityPlayer, setCommunityPlayer] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const outletContext = useOutletContext();
+  const [communityPlayer, setCommunityPlayer] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const getCommunityPlayer = useCallback(async () => {
     // Guard clause: Don't fetch if user or communityId isn't loaded yet
@@ -19,13 +19,16 @@ const Community = () => {
 
     try {
       const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players/${user.id}`,
+        `${API_URL}/api/communities/${communityId}/players/${user?.id}`,
         { method: "GET" },
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data);
         setCommunityPlayer(data.player); // Actually save the data to state
+      } else if (response.status === 404) {
+        setCommunityPlayer(null);
       }
     } catch (error) {
       console.error("Failed to fetch community player:", error);
@@ -45,16 +48,16 @@ const Community = () => {
 
   return (
     <>
-      <Header communityId={communityId} accessToken={accessToken} />
-      {communityPlayer?.role === "admin" ||
-      communityPlayer?.role === "owner" ? (
-        <MainContent
-          outletContext={outletContext}
-          communityPlayer={communityPlayer}
-        />
-      ) : (
-        <MainContentUser communityPlayer={communityPlayer} />
-      )}
+      <Header
+        communityId={communityId}
+        communityPlayer={communityPlayer}
+        accessToken={accessToken}
+      />
+
+      <MainContent
+        outletContext={outletContext}
+        communityPlayer={communityPlayer}
+      />
     </>
   );
 };
