@@ -42,7 +42,7 @@ export const SessionProvider = ({ children }) => {
   }, [communityId, sessionId]);
 
   const refreshSessionContext = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, updateState = true } = {}) => {
       if (!baseUrl) return null;
 
       try {
@@ -98,9 +98,11 @@ export const SessionProvider = ({ children }) => {
           queueCourts: normalizeCourtsPayload(queueData),
         };
 
-        setSessionData(nextSessionData);
-        setCurrentUserRole(playersData.currentUserRole || null);
-        setCanManagePlayers(Boolean(playersData.canManagePlayers));
+        if (updateState) {
+          setSessionData(nextSessionData);
+          setCurrentUserRole(playersData.currentUserRole || null);
+          setCanManagePlayers(Boolean(playersData.canManagePlayers));
+        }
 
         return nextSessionData;
       } catch (error) {

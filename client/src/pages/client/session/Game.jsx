@@ -308,6 +308,45 @@ const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
   };
 };
 
+const applyOptimisticSlotRemoval = (
+  sessionData,
+  { courtId, slotId, sessionPlayerId },
+) => {
+  const matchesRemovedSlot = (slot) =>
+    slot.id === slotId ||
+    slot.sessionPlayerId === slotId ||
+    `opt-${slot.position}` === slotId;
+
+  const removeFromCourtsList = (currentCourtsObj) => {
+    if (!currentCourtsObj?.courts) return currentCourtsObj;
+
+    return {
+      ...currentCourtsObj,
+      courts: currentCourtsObj.courts.map((court) =>
+        court.id === courtId
+          ? {
+              ...court,
+              slots: (court.slots || []).filter(
+                (slot) => !matchesRemovedSlot(slot),
+              ),
+            }
+          : court,
+      ),
+    };
+  };
+
+  return {
+    ...sessionData,
+    matchCourts: removeFromCourtsList(sessionData.matchCourts),
+    queueCourts: removeFromCourtsList(sessionData.queueCourts),
+    players: sessionPlayerId
+      ? sessionData.players.map((player) =>
+          setPlayerGameStatus(player, sessionPlayerId, "waiting"),
+        )
+      : sessionData.players,
+  };
+};
+
 const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
   const queueCourt = sessionData.queueCourts?.courts?.find(
     (court) => court.id === queueCourtId,
@@ -516,6 +555,7 @@ const Game = () => {
   const [activePlayerData, setActivePlayerData] = useState(null);
   const [relationshipToast, setRelationshipToast] = useState(null);
   const slotAssignmentVersionRef = useRef(0);
+  const slotRemovalVersionRef = useRef(0);
   const queueTransferVersionRef = useRef(0);
   const queueTransferRequestRef = useRef(null);
   const latestSessionDataRef = useRef(sessionData);
@@ -597,8 +637,11 @@ const Game = () => {
   );
 
   const fetchDashboardContext = useCallback(
-    (isSilentRefetch = false) =>
-      refreshSessionContext({ silent: isSilentRefetch }),
+    (isSilentRefetch = false, updateState = true) =>
+      refreshSessionContext({
+        silent: isSilentRefetch,
+        updateState,
+      }),
     [refreshSessionContext],
   );
 
@@ -646,6 +689,8 @@ const Game = () => {
 
   const handleRemovePlayer = async (courtId, slotId) => {
     const previousSessionData = structuredClone(latestSessionDataRef.current);
+    const removalVersion = slotRemovalVersionRef.current + 1;
+    slotRemovalVersionRef.current = removalVersion;
     const removedPlayerId = [
       previousSessionData.matchCourts,
       previousSessionData.queueCourts,
@@ -668,39 +713,13 @@ const Game = () => {
       );
     }, null);
 
-    const removeFromCourtsList = (currentCourtsObj) => {
-      if (!currentCourtsObj?.courts) return currentCourtsObj;
-
-      const updatedCourts = currentCourtsObj.courts.map((court) => {
-        if (court.id !== courtId) return court;
-
-        const updatedSlots = (court.slots || []).map((slot) => {
-          if (
-            slot.id === slotId ||
-            slot.sessionPlayerId === slotId ||
-            `opt-${slot.position}` === slotId
-          ) {
-            return { ...slot, sessionPlayerId: null, sessionPlayer: null };
-          }
-          return slot;
-        });
-
-        return { ...court, slots: updatedSlots };
-      });
-
-      return { ...currentCourtsObj, courts: updatedCourts };
-    };
-
-    setSessionData((prev) => ({
-      ...prev,
-      matchCourts: removeFromCourtsList(prev.matchCourts),
-      queueCourts: removeFromCourtsList(prev.queueCourts),
-      players: removedPlayerId
-        ? prev.players.map((player) =>
-            setPlayerGameStatus(player, removedPlayerId, "waiting"),
-          )
-        : prev.players,
-    }));
+    commitSessionData((prev) =>
+      applyOptimisticSlotRemoval(prev, {
+        courtId,
+        slotId,
+        sessionPlayerId: removedPlayerId,
+      }),
+    );
 
     try {
       let targetCourtId = courtId;
@@ -716,8 +735,8 @@ const Game = () => {
           await queueTransferRequestRef.current.catch(() => null);
         }
 
-        // 1. Wait for the server data to download and refresh state completely
-        const refreshedSessionData = await fetchDashboardContext(true);
+        // Fetch persisted IDs without replacing the optimistic empty slot.
+        const refreshedSessionData = await fetchDashboardContext(true, false);
 
         // 2. Scan the freshly fetched database courts data to track down the newly created slot ID
         let resolvedRealSlot = null;
@@ -754,7 +773,9 @@ const Game = () => {
       await fetchDashboardContext(true);
     } catch (error) {
       console.error("Removal engine execution failure:", error);
-      setSessionData(previousSessionData);
+      if (removalVersion === slotRemovalVersionRef.current) {
+        commitSessionData(previousSessionData);
+      }
     }
   };
 
