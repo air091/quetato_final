@@ -33,7 +33,7 @@ const HomeHeader = () => {
           </li>
           <li>
             <NavLink
-              to="/create-community"
+              to="/community/create-community"
               className="flex flex-col justify-center items-center h-full p-4 gap-y-2 text-xs sm:text-sm font-semibold text-stone-700 bg-stone-50/50 border border-stone-200/70 rounded-lg hover:bg-stone-100 hover:text-stone-900 hover:border-stone-300 transition-all duration-150 select-none text-center"
             >
               <LayersPlus
