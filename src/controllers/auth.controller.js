@@ -131,15 +131,10 @@ export const profileController = async (request, response) => {
 export const refreshController = async (request, response) => {
   try {
     const token = request.cookies ? request.cookies["session"] : null;
-    const agent = request.headers["user-agent"] || "Unknown Device";
-    const ipAddress = request.ip || "127.0.0.1";
+    const tokens = await refresh({ token });
 
-    const tokens = await refresh({ token, ipAddress, agent });
-
-    response.cookie("session", tokens.refresh, getSessionCookieOptions());
-
-    // Refresh-token rotation updates the HttpOnly cookie; the client needs
-    // only the new short-lived access token.
+    // The existing HttpOnly refresh-token cookie remains unchanged. The
+    // client needs only a new short-lived access token.
     return response.status(201).json({
       success: true,
       tokens: { access: tokens.access },

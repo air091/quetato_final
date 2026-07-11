@@ -17,7 +17,6 @@ export const API_URL = BASE_URL;
 const AUTH_URL = `${BASE_URL}/api/auth`;
 const ACCESS_TOKEN_STORAGE_KEY = "quetato_access_token";
 const USER_STORAGE_KEY = "quetato_user";
-const ACCESS_TOKEN_REFRESH_BUFFER_MS = 60_000;
 
 const getStoredAccessToken = () =>
   window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
@@ -73,12 +72,7 @@ const isAccessTokenValid = (token) => {
   const payload = token ? getAccessTokenPayload(token) : null;
   if (!payload?.exp) return false;
 
-  return payload.exp * 1000 > Date.now() + 30_000;
-};
-
-const getAccessTokenExpiresAt = (token) => {
-  const payload = token ? getAccessTokenPayload(token) : null;
-  return payload?.exp ? payload.exp * 1000 : null;
+  return payload.exp * 1000 > Date.now();
 };
 
 export const AuthProvider = ({ children }) => {
@@ -90,7 +84,6 @@ export const AuthProvider = ({ children }) => {
   const isInitialMount = useRef(true);
   const accessTokenRef = useRef(null);
   const refreshPromiseRef = useRef(null);
-  const refreshTimerRef = useRef(null);
 
   const applyAccessToken = useCallback((token) => {
     accessTokenRef.current = token || null;
@@ -98,22 +91,14 @@ export const AuthProvider = ({ children }) => {
     setAccessToken(token || null);
   }, []);
 
-  const clearRefreshTimer = useCallback(() => {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-  }, []);
-
   const resetAuthState = useCallback(() => {
-    clearRefreshTimer();
     clearStoredAuth();
     accessTokenRef.current = null;
     setAccessToken(null);
     setUser(null);
-  }, [clearRefreshTimer]);
+  }, []);
 
-  // 1. Refresh Session (Handles Token Rotation Payload)
+  // 1. Use the existing HttpOnly refresh-token cookie to issue a new access token.
   const refreshSession = useCallback(async () => {
     if (refreshPromiseRef.current) {
       return refreshPromiseRef.current;
@@ -177,8 +162,8 @@ export const AuthProvider = ({ children }) => {
         credentials: "include",
       });
 
-      // Handle Access Token Expiration mid-session
-      if (response.status === 401 || response.status === 403) {
+      // Handle an access token that expired while this request was in flight.
+      if (response.status === 401) {
         try {
           const newToken = await refreshSession();
           headers["Authorization"] = `Bearer ${newToken}`;
@@ -254,26 +239,6 @@ export const AuthProvider = ({ children }) => {
     };
     initializeAuth();
   }, [applyAccessToken, fetchProfile, refreshSession, resetAuthState]);
-
-  useEffect(() => {
-    clearRefreshTimer();
-
-    const expiresAt = getAccessTokenExpiresAt(accessToken);
-    if (!expiresAt) return;
-
-    const refreshDelay = Math.max(
-      expiresAt - Date.now() - ACCESS_TOKEN_REFRESH_BUFFER_MS,
-      0,
-    );
-
-    refreshTimerRef.current = setTimeout(() => {
-      refreshSession().catch(() => {
-        // refreshSession resets auth state on failure.
-      });
-    }, refreshDelay);
-
-    return clearRefreshTimer;
-  }, [accessToken, clearRefreshTimer, refreshSession]);
 
   // 4. Register Action
   const register = async (username, email, password) => {
