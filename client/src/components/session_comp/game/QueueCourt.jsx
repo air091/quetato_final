@@ -42,7 +42,8 @@ const DraggableSlotPlayer = ({
     paid: "bg-rose-200 border-rose-500 text-rose-950",
   };
 
-  const currentStatus = player?.gameStatus || "waiting";
+  // Queue membership is independent from the player's active match status.
+  const currentStatus = "queued";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   const overdueStyle =
@@ -175,7 +176,7 @@ const CourtSlot = ({
     paid: "bg-rose-100 border-rose-500 text-rose-950",
   };
 
-  const currentStatus = matchedPoolPlayer?.gameStatus || "waiting";
+  const currentStatus = "queued";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   const stablePlayerId =
@@ -185,7 +186,9 @@ const CourtSlot = ({
 
   // 🌟 Active threshold check effect monitoring the 20-minute marker
   const timestamp =
-    matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt;
+    slotData?.queuedAt ||
+    matchedPoolPlayer?.updateStatus ||
+    matchedPoolPlayer?.updatedAt;
   useEffect(() => {
     const checkOverdueStatus = () => {
       if (!timestamp) {

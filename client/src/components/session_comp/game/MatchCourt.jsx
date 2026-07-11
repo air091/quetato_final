@@ -232,11 +232,11 @@ const CourtSlot = ({
     }
   };
 
-  // 🌟 Disable draggable functionality if the match is active unless it is paused
+  // Live-match players may be queued for their next match. Drop-target rules
+  // in Game.jsx still prevent a playing player from being moved to a Match Court.
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
     data: { player: { ...matchedPoolPlayer, totalGames } },
-    disabled: !isCourtPaused && slotData?.sessionPlayerId !== undefined,
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;

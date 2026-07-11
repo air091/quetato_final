@@ -216,6 +216,7 @@ model CourtSlot {
   sessionPlayerId     String
   position            Int
   team                Team
+  queuedAt            DateTime?
   isWin               Boolean?
   court               Court @relation(fields: [courtId], references: [id], onDelete: Cascade)
   sessionPlayer       SessionPlayer @relation(fields: [sessionPlayerId], references: [id], onDelete: Cascade)

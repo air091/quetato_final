@@ -689,9 +689,22 @@ export const assignPlayerToSlot = async (
       });
     }
 
-    const sourceSlot = allActiveSlots.find(
-      (s) => s.sessionPlayerId === sessionPlayerId,
+    const playerSlots = allActiveSlots.filter(
+      (slot) => slot.sessionPlayerId === sessionPlayerId,
     );
+    // A playing player may keep their active Match Court slot while receiving
+    // one additional Queue Court slot for their next match.
+    const sourceSlot =
+      targetCourt.type === "queue"
+        ? playerSlots.find((slot) => {
+            const court = allSessionCourts.find(
+              (candidate) => candidate.id === slot.courtId,
+            );
+            return court?.type === "queue";
+          })
+        : playerSlots[0];
+    const isAdditionalQueueAssignment =
+      targetCourt.type === "queue" && !sourceSlot;
     const occupiedSlot = allActiveSlots.find(
       (s) => s.courtId === targetCourtId && s.position === targetPosition,
     );
@@ -720,15 +733,19 @@ export const assignPlayerToSlot = async (
     }
 
     // 5. Intelligent Assignment Matrix
-    const getSlotGameStatus = (court) =>
-      court?.type === "match" &&
-      (court.status === "started" || court.status === "paused")
-        ? "playing"
-        : "queued";
-    const nextTargetPlayerStatus = getSlotGameStatus(targetCourt);
-
     // Case 1: SWAP — Swapping positions between two distinct court slots.
-    if (sourceSlot && occupiedSlot) {
+    if (isAdditionalQueueAssignment && occupiedSlot) {
+      await tx.courtSlot.update({
+        where: { id: occupiedSlot.id },
+        data: {
+          sessionPlayerId,
+          queuedAt: new Date(),
+        },
+      });
+    }
+
+    // Case 1: SWAP â€” Swapping positions between two distinct court slots.
+    else if (sourceSlot && occupiedSlot) {
       // 🟢 FIX: We swap the exact parameters (court, position, and team rules) so they take over each other's layout coordinates safely.
       await Promise.all([
         tx.courtSlot.update({
@@ -770,6 +787,7 @@ export const assignPlayerToSlot = async (
           where: { id: occupiedSlot.id },
           data: {
             sessionPlayerId: sessionPlayerId, // Replaces occupant with the incoming user ID
+            ...(targetCourt.type === "queue" ? { queuedAt: new Date() } : {}),
           },
         }),
       ]);
@@ -784,6 +802,7 @@ export const assignPlayerToSlot = async (
             sessionPlayerId: sessionPlayerId,
             position: targetPosition,
             team: targetTeam,
+            ...(targetCourt.type === "queue" ? { queuedAt: new Date() } : {}),
           },
         }),
       ]);
@@ -818,10 +837,25 @@ export const assignPlayerToSlot = async (
         },
       });
 
+      const slotsByPlayerId = new Map();
+      touchedSlots.forEach((slot) => {
+        const slots = slotsByPlayerId.get(slot.sessionPlayerId) || [];
+        slots.push(slot);
+        slotsByPlayerId.set(slot.sessionPlayerId, slots);
+      });
+
       const nextStatusByPlayerId = new Map(
-        touchedSlots.map((slot) => [
-          slot.sessionPlayerId,
-          getSlotGameStatus(slot.court),
+        [...slotsByPlayerId].map(([playerId, slots]) => [
+          playerId,
+          slots.some(
+            (slot) =>
+              slot.court.type === "match" &&
+              (slot.court.status === "started" || slot.court.status === "paused"),
+          )
+            ? "playing"
+            : slots.length > 0
+              ? "queued"
+              : "waiting",
         ]),
       );
 
@@ -934,6 +968,32 @@ export const removePlayerFromSlot = async (
       where: { id: slotId },
     });
 
+    if (existingSlot.sessionPlayerId) {
+      const remainingSlots = await tx.courtSlot.findMany({
+        where: {
+          sessionPlayerId: existingSlot.sessionPlayerId,
+          court: { sessionId },
+        },
+        include: { court: { select: { type: true, status: true } } },
+      });
+      const remainsPlaying = remainingSlots.some(
+        (slot) =>
+          slot.court.type === "match" &&
+          (slot.court.status === "started" || slot.court.status === "paused"),
+      );
+
+      await tx.sessionPlayer.update({
+        where: { id: existingSlot.sessionPlayerId },
+        data: {
+          gameStatus: remainsPlaying
+            ? "playing"
+            : remainingSlots.length > 0
+              ? "queued"
+              : "waiting",
+        },
+      });
+    }
+
     return { id: slotId, message: "Player removed from slot successfully" };
   });
 };
@@ -982,7 +1042,11 @@ export const transferQueueToMatch = async (
     const [queueCourt, matchCourts] = await Promise.all([
       tx.court.findFirst({
         where: { id: queueCourtId, sessionId: sessionId, type: "queue" }, // 👈 Verifies it belongs to this session and is a queue
-        include: { slots: true },
+        include: {
+          slots: {
+            include: { sessionPlayer: { select: { gameStatus: true } } },
+          },
+        },
       }),
       tx.court.findMany({
         where: { sessionId: sessionId, type: "match" },
@@ -1019,9 +1083,16 @@ export const transferQueueToMatch = async (
     }
 
     // Sort queue slots to maintain the sequence order
-    const queueSlotsToMove = [...queueCourt.slots].sort(
-      (a, b) => a.position - b.position,
-    );
+    const queueSlotsToMove = queueCourt.slots
+      .filter((slot) => slot.sessionPlayer.gameStatus !== "playing")
+      .sort((a, b) => a.position - b.position);
+
+    if (queueSlotsToMove.length === 0) {
+      throw new AppError(
+        "Queued players are still in an active match and cannot be transferred yet",
+        422,
+      );
+    }
 
     // 5. Calculate open match layout positions (0, 1, 2, 3)
     const occupiedPositions = availableMatchCourt.slots.map((s) => s.position);
@@ -1398,16 +1469,30 @@ export const endMatchCourt = async (
       where: { courtId: courtId },
     });
 
-    // 6. Free players back to lobby
+    // 6. Players who already joined a Queue Court remain queued for their
+    // next match; everyone else returns to the lobby.
     if (playerIdsInMatch.length > 0) {
-      await tx.sessionPlayer.updateMany({
+      const queueSlots = await tx.courtSlot.findMany({
         where: {
-          id: { in: playerIdsInMatch },
+          sessionPlayerId: { in: playerIdsInMatch },
+          court: { sessionId, type: "queue" },
         },
-        data: {
-          gameStatus: "waiting",
-        },
+        select: { sessionPlayerId: true },
       });
+      const queuedPlayerIds = new Set(
+        queueSlots.map((slot) => slot.sessionPlayerId),
+      );
+
+      await Promise.all(
+        playerIdsInMatch.map((playerId) =>
+          tx.sessionPlayer.update({
+            where: { id: playerId },
+            data: {
+              gameStatus: queuedPlayerIds.has(playerId) ? "queued" : "waiting",
+            },
+          }),
+        ),
+      );
     }
 
     // 7. Revert court container status back to idle

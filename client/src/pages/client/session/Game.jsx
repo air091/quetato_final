@@ -102,6 +102,7 @@ const createOptimisticSlot = ({
   position,
   sessionPlayerId,
   sessionPlayer,
+  queuedAt,
 }) => ({
   ...(baseSlot || {}),
   id: baseSlot?.id || `opt-${courtId}-${position}-${sessionPlayerId}`,
@@ -110,6 +111,7 @@ const createOptimisticSlot = ({
   team: position % 2 === 0 ? "a" : "b",
   sessionPlayerId,
   sessionPlayer,
+  queuedAt: queuedAt ?? baseSlot?.queuedAt,
 });
 
 const findCourtLocation = (sessionData, courtId) => {
@@ -155,10 +157,12 @@ const applyOptimisticSlotAssignment = (
 ) => {
   const targetCourtLocation = findCourtLocation(sessionData, courtId);
   const targetCourt = targetCourtLocation?.court;
-  const sourceLocation = findSlotLocation(
-    sessionData,
-    (slot) => resolveSlotSessionPlayerId(slot) === sessionPlayerId,
-  );
+  const sourceLocation = findSlotLocation(sessionData, (slot, court) => {
+    if (resolveSlotSessionPlayerId(slot) !== sessionPlayerId) return false;
+    return targetType !== "queue" || court.type === "queue";
+  });
+  const isAdditionalQueueAssignment =
+    targetType === "queue" && !sourceLocation;
   const occupiedLocation = findSlotLocation(
     sessionData,
     (slot, court) => court.id === courtId && slot.position === position,
@@ -174,7 +178,7 @@ const applyOptimisticSlotAssignment = (
   const targetSlotPlayer = createOptimisticSlotPlayer(
     player,
     sessionPlayerId,
-    targetStatus,
+    isAdditionalQueueAssignment ? player.gameStatus : targetStatus,
     timestamp,
   );
   const occupiedPlayer =
@@ -200,8 +204,13 @@ const applyOptimisticSlotAssignment = (
       ...currentCourtsObj,
       courts: currentCourtsObj.courts.map((court) => {
         const cleanedSlots = (court.slots || []).filter((slot) => {
-          const slotPlayerId = resolveSlotSessionPlayerId(slot);
-          if (slotPlayerId === sessionPlayerId) return false;
+          if (
+            sourceLocation &&
+            court.id === sourceLocation.court.id &&
+            slot.position === sourceLocation.slot.position
+          ) {
+            return false;
+          }
           if (court.id === courtId && slot.position === position) return false;
           return true;
         });
@@ -216,6 +225,7 @@ const applyOptimisticSlotAssignment = (
               position,
               sessionPlayerId,
               sessionPlayer: targetSlotPlayer,
+              queuedAt: targetType === "queue" ? timestamp : null,
             }),
           );
         }
@@ -228,6 +238,7 @@ const applyOptimisticSlotAssignment = (
               position: sourceLocation.slot.position,
               sessionPlayerId: occupiedPlayerId,
               sessionPlayer: occupiedSourceSlotPlayer,
+              queuedAt: sourceLocation.slot.queuedAt,
             }),
           );
         }
@@ -245,6 +256,8 @@ const applyOptimisticSlotAssignment = (
       const candidatePlayerId = resolveSessionPlayerId(candidatePlayer);
 
       if (candidatePlayerId === sessionPlayerId) {
+        if (targetType === "queue") return candidatePlayer;
+
         return setPlayerGameStatus(
           candidatePlayer,
           sessionPlayerId,
@@ -267,7 +280,11 @@ const applyOptimisticSlotAssignment = (
   };
 };
 
-const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
+const reconcileAssignedSlotIds = (
+  sessionData,
+  backendSlots = [],
+  { preserveLiveMatchSlotForPlayerId } = {},
+) => {
   if (!Array.isArray(backendSlots) || backendSlots.length === 0) {
     return sessionData;
   }
@@ -275,19 +292,27 @@ const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
   const validBackendSlots = backendSlots.filter(
     (slot) => slot?.sessionPlayerId,
   );
-  const backendSlotByPlayerId = new Map(
-    validBackendSlots.map((slot) => [slot.sessionPlayerId, slot]),
+  // A player can occupy both a live Match Court and a Queue Court for their
+  // next match. Court position, rather than player ID, is therefore the
+  // stable identity for reconciling the returned slot layout.
+  const getSlotLocationKey = (courtId, position) => `${courtId}:${position}`;
+  const backendSlotLocationKeys = new Set(
+    validBackendSlots.map((slot) =>
+      getSlotLocationKey(slot.courtId, slot.position),
+    ),
   );
-  const currentSlotByPlayerId = new Map();
+  const backendPlayerIds = new Set(
+    validBackendSlots.map((slot) => slot.sessionPlayerId),
+  );
+  const currentSlotByLocation = new Map();
 
   for (const courtsObj of [sessionData.matchCourts, sessionData.queueCourts]) {
     for (const court of courtsObj?.courts || []) {
       for (const slot of court.slots || []) {
-        const sessionPlayerId = resolveSlotSessionPlayerId(slot);
-
-        if (backendSlotByPlayerId.has(sessionPlayerId)) {
-          currentSlotByPlayerId.set(sessionPlayerId, slot);
-        }
+        currentSlotByLocation.set(
+          getSlotLocationKey(court.id, slot.position),
+          slot,
+        );
       }
     }
   }
@@ -299,18 +324,37 @@ const reconcileAssignedSlotIds = (sessionData, backendSlots = []) => {
       ...currentCourtsObj,
       courts: currentCourtsObj.courts.map((court) => {
         const untouchedSlots = (court.slots || []).filter(
-          (slot) =>
-            !backendSlotByPlayerId.has(resolveSlotSessionPlayerId(slot)),
+          (slot) => {
+            const locationKey = getSlotLocationKey(court.id, slot.position);
+            const isLiveMatchSlotToPreserve =
+              preserveLiveMatchSlotForPlayerId &&
+              resolveSlotSessionPlayerId(slot) ===
+                preserveLiveMatchSlotForPlayerId &&
+              court.type === "match" &&
+              (court.status === "started" || court.status === "paused") &&
+              !backendSlotLocationKeys.has(locationKey);
+
+            return (
+              isLiveMatchSlotToPreserve ||
+              (!backendSlotLocationKeys.has(locationKey) &&
+                !backendPlayerIds.has(resolveSlotSessionPlayerId(slot)))
+            );
+          },
         );
         const reconciledSlots = validBackendSlots
           .filter((backendSlot) => backendSlot.courtId === court.id)
           .map((backendSlot) => ({
-            ...(currentSlotByPlayerId.get(backendSlot.sessionPlayerId) || {}),
+            ...(
+              currentSlotByLocation.get(
+                getSlotLocationKey(backendSlot.courtId, backendSlot.position),
+              ) || {}
+            ),
             id: backendSlot.id,
             courtId: backendSlot.courtId,
             position: backendSlot.position,
             team: backendSlot.team,
             sessionPlayerId: backendSlot.sessionPlayerId,
+            queuedAt: backendSlot.queuedAt,
           }));
 
         return {
@@ -378,6 +422,17 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
 
   const queueSlotsToMove = (queueCourt.slots || [])
     .filter((slot) => resolveSlotSessionPlayerId(slot))
+    .filter((slot) => {
+      const sessionPlayerId = resolveSlotSessionPlayerId(slot);
+      const player =
+        slot.sessionPlayer ||
+        sessionData.players.find(
+          (candidatePlayer) =>
+            resolveSessionPlayerId(candidatePlayer) === sessionPlayerId,
+        );
+
+      return player?.gameStatus !== "playing";
+    })
     .sort((left, right) => left.position - right.position);
 
   if (queueSlotsToMove.length === 0) {
@@ -949,11 +1004,22 @@ const Game = () => {
             };
           });
 
-          // Set the players who were on this court back to "waiting" state
+          const queuedPlayerIds = new Set(
+            (prev.queueCourts?.courts || []).flatMap((court) =>
+              (court.slots || []).map((slot) =>
+                resolveSlotSessionPlayerId(slot),
+              ),
+            ),
+          );
+
+          // Players already in a Queue Court remain queued for their next game.
           const updatedPlayers = prev.players.map((player) => {
             const pId = player.id || player.sessionPlayerId;
             if (playerIdsToFree.includes(pId)) {
-              return { ...player, gameStatus: "waiting" };
+              return {
+                ...player,
+                gameStatus: queuedPlayerIds.has(pId) ? "queued" : "waiting",
+              };
             }
             return player;
           });
@@ -1096,7 +1162,12 @@ const Game = () => {
 
       if (assignmentVersion === slotAssignmentVersionRef.current) {
         commitSessionData((prev) =>
-          reconcileAssignedSlotIds(prev, assignmentResult?.updatedSlotsState),
+          reconcileAssignedSlotIds(prev, assignmentResult?.updatedSlotsState, {
+            // Queuing a playing player is an additional placement; never let
+            // reconciliation treat their live Match Court slot as a move.
+            preserveLiveMatchSlotForPlayerId:
+              targetType === "queue" ? stableSessionPlayerId : undefined,
+          }),
         );
 
         const relationships = await fetchRelationshipToastData(
@@ -1116,16 +1187,16 @@ const Game = () => {
 
   const collisionDetectionStrategy = (args) => {
     const playerStatus = args.active?.data.current?.player?.gameStatus;
-    const eligibleDroppables = args.droppableContainers
-      .getEnabled()
-      .filter((container) => {
+    const eligibleDroppables = Array.from(args.droppableContainers).filter(
+      (container) => {
         const courtType = container.data.current?.courtType;
 
         if (courtType === "queue") return playerStatus === "playing";
         if (courtType === "match") return playerStatus !== "playing";
 
         return true;
-      });
+      },
+    );
 
     return pointerWithin({
       ...args,
