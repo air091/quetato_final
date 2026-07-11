@@ -657,17 +657,6 @@ export const assignPlayerToSlot = async (
       );
     }
 
-    if (
-      targetCourt.type === "match" &&
-      playerExistsInSession.gameStatus === "playing" &&
-      targetCourt.status !== "paused"
-    ) {
-      throw new AppError(
-        "A player in a live match can only be moved after that match is paused.",
-        400,
-      );
-    }
-
     // Older records were created by the accept flow with Prisma's default
     // requested status. They are valid session members, so normalize them.
     if (playerExistsInSession.status === "requested") {
@@ -705,6 +694,24 @@ export const assignPlayerToSlot = async (
         : activeMatchSlot || playerSlots[0];
     const isAdditionalQueueAssignment =
       targetCourt.type === "queue" && Boolean(activeMatchSlot) && !queueSlot;
+    const sourceMatchCourt = activeMatchSlot
+      ? findCourtForSlot(activeMatchSlot)
+      : null;
+    const isPausedMatchEdit =
+      targetCourt.type === "match" &&
+      targetCourt.status !== "started" &&
+      sourceMatchCourt?.status === "paused";
+
+    if (
+      targetCourt.type === "match" &&
+      playerExistsInSession.gameStatus === "playing" &&
+      !isPausedMatchEdit
+    ) {
+      throw new AppError(
+        "A player in a live match can only be moved after that match is paused.",
+        400,
+      );
+    }
     const occupiedSlot = allActiveSlots.find(
       (s) => s.courtId === targetCourtId && s.position === targetPosition,
     );

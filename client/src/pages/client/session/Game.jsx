@@ -1116,19 +1116,6 @@ const Game = () => {
     }
 
     const dropTarget = over.data.current || {};
-    if (dropTarget.dropType === "lobby") {
-      if (
-        player.sourceCourtStatus !== "paused" ||
-        !player.sourceCourtId ||
-        !player.sourceSlotId
-      ) {
-        return;
-      }
-
-      await handleRemovePlayer(player.sourceCourtId, player.sourceSlotId);
-      return;
-    }
-
     const targetType = dropTarget.courtType;
     const courtId = dropTarget.courtId;
     const position = Number(dropTarget.position);
@@ -1149,7 +1136,7 @@ const Game = () => {
 
     const isPausedMatchEdit =
       targetType === "match" &&
-      dropTarget.courtStatus === "paused" &&
+      dropTarget.courtStatus !== "started" &&
       player.sourceCourtStatus === "paused";
 
     if (
@@ -1235,11 +1222,8 @@ const Game = () => {
           return (
             playerStatus !== "playing" ||
             (activePlayer?.sourceCourtStatus === "paused" &&
-              dropData.courtStatus === "paused")
+              dropData.courtStatus !== "started")
           );
-        }
-        if (dropData.dropType === "lobby") {
-          return activePlayer?.sourceCourtStatus === "paused";
         }
 
         return true;
