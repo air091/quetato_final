@@ -9,6 +9,29 @@ import {
 import { randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle.js";
 
+const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+
+const createRefreshToken = async ({ userId, ipAddress, agent }) => {
+  const jti = randomUUID();
+  const refresh = signRefresh({ jti, sub: userId });
+  const hashedRefresh = await bcrypt.hash(refresh, 10);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+  await prisma.refreshToken.create({
+    data: {
+      jti,
+      userId,
+      hashedToken: hashedRefresh,
+      ipAddress,
+      userAgent: agent,
+      expiresAt,
+    },
+    select: { jti: true },
+  });
+
+  return refresh;
+};
+
 export const register = async (payload) => {
   let { username, email, password, ipAddress, agent } = payload;
 
@@ -39,22 +62,10 @@ export const register = async (payload) => {
     },
   });
 
-  // refresh
-  const jti = randomUUID();
-  const refresh = signRefresh({ jti, sub: user.id });
-  const hashedRefresh = await bcrypt.hash(refresh, 10);
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
-
-  await prisma.refreshToken.create({
-    data: {
-      jti,
-      userId: user.id,
-      hashedToken: hashedRefresh,
-      ipAddress: ipAddress,
-      userAgent: agent,
-      expiresAt,
-    },
-    select: { jti: true },
+  const refresh = await createRefreshToken({
+    userId: user.id,
+    ipAddress,
+    agent,
   });
 
   // access
@@ -79,20 +90,10 @@ export const login = async (payload) => {
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw new AppError("Email or password is incorrect", 400);
 
-  const jti = randomUUID();
-  const refresh = signRefresh({ jti, sub: user.id });
-  const hashedRefresh = await bcrypt.hash(refresh, 10);
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
-
-  await prisma.refreshToken.create({
-    data: {
-      jti,
-      userId: user.id,
-      hashedToken: hashedRefresh,
-      ipAddress: payload.ipAddress,
-      userAgent: payload.agent,
-      expiresAt,
-    },
+  const refresh = await createRefreshToken({
+    userId: user.id,
+    ipAddress: payload.ipAddress,
+    agent: payload.agent,
   });
 
   const access = signAccess({ sub: user.id });
@@ -131,8 +132,19 @@ export const refresh = async (payload) => {
   const isMatch = await bcrypt.compare(payload.token, tokenRecord.hashedToken);
   if (!isMatch) throw new AppError("Invalid token", 401);
 
-  const accessToken = signAccess({ sub: refreshPayload.sub });
-  return { accessToken };
+  await prisma.refreshToken.update({
+    where: { jti: refreshPayload.jti },
+    data: { isRevoked: true },
+  });
+
+  const refresh = await createRefreshToken({
+    userId: refreshPayload.sub,
+    ipAddress: payload.ipAddress,
+    agent: payload.agent,
+  });
+  const access = signAccess({ sub: refreshPayload.sub });
+
+  return { refresh, access };
 };
 
 export const logout = async (token) => {

@@ -126,6 +126,8 @@ export const refreshController = async (request, response) => {
 
     const tokens = await refresh({ token, ipAddress, agent });
 
+    response.cookie("session", tokens.refresh, getSessionCookieOptions());
+
     return response.status(201).json({ success: true, tokens });
   } catch (error) {
     console.error("Refresh failed", error);

@@ -286,7 +286,7 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message);
 
-      const nextToken = data.tokens.access;
+      const nextToken = data.tokens.access || data.tokens.accessToken;
       applyAccessToken(nextToken);
 
       const profileResponse = await fetch(`${AUTH_URL}/profile`, {
@@ -324,7 +324,7 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message);
 
-      const nextToken = data.tokens.access;
+      const nextToken = data.tokens.access || data.tokens.accessToken;
       applyAccessToken(nextToken);
 
       const profileResponse = await fetch(`${AUTH_URL}/profile`, {
