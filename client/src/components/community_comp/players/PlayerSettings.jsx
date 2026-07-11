@@ -40,7 +40,9 @@ const PlayerSettings = ({
     player?.username || player?.communityPlayer?.username || "";
   const initialSkillLevel =
     player?.skillLevel || player?.communityPlayer?.skillLevel || "BEG";
-  const playerId = player?.id || player?.communityPlayer?.id;
+  // CommunityPlayer.id identifies the membership record. The static-player
+  // endpoint updates the underlying User record instead.
+  const userId = player?.communityPlayer?.id || player?.id;
 
   const [username, setUsername] = useState(initialUsername);
   const [skillLevel, setSkillLevel] = useState(initialSkillLevel);
@@ -93,12 +95,12 @@ const PlayerSettings = ({
   // Handle Editing Static (Guest) Player Metadata
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username.trim() || isUpdating || !communityId || !playerId) return;
+    if (!username.trim() || isUpdating || !communityId || !userId) return;
 
     try {
       setIsUpdating(true);
       const res = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players/${playerId}/static`,
+        `${API_URL}/api/communities/${communityId}/players/${userId}/static`,
         {
           method: "PUT",
           body: JSON.stringify({
@@ -123,13 +125,13 @@ const PlayerSettings = ({
 
   // Handle Deleting/Kicking Player from entire community
   const handleRemovePlayer = useCallback(async () => {
-    if (!communityId || !playerId || isUpdating) return;
+    if (!communityId || !userId || isUpdating) return;
 
     // Determine explicit endpoint action tag or method depending on if they are static or user
     const isStatic = type === "static";
     const endpoint = isStatic
-      ? `${API_URL}/api/communities/${communityId}/players/${player?.communityPlayer?.id}/static`
-      : `${API_URL}/api/communities/${communityId}/players/${player?.communityPlayer?.id}/kick`;
+      ? `${API_URL}/api/communities/${communityId}/players/${userId}/static`
+      : `${API_URL}/api/communities/${communityId}/players/${userId}/kick`;
     // Or DELETE depending on your Kick implementation backend rules
 
     try {
@@ -157,7 +159,7 @@ const PlayerSettings = ({
     }
   }, [
     communityId,
-    playerId,
+    userId,
     type,
     isUpdating,
     fetchWithAuth,
