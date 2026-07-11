@@ -437,3 +437,72 @@ export const requestToJoinCommunity = async (communityId, userId) => {
 
   return player;
 };
+
+export const acceptPlayer = async (communityId, userId, authorizedId) => {
+  if (!communityId || !userId || !authorizedId) {
+    throw new AppError(
+      "Community ID, User ID, and Authorization ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Check if the authorizing user has admin rights in this community
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["admin", "host", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 2. Find the target player's join request
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Join request not found", 404);
+    }
+
+    // Optional: Prevent re-accepting someone who is already accepted
+    if (targetPlayer.status !== "requested") {
+      throw new AppError(
+        `Player is already processed (Current status: ${targetPlayer.status})`,
+        400,
+      );
+    }
+
+    // 3. Update the player's status to accepted/member
+    // Note: Change "accepted" to whatever matches your ApplicationStatus enum values
+    const updatedPlayer = await tx.communityPlayer.update({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+      data: {
+        status: "accepted",
+        role: "player", // Upgrading them from "guest" to a standard "player" role
+      },
+    });
+
+    return updatedPlayer;
+  });
+};
