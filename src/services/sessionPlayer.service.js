@@ -269,6 +269,8 @@ export const acceptPlayer = async (
         sessionId: session.id,
         playerId: validPlayer.id, // ✅ CommunityPlayer ID of target player
         acceptedBy: authorizedPlayer.id, // ✅ CommunityPlayer ID of admin actor
+        status: "accepted",
+        acceptedAt: new Date(),
       },
     });
   });

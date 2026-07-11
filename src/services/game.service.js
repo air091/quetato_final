@@ -617,9 +617,10 @@ export const assignPlayerToSlot = async (
         where: {
           id: sessionPlayerId,
           sessionId: sessionId,
-          status: "accepted",
+          status: { in: ["accepted", "requested"] },
           isHide: false,
         },
+        select: { id: true, status: true, acceptedAt: true },
       }),
     ]);
 
@@ -645,7 +646,22 @@ export const assignPlayerToSlot = async (
     }
 
     if (!playerExistsInSession) {
-      throw new AppError(`Invalid Player: Provided ID does not exist.`, 400);
+      throw new AppError(
+        "Player is not an eligible, visible member of this session.",
+        400,
+      );
+    }
+
+    // Older records were created by the accept flow with Prisma's default
+    // requested status. They are valid session members, so normalize them.
+    if (playerExistsInSession.status === "requested") {
+      await tx.sessionPlayer.update({
+        where: { id: playerExistsInSession.id },
+        data: {
+          status: "accepted",
+          acceptedAt: playerExistsInSession.acceptedAt || new Date(),
+        },
+      });
     }
 
     const sourceSlot = allActiveSlots.find(

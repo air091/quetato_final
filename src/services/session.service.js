@@ -224,6 +224,7 @@ export const createSession = async (
         data: adminsToAutoAdd.map((admin) => ({
           sessionId: session.id,
           playerId: admin.id,
+          status: "accepted",
           acceptedAt: new Date(),
         })),
       });
