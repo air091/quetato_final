@@ -139,15 +139,15 @@ const PlayerSettings = ({
       );
 
       if (!response || !response.ok) {
-        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
+        const errorData = await response?.json().catch(() => ({}));
+        throw new Error(
+          errorData?.message ||
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+        );
       }
 
-      // This endpoint succeeds with 204 No Content, so there is no JSON
-      // payload to parse on a successful removal.
-      if (response.status !== 204) {
-        const resData = await response.json().catch(() => ({}));
-        if (!resData?.success) throw new Error(resData?.message);
-      }
+      const resData = await response.json().catch(() => ({}));
+      if (!resData?.success) throw new Error(resData?.message);
 
       if (typeof onUpdatePlayerStatus === "function") {
         onUpdatePlayerStatus();

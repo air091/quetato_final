@@ -441,7 +441,7 @@ export const unhideAuthorizedPlayerInSession = async (
 export const removePlayerFromSession = async (
   communityId,
   sessionId,
-  playerId,
+  sessionPlayerId,
   authorizedId,
 ) => {
   // 1. Verify the targeted session exists and belongs to the community
@@ -453,7 +453,7 @@ export const removePlayerFromSession = async (
   });
 
   if (!session) {
-    throw new Error("Session not found within the specified community.");
+    throw new AppError("Session not found within the specified community.", 404);
   }
 
   // 2. Authorization check: Ensure the operator is part of the community and holds an administrative role
@@ -469,31 +469,28 @@ export const removePlayerFromSession = async (
 
   const validRoles = ["owner", "admin", "host"];
   if (!operatorRole || !validRoles.includes(operatorRole.role)) {
-    throw new Error(
+    throw new AppError(
       "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
+      403,
     );
   }
 
-  // 3. Find the target SessionPlayer record
-  // Checking by record ID or by structural cross-lookup mapping
-  const targetSessionPlayer = await prisma.sessionPlayer.findFirst({
+  // 3. The route supplies a SessionPlayer ID, not a CommunityPlayer ID.
+  const targetSessionPlayer = await prisma.sessionPlayer.findUnique({
     where: {
-      playerId,
-      sessionId: sessionId,
-    },
-    include: {
-      courtSlot: true, // Pull slot placements to verify court status
+      id: sessionPlayerId,
     },
   });
 
-  if (!targetSessionPlayer) {
-    throw new Error("The player is not registered in this session.");
+  if (!targetSessionPlayer || targetSessionPlayer.sessionId !== sessionId) {
+    throw new AppError("The player is not registered in this session.", 404);
   }
 
-  // 4. Protection Guard: Prevent removing a player if they are actively playing or queued on a court
+  // 4. Protection Guard: A player cannot leave the session during a live match.
   if (targetSessionPlayer.gameStatus === GameStatus.playing) {
-    throw new Error(
-      "Cannot remove player: They are currently assigned to an active court or queue slot.",
+    throw new AppError(
+      "Cannot remove a player while they are in an active match.",
+      409,
     );
   }
 
