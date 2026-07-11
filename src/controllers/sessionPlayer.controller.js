@@ -8,7 +8,7 @@ import {
   unhideAuthorizedPlayerInSession,
 } from "../services/sessionPlayer.service.js";
 import { AppError } from "../libs/errorHandle.js";
-import { getStaticPlayersNotInSession } from "../services/player.service.js";
+import { getStaticPlayerNotInSession } from "../services/player.service.js";
 
 export const getAllSessionPlayersController = async (request, response) => {
   try {
@@ -35,13 +35,13 @@ export const getAllSessionPlayersController = async (request, response) => {
   }
 };
 
-export const getStaticPlayersNotInSessionController = async (
+export const getStaticPlayerNotInSessionController = async (
   request,
   response,
 ) => {
   try {
     const { communityId, sessionId } = request.params;
-    const results = await getStaticPlayersNotInSession(
+    const results = await getStaticPlayerNotInSession(
       communityId,
       sessionId,
       request.user.sub,
