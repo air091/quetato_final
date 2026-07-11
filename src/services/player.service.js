@@ -372,3 +372,19 @@ export const deleteStaticPlayer = async (communityId, userId, authorizedId) => {
     return { success: true, message: "Static player deleted successfully" };
   });
 };
+
+export const requestToJoinCommunity = async (communityId, userId) => {
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { id: true },
+  });
+  if (!community) throw new AppError("Community not found", 404);
+
+  const player = await prisma.communityPlayer.create({
+    data: {
+      communityId: community.id,
+      userId,
+      role: "guest",
+    },
+  });
+};
