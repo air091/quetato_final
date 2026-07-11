@@ -50,6 +50,7 @@ import {
   unhideAuthorizedPlayerInSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import {
+  getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
 } from "../controllers/gameHistory.controller.js";
@@ -80,6 +81,10 @@ router.get("/:communityId/players", getAllPlayersController);
 router.get(
   "/:communityId/players/total-community-games",
   getPlayerTotalCommunityGamesController,
+);
+router.get(
+  "/:communityId/players/:communityPlayerId/history",
+  getCommunityPlayerHistoryController,
 );
 router.get("/:communityId/players/:playerId", getPlayerByIdController);
 

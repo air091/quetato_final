@@ -102,6 +102,127 @@ export const getPlayerGameHistory = async (sessionPlayerId) => {
   };
 };
 
+export const getCommunityPlayerHistory = async (
+  communityId,
+  communityPlayerId,
+) => {
+  if (!communityId || !communityPlayerId) {
+    throw new AppError("Community and player IDs are required", 400);
+  }
+
+  const communityPlayer = await prisma.communityPlayer.findFirst({
+    where: { id: communityPlayerId, communityId },
+    select: {
+      id: true,
+      communityPlayer: { select: { username: true } },
+      sessionPlayers: {
+        where: { session: { communityId } },
+        select: {
+          id: true,
+          gameStatus: true,
+          updateStatus: true,
+          session: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+
+  if (!communityPlayer) {
+    throw new AppError("Community player not found", 404);
+  }
+
+  const sessionPlayerIds = communityPlayer.sessionPlayers.map(
+    (player) => player.id,
+  );
+  const matchRecords =
+    sessionPlayerIds.length > 0
+      ? await prisma.matchHistoryPlayer.findMany({
+          where: { sessionPlayerId: { in: sessionPlayerIds } },
+          include: {
+            matchHistory: {
+              include: {
+                session: { select: { id: true, name: true } },
+                matchHistoryPlayer: {
+                  include: {
+                    sessionPlayer: {
+                      select: {
+                        sessionPlayer: {
+                          select: {
+                            communityPlayer: { select: { username: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { matchHistory: { endedAt: "desc" } },
+        })
+      : [];
+
+  const history = matchRecords.map((record) => {
+    const match = record.matchHistory;
+    const teamA = [];
+    const teamB = [];
+
+    match.matchHistoryPlayer.forEach((matchPlayer) => {
+      const playerInfo = {
+        sessionPlayerId: matchPlayer.sessionPlayerId,
+        username:
+          matchPlayer.sessionPlayer?.sessionPlayer?.communityPlayer
+            ?.username || "Unknown Player",
+      };
+
+      if (matchPlayer.team === "a") teamA.push(playerInfo);
+      if (matchPlayer.team === "b") teamB.push(playerInfo);
+    });
+
+    return {
+      matchHistoryId: match.id,
+      sessionName: match.session?.name || "Unknown session",
+      courtName: match.courtName || "Unknown court",
+      winningTeam: match.winningTeam,
+      startedAt: match.startedAt,
+      endedAt: match.endedAt,
+      result: record.iswin ? "win" : "loss",
+      points: record.iswin ? 1 : 0,
+      teamA,
+      teamB,
+    };
+  });
+
+  const payments = communityPlayer.sessionPlayers
+    .filter((player) => player.gameStatus === "paid")
+    .map((player) => ({
+      sessionId: player.session.id,
+      sessionName: player.session.name,
+      paidAt: player.updateStatus,
+      points: 3,
+    }))
+    .sort((left, right) => new Date(right.paidAt) - new Date(left.paidAt));
+
+  const totalWins = history.filter((match) => match.result === "win").length;
+
+  return {
+    player: {
+      id: communityPlayer.id,
+      username: communityPlayer.communityPlayer.username,
+    },
+    summary: {
+      totalGames: history.length,
+      totalWins,
+      totalLosses: history.length - totalWins,
+      winPoints: totalWins,
+      paymentPoints: payments.length * 3,
+      totalPoints: totalWins + payments.length * 3,
+    },
+    history,
+    payments,
+  };
+};
+
 export const getPlayerTotalCommunityGames = async (communityId) => {
   if (!communityId) {
     throw new AppError("Community ID is required", 400);

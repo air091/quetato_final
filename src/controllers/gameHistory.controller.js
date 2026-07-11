@@ -1,5 +1,6 @@
 import { AppError } from "../libs/errorHandle.js";
 import {
+  getCommunityPlayerHistory,
   getPlayerGameHistory,
   getPlayerTotalCommunityGames,
 } from "../services/matchHistory.service.js";
@@ -22,6 +23,23 @@ export const getPlayerGameHistoryController = async (request, response) => {
     return response
       .status(statusCode)
       .json({ success: false, message: errMessage });
+  }
+};
+
+export const getCommunityPlayerHistoryController = async (request, response) => {
+  try {
+    const { communityId, communityPlayerId } = request.params;
+    const results = await getCommunityPlayerHistory(
+      communityId,
+      communityPlayerId,
+    );
+    return response.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error("Get community player history failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message =
+      error instanceof AppError ? error.message : "Internal server error";
+    return response.status(statusCode).json({ success: false, message });
   }
 };
 

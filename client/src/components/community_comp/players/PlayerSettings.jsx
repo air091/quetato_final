@@ -10,6 +10,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../PlayerAvatar";
 import { API_URL } from "../../../contexts/AuthContext";
+import CommunityPlayerHistory from "./CommunityPlayerHistory";
 
 // Map to look up readable labels for read-only user views
 const SKILL_LEVEL_LABELS = {
@@ -34,6 +35,7 @@ const PlayerSettings = ({
   const { fetchWithAuth } = useAuth();
   const { communityId } = useParams();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCommunityHistoryOpen, setIsCommunityHistoryOpen] = useState(false);
 
   // Fallbacks depending on your payload structure (adjusting to fit community level data shape)
   const initialUsername =
@@ -43,6 +45,7 @@ const PlayerSettings = ({
   // CommunityPlayer.id identifies the membership record. The static-player
   // endpoint updates the underlying User record instead.
   const userId = player?.communityPlayer?.id || player?.id;
+  const communityPlayerId = player?.id;
 
   const [username, setUsername] = useState(initialUsername);
   const [skillLevel, setSkillLevel] = useState(initialSkillLevel);
@@ -265,6 +268,13 @@ const PlayerSettings = ({
                   Delete
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsCommunityHistoryOpen(true)}
+                className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+              >
+                Points & session history
+              </button>
             </form>
           ) : (
             /* REGISTERED USER PLAYER: Read-only data layout */
@@ -277,6 +287,14 @@ const PlayerSettings = ({
                   {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
                 </span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCommunityHistoryOpen(true)}
+                className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+              >
+                Points & session history
+              </button>
 
               {/* Only show kick option if the member target isn't the primary owner */}
               {player?.role !== "owner" ? (
@@ -299,6 +317,15 @@ const PlayerSettings = ({
           )}
         </div>,
         document.body,
+      )}
+
+      {isCommunityHistoryOpen && communityPlayerId && (
+        <CommunityPlayerHistory
+          communityId={communityId}
+          communityPlayerId={communityPlayerId}
+          username={initialUsername || "Player"}
+          onClose={() => setIsCommunityHistoryOpen(false)}
+        />
       )}
     </>
   );
