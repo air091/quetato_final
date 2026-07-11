@@ -408,11 +408,32 @@ export const requestToJoinCommunity = async (communityId, userId) => {
   });
   if (!community) throw new AppError("Community not found", 404);
 
+  // 🌟 Check if this user is already associated with the community
+  const existingPlayer = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: community.id,
+        userId,
+      },
+    },
+  });
+
+  if (existingPlayer) {
+    // Customize this error based on your needs (e.g., if they are already a member vs pending)
+    throw new AppError(
+      "You have already requested to join or are a member of this community",
+      400,
+    );
+  }
+
   const player = await prisma.communityPlayer.create({
     data: {
       communityId: community.id,
       userId,
       role: "guest",
+      // status will default to "requested" based on your schema default
     },
   });
+
+  return player;
 };
