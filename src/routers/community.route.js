@@ -33,6 +33,7 @@ import {
   updateSessionController,
 } from "../controllers/session.controller.js";
 import {
+  acceptPlayerInCommunityController,
   createStaticPlayersController,
   deleteStaticPlayerController,
   getAllPlayersController,
@@ -94,9 +95,11 @@ router.delete(
   deleteStaticPlayerController,
 );
 
-router.post(
-  "/:communityId/players/:userId/request",
-  requestToJoinCommunityController,
+router.post("/:communityId/request", requestToJoinCommunityController);
+
+router.patch(
+  "/:communityId/players/:userId/accept",
+  acceptPlayerInCommunityController,
 );
 
 // SESSIONS

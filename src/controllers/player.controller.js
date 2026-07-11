@@ -124,11 +124,31 @@ export const deleteStaticPlayerController = async (request, response) => {
 
 export const requestToJoinCommunityController = async (request, response) => {
   try {
-    const { communityId, userId } = request.params;
-    await requestToJoinCommunity(communityId, userId);
-    return response.status(200).json({ success: true });
+    const { communityId } = request.params;
+    await requestToJoinCommunity(communityId, request.user.sub);
+    return response.status(201).json({ success: true });
   } catch (error) {
     console.error("Request to join community failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const acceptPlayerInCommunityController = async (request, response) => {
+  try {
+    const { communityId, userId } = request.params;
+    await acceptPlayerInCommunity(communityId, userId, request.user.sub);
+    return response.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Accept player to community failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";

@@ -438,7 +438,11 @@ export const requestToJoinCommunity = async (communityId, userId) => {
   return player;
 };
 
-export const acceptPlayer = async (communityId, userId, authorizedId) => {
+export const acceptPlayerInCommunity = async (
+  communityId,
+  userId,
+  authorizedId,
+) => {
   if (!communityId || !userId || !authorizedId) {
     throw new AppError(
       "Community ID, User ID, and Authorization ID are required",
