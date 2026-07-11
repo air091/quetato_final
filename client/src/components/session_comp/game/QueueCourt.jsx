@@ -254,6 +254,7 @@ const CourtSlot = ({
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
     data: { player: { ...matchedPoolPlayer, totalGames: displayedTotalGames } },
+    disabled: matchedPoolPlayer?.gameStatus === "paid",
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;

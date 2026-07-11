@@ -657,6 +657,13 @@ export const assignPlayerToSlot = async (
       );
     }
 
+    if (playerExistsInSession.gameStatus === "paid") {
+      throw new AppError(
+        "A paid player must be unmarked as paid before changing court slots.",
+        400,
+      );
+    }
+
     // Older records were created by the accept flow with Prisma's default
     // requested status. They are valid session members, so normalize them.
     if (playerExistsInSession.status === "requested") {

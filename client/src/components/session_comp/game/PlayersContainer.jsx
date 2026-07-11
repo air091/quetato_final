@@ -226,6 +226,7 @@ const DraggablePlayer = ({
   const draggableProps = useDraggable({
     id: `draggable-player-container-${player.id}`,
     data: { player: { ...player, totalGames: displayedTotalGames } },
+    disabled: player?.gameStatus === "paid",
   });
 
   const stablePlayerId = player?.id;

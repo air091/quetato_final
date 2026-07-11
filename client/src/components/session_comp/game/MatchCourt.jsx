@@ -253,6 +253,7 @@ const CourtSlot = ({
         sourceSlotId: slotData?.id,
       },
     },
+    disabled: matchedPoolPlayer?.gameStatus === "paid",
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;

@@ -1104,6 +1104,7 @@ const Game = () => {
 
     const player = active.data.current?.player;
     if (!player || player?.isHide) return;
+    if (player.gameStatus === "paid") return;
 
     // 1. Get the true SessionPlayer CUID required by both backend validation and slots
     const stableSessionPlayerId = resolveSessionPlayerId(player);
@@ -1212,6 +1213,7 @@ const Game = () => {
   const collisionDetectionStrategy = (args) => {
     const activePlayer = args.active?.data.current?.player;
     const playerStatus = activePlayer?.gameStatus;
+    if (playerStatus === "paid") return [];
     const eligibleDroppables = Array.from(args.droppableContainers).filter(
       (container) => {
         const dropData = container.data.current || {};
