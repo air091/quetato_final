@@ -48,7 +48,12 @@ export const registerController = async (request, response) => {
 
     response.cookie("session", tokens.refresh, getSessionCookieOptions());
 
-    return response.status(200).json({ success: true, tokens });
+    // The refresh token is deliberately HttpOnly and is only sent as the
+    // session cookie. Never expose it to JavaScript or localStorage.
+    return response.status(200).json({
+      success: true,
+      tokens: { access: tokens.access },
+    });
   } catch (error) {
     console.error("Register failed", error);
 
@@ -76,7 +81,12 @@ export const loginController = async (request, response) => {
 
     response.cookie("session", tokens.refresh, getSessionCookieOptions());
 
-    return response.status(200).json({ success: true, tokens });
+    // The refresh token is deliberately HttpOnly and is only sent as the
+    // session cookie. Never expose it to JavaScript or localStorage.
+    return response.status(200).json({
+      success: true,
+      tokens: { access: tokens.access },
+    });
   } catch (error) {
     console.error("Login failed", error);
 
@@ -128,7 +138,12 @@ export const refreshController = async (request, response) => {
 
     response.cookie("session", tokens.refresh, getSessionCookieOptions());
 
-    return response.status(201).json({ success: true, tokens });
+    // Refresh-token rotation updates the HttpOnly cookie; the client needs
+    // only the new short-lived access token.
+    return response.status(201).json({
+      success: true,
+      tokens: { access: tokens.access },
+    });
   } catch (error) {
     console.error("Refresh failed", error);
     let errorMessage = "Internal server error";

@@ -7,7 +7,12 @@ import {
 } from "react";
 
 export const AuthContext = createContext(null);
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// In production, requests go through the Vercel /api rewrite. This makes the
+// refresh cookie first-party to the frontend instead of a third-party Render
+// cookie, which browsers may block.
+const BASE_URL = import.meta.env.DEV
+  ? import.meta.env.VITE_API_URL || "http://localhost:8000"
+  : window.location.origin;
 export const API_URL = BASE_URL;
 const AUTH_URL = `${BASE_URL}/api/auth`;
 const ACCESS_TOKEN_STORAGE_KEY = "quetato_access_token";
