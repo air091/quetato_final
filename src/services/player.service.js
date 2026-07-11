@@ -73,7 +73,7 @@ export const getPlayerById = async (communityId, playerId) => {
   return player;
 };
 
-export const getStaticPlayersNotInSession = async (
+export const getStaticPlayerNotInSession = async (
   communityId,
   sessionId,
   authorizedId,
@@ -189,10 +189,38 @@ export const createStaticPlayers = async (
       throw new AppError("Forbidden", 403);
     }
 
-    // 3. Map each username into an isolated create operation bound to the transaction context (tx)
-    const promises = usernames.map((username) => {
-      const trimmedName = username.trim();
+    // 🌟 2.5. Check for existing usernames in this specific community
+    const trimmedUsernames = usernames.map((name) => name.trim());
 
+    const existingPlayers = await tx.communityPlayer.findMany({
+      where: {
+        communityId: community.id,
+        communityPlayer: {
+          username: {
+            in: trimmedUsernames,
+            mode: "insensitive", // Optional: Makes the check case-insensitive
+          },
+        },
+      },
+      select: {
+        communityPlayer: {
+          select: { username: true },
+        },
+      },
+    });
+
+    if (existingPlayers.length > 0) {
+      const duplicateNames = existingPlayers.map(
+        (p) => p.communityPlayer.username,
+      );
+      throw new AppError(
+        `The following usernames already exist in this community: ${duplicateNames.join(", ")}`,
+        400,
+      );
+    }
+
+    // 3. Map each username into an isolated create operation bound to the transaction context (tx)
+    const promises = trimmedUsernames.map((trimmedName) => {
       return tx.user.create({
         data: {
           username: trimmedName,
