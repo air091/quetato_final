@@ -44,7 +44,7 @@ import {
 import {
   acceptPlayerController,
   getAllSessionPlayersController,
-  getStaticPlayersNotInSessionController,
+  getStaticPlayerNotInSessionController,
   hideAuthorizedPlayerInSessionController,
   removePlayerFromSessionController,
   unhideAuthorizedPlayerInSessionController,
@@ -129,7 +129,7 @@ router.get(
 
 router.get(
   "/:communityId/sessions/:sessionId/players/static",
-  getStaticPlayersNotInSessionController,
+  getStaticPlayerNotInSessionController,
 );
 
 router.post(
