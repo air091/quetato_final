@@ -157,12 +157,28 @@ const applyOptimisticSlotAssignment = (
 ) => {
   const targetCourtLocation = findCourtLocation(sessionData, courtId);
   const targetCourt = targetCourtLocation?.court;
-  const sourceLocation = findSlotLocation(sessionData, (slot, court) => {
-    if (resolveSlotSessionPlayerId(slot) !== sessionPlayerId) return false;
-    return targetType !== "queue" || court.type === "queue";
-  });
-  const isAdditionalQueueAssignment =
-    targetType === "queue" && !sourceLocation;
+  const activeMatchLocation = findSlotLocation(sessionData, (slot, court) =>
+    resolveSlotSessionPlayerId(slot) === sessionPlayerId &&
+    court.type === "match" &&
+    (court.status === "started" || court.status === "paused"),
+  );
+  const queueSourceLocation = findSlotLocation(sessionData, (slot, court) =>
+    resolveSlotSessionPlayerId(slot) === sessionPlayerId &&
+    court.type === "queue",
+  );
+  const sourceLocation =
+    targetType === "queue"
+      ? queueSourceLocation ||
+        (activeMatchLocation
+          ? null
+          : findSlotLocation(
+              sessionData,
+              (slot) => resolveSlotSessionPlayerId(slot) === sessionPlayerId,
+            ))
+      : findSlotLocation(
+          sessionData,
+          (slot) => resolveSlotSessionPlayerId(slot) === sessionPlayerId,
+        );
   const occupiedLocation = findSlotLocation(
     sessionData,
     (slot, court) => court.id === courtId && slot.position === position,
@@ -178,7 +194,9 @@ const applyOptimisticSlotAssignment = (
   const targetSlotPlayer = createOptimisticSlotPlayer(
     player,
     sessionPlayerId,
-    isAdditionalQueueAssignment ? player.gameStatus : targetStatus,
+    targetType === "queue" && player.gameStatus === "playing"
+      ? "playing"
+      : targetStatus,
     timestamp,
   );
   const occupiedPlayer =
@@ -256,7 +274,9 @@ const applyOptimisticSlotAssignment = (
       const candidatePlayerId = resolveSessionPlayerId(candidatePlayer);
 
       if (candidatePlayerId === sessionPlayerId) {
-        if (targetType === "queue") return candidatePlayer;
+        if (targetType === "queue" && candidatePlayer.gameStatus === "playing") {
+          return candidatePlayer;
+        }
 
         return setPlayerGameStatus(
           candidatePlayer,
@@ -422,20 +442,21 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
 
   const queueSlotsToMove = (queueCourt.slots || [])
     .filter((slot) => resolveSlotSessionPlayerId(slot))
-    .filter((slot) => {
-      const sessionPlayerId = resolveSlotSessionPlayerId(slot);
-      const player =
-        slot.sessionPlayer ||
-        sessionData.players.find(
-          (candidatePlayer) =>
-            resolveSessionPlayerId(candidatePlayer) === sessionPlayerId,
-        );
-
-      return player?.gameStatus !== "playing";
-    })
     .sort((left, right) => left.position - right.position);
 
-  if (queueSlotsToMove.length === 0) {
+  const hasPlayingPlayer = queueSlotsToMove.some((slot) => {
+    const sessionPlayerId = resolveSlotSessionPlayerId(slot);
+    const player =
+      slot.sessionPlayer ||
+      sessionData.players.find(
+        (candidatePlayer) =>
+          resolveSessionPlayerId(candidatePlayer) === sessionPlayerId,
+      );
+
+    return player?.gameStatus === "playing";
+  });
+
+  if (queueSlotsToMove.length === 0 || hasPlayingPlayer) {
     return { canTransfer: false, nextSessionData: sessionData };
   }
 
@@ -1019,6 +1040,7 @@ const Game = () => {
               return {
                 ...player,
                 gameStatus: queuedPlayerIds.has(pId) ? "queued" : "waiting",
+                totalGames: (Number(player.totalGames) || 0) + 1,
               };
             }
             return player;
@@ -1114,11 +1136,6 @@ const Game = () => {
       return;
     }
 
-    if (targetType === "queue" && player.gameStatus !== "playing") {
-      console.warn("Only players currently playing can be added to a queue.");
-      return;
-    }
-
     if (targetType === "match" && player.gameStatus === "playing") {
       console.warn(
         "A player who is already playing must be queued for their next match instead.",
@@ -1191,7 +1208,7 @@ const Game = () => {
       (container) => {
         const courtType = container.data.current?.courtType;
 
-        if (courtType === "queue") return playerStatus === "playing";
+        if (courtType === "queue") return true;
         if (courtType === "match") return playerStatus !== "playing";
 
         return true;

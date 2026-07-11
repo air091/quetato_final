@@ -658,16 +658,6 @@ export const assignPlayerToSlot = async (
     }
 
     if (
-      targetCourt.type === "queue" &&
-      playerExistsInSession.gameStatus !== "playing"
-    ) {
-      throw new AppError(
-        "Only a player who is currently playing can be added to a queue for their next match.",
-        400,
-      );
-    }
-
-    if (
       targetCourt.type === "match" &&
       playerExistsInSession.gameStatus === "playing"
     ) {
@@ -692,19 +682,28 @@ export const assignPlayerToSlot = async (
     const playerSlots = allActiveSlots.filter(
       (slot) => slot.sessionPlayerId === sessionPlayerId,
     );
-    // A playing player may keep their active Match Court slot while receiving
-    // one additional Queue Court slot for their next match.
+    const findCourtForSlot = (slot) =>
+      allSessionCourts.find((court) => court.id === slot.courtId);
+    const activeMatchSlot = playerSlots.find((slot) => {
+      const court = findCourtForSlot(slot);
+      return (
+        court?.type === "match" &&
+        (court.status === "started" || court.status === "paused")
+      );
+    });
+    const queueSlot = playerSlots.find(
+      (slot) => findCourtForSlot(slot)?.type === "queue",
+    );
+
+    // A playing player keeps their live Match Court slot and receives an
+    // additional Queue Court slot. Players who are not live can be moved from
+    // their current assignment into the queue normally.
     const sourceSlot =
       targetCourt.type === "queue"
-        ? playerSlots.find((slot) => {
-            const court = allSessionCourts.find(
-              (candidate) => candidate.id === slot.courtId,
-            );
-            return court?.type === "queue";
-          })
+        ? queueSlot || (activeMatchSlot ? null : playerSlots[0])
         : playerSlots[0];
     const isAdditionalQueueAssignment =
-      targetCourt.type === "queue" && !sourceSlot;
+      targetCourt.type === "queue" && Boolean(activeMatchSlot) && !queueSlot;
     const occupiedSlot = allActiveSlots.find(
       (s) => s.courtId === targetCourtId && s.position === targetPosition,
     );
@@ -1083,13 +1082,24 @@ export const transferQueueToMatch = async (
     }
 
     // Sort queue slots to maintain the sequence order
-    const queueSlotsToMove = queueCourt.slots
-      .filter((slot) => slot.sessionPlayer.gameStatus !== "playing")
-      .sort((a, b) => a.position - b.position);
+    const hasPlayingPlayer = queueCourt.slots.some(
+      (slot) => slot.sessionPlayer.gameStatus === "playing",
+    );
+
+    if (hasPlayingPlayer) {
+      throw new AppError(
+        "Cannot transfer a queue while one of its players is still in an active match",
+        422,
+      );
+    }
+
+    const queueSlotsToMove = [...queueCourt.slots].sort(
+      (a, b) => a.position - b.position,
+    );
 
     if (queueSlotsToMove.length === 0) {
       throw new AppError(
-        "Queued players are still in an active match and cannot be transferred yet",
+        "No transferable players were found in this queue",
         422,
       );
     }

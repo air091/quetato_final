@@ -214,12 +214,18 @@ const DraggablePlayer = ({
   sessionId,
 }) => {
   const { fetchWithAuth } = useAuth();
-  const [totalGames, setTotalGames] = useState(0);
+  const [totalGames, setTotalGames] = useState(
+    Number(player?.totalGames) || 0,
+  );
   const [isOverdue, setIsOverdue] = useState(false);
+  const displayedTotalGames = Math.max(
+    totalGames,
+    Number(player?.totalGames) || 0,
+  );
 
   const draggableProps = useDraggable({
     id: `draggable-player-container-${player.id}`,
-    data: { player: { ...player, totalGames } },
+    data: { player: { ...player, totalGames: displayedTotalGames } },
   });
 
   const stablePlayerId = player?.id;
@@ -318,7 +324,7 @@ const DraggablePlayer = ({
           isSettingsOpen={isSettingsOpen}
           player={player}
           onRefreshData={onRefreshData}
-          totalGames={totalGames}
+          totalGames={displayedTotalGames}
           isOverdue={isOverdue}
         />
       </div>
@@ -341,7 +347,7 @@ const DraggablePlayer = ({
               <div className="flex items-center gap-x-1">
                 <span className="flex items-center gap-x-1">
                   <Gamepad2 size={12} />
-                  <span className="text-[10px]">{totalGames}</span>
+                  <span className="text-[10px]">{displayedTotalGames}</span>
                 </span>
                 <span className="text-[9px] bg-white px-0.5 rounded-full">
                   {player?.sessionPlayer?.communityPlayer.skillLevel}

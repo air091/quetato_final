@@ -156,7 +156,9 @@ const CourtSlot = ({
   sessionId,
 }) => {
   const { fetchWithAuth } = useAuth();
-  const [totalGames, setTotalGames] = useState(0);
+  const [totalGames, setTotalGames] = useState(
+    Number(matchedPoolPlayer?.totalGames) || 0,
+  );
   const [isOverdue, setIsOverdue] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
@@ -183,6 +185,10 @@ const CourtSlot = ({
     matchedPoolPlayer?.id ||
     matchedPoolPlayer?.sessionPlayer?.id ||
     slotData?.sessionPlayerId;
+  const displayedTotalGames = Math.max(
+    totalGames,
+    Number(matchedPoolPlayer?.totalGames) || 0,
+  );
 
   // 🌟 Active threshold check effect monitoring the 20-minute marker
   const timestamp =
@@ -247,7 +253,7 @@ const CourtSlot = ({
 
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
-    data: { player: { ...matchedPoolPlayer, totalGames } },
+    data: { player: { ...matchedPoolPlayer, totalGames: displayedTotalGames } },
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
@@ -288,7 +294,7 @@ const CourtSlot = ({
             transform={draggableProps.transform}
             player={matchedPoolPlayer}
             onRefreshData={onRefreshData}
-            totalGames={totalGames}
+            totalGames={displayedTotalGames}
             isOverdue={isOverdue}
           />
 
@@ -310,7 +316,7 @@ const CourtSlot = ({
                   <div className="flex items-center gap-x-1">
                     <span className="flex items-center gap-x-1">
                       <Gamepad2 size={12} />{" "}
-                      <span className="text-[10px]">{totalGames}</span>
+                      <span className="text-[10px]">{displayedTotalGames}</span>
                     </span>
                     <span className="text-[9px] bg-white px-0.5 rounded-full">
                       {
@@ -352,6 +358,13 @@ const QueueCourtCard = ({
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
+  const hasPlayingPlayer = (queueCourt?.slots || []).some((slot) => {
+    const player =
+      slot.sessionPlayer ||
+      players.find((candidatePlayer) => candidatePlayer.id === slot.sessionPlayerId);
+
+    return player?.gameStatus === "playing";
+  });
 
   return (
     <div
@@ -425,7 +438,7 @@ const QueueCourtCard = ({
         <div className="flex items-center justify-between w-full">
           <span className="text-[14px] font-semibold">{queueCourt?.name}</span>
           <div className="flex items-center gap-x-1 relative">
-            {queueCourt.slots?.length > 0 && (
+            {queueCourt.slots?.length > 0 && !hasPlayingPlayer && (
               <button
                 onClick={() => onTransferQueue(queueCourt.id)}
                 title="Transfer players to first open Match Court"

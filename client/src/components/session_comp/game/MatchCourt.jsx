@@ -155,7 +155,9 @@ const CourtSlot = ({
   isCourtPaused, // 🌟 Received context parameter
 }) => {
   const { fetchWithAuth } = useAuth();
-  const [totalGames, setTotalGames] = useState(0);
+  const [totalGames, setTotalGames] = useState(
+    Number(matchedPoolPlayer?.totalGames) || 0,
+  );
   const [isOverdue, setIsOverdue] = useState(false);
 
   // 🌟 Disable droppable capture if the court is active and NOT explicitly paused
@@ -173,6 +175,10 @@ const CourtSlot = ({
     matchedPoolPlayer?.id ||
     matchedPoolPlayer?.sessionPlayer?.id ||
     slotData?.sessionPlayerId;
+  const displayedTotalGames = Math.max(
+    totalGames,
+    Number(matchedPoolPlayer?.totalGames) || 0,
+  );
 
   const timestamp =
     matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt;
@@ -236,7 +242,7 @@ const CourtSlot = ({
   // in Game.jsx still prevent a playing player from being moved to a Match Court.
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
-    data: { player: { ...matchedPoolPlayer, totalGames } },
+    data: { player: { ...matchedPoolPlayer, totalGames: displayedTotalGames } },
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
@@ -288,7 +294,7 @@ const CourtSlot = ({
             transform={draggableProps.transform}
             player={matchedPoolPlayer}
             onRefreshData={onRefreshData}
-            totalGames={totalGames}
+            totalGames={displayedTotalGames}
             isOverdue={isOverdue}
           />
 
@@ -310,7 +316,7 @@ const CourtSlot = ({
                   <div className="flex items-center gap-x-1">
                     <span className="flex items-center gap-x-1">
                       <Gamepad2 size={12} />{" "}
-                      <span className="text-[10px]">{totalGames}</span>
+                      <span className="text-[10px]">{displayedTotalGames}</span>
                     </span>
                     <span className="text-[9px] bg-white px-0.5 rounded-full">
                       {
