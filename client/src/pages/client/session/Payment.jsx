@@ -20,8 +20,13 @@ import { useSession } from "../../../hooks/useSession";
 
 const Payment = () => {
   const { fetchWithAuth } = useAuth();
-  const { communityId, sessionId, sessionData, refreshSessionContext } =
-    useSession();
+  const {
+    communityId,
+    sessionId,
+    sessionData,
+    setSessionData,
+    refreshSessionContext,
+  } = useSession();
   const [updatingPlayerId, setUpdatingPlayerId] = useState(null);
   const [optimisticPaymentStatuses, setOptimisticPaymentStatuses] = useState(
     {},
@@ -137,9 +142,29 @@ const Payment = () => {
       if (!data.success)
         throw new Error(data?.message || "Failed to update payment status");
 
+      const nextGameStatus =
+        data?.result?.player?.gameStatus ||
+        (shouldMarkPaid ? "paid" : "waiting");
+
+      // Update the shared session roster immediately so the Game page's
+      // status filters reflect this payment without waiting for navigation.
+      setSessionData((previous) => ({
+        ...previous,
+        players: (previous.players || []).map((player) =>
+          player.id === sessionPlayerId
+            ? {
+                ...player,
+                gameStatus: nextGameStatus,
+                updateStatus:
+                  data?.result?.player?.updateStatus || player.updateStatus,
+              }
+            : player,
+        ),
+      }));
+
       setOptimisticPaymentStatuses((currentStatuses) => ({
         ...currentStatuses,
-        [sessionPlayerId]: shouldMarkPaid ? "paid" : "waiting",
+        [sessionPlayerId]: nextGameStatus,
       }));
       await refreshSessionContext({ silent: true });
       setOptimisticPaymentStatuses((currentStatuses) => {

@@ -90,6 +90,7 @@ export const getAllSessionPlayers = async (
     waiting: 1,
     queued: 2,
     playing: 3,
+    paid: 4,
   };
 
   // 🌟 5. Sort the array
