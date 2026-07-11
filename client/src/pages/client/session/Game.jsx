@@ -25,13 +25,29 @@ const resolveSessionPlayerId = (player) =>
 const resolveSlotSessionPlayerId = (slot) =>
   slot?.sessionPlayerId || resolveSessionPlayerId(slot?.sessionPlayer);
 
-const setPlayerGameStatus = (player, sessionPlayerId, gameStatus) => {
+const shouldResetPlayerTimer = (currentStatus, nextStatus) =>
+  (currentStatus !== "playing" && nextStatus === "playing") ||
+  (currentStatus !== "paid" && nextStatus === "paid") ||
+  (currentStatus === "playing" && nextStatus === "queued");
+
+const setPlayerGameStatus = (
+  player,
+  sessionPlayerId,
+  gameStatus,
+  timestamp,
+) => {
   if (resolveSessionPlayerId(player) !== sessionPlayerId) return player;
 
-  return {
+  const updatedPlayer = {
     ...player,
     gameStatus,
   };
+
+  if (timestamp && shouldResetPlayerTimer(player?.gameStatus, gameStatus)) {
+    updatedPlayer.updateStatus = timestamp;
+  }
+
+  return updatedPlayer;
 };
 
 const getPlayerUsername = (player) =>
@@ -62,13 +78,15 @@ const createOptimisticSlotPlayer = (
     username,
   };
 
+  const resetsTimer = shouldResetPlayerTimer(player?.gameStatus, gameStatus);
+
   return {
     ...player,
     id: sessionPlayerId,
     sessionPlayerId,
     gameStatus,
-    updateStatus: timestamp,
-    updatedAt: timestamp,
+    updateStatus: resetsTimer ? timestamp : player?.updateStatus,
+    updatedAt: resetsTimer ? timestamp : player?.updatedAt,
     username,
     communityPlayer,
     sessionPlayer: {
@@ -231,6 +249,7 @@ const applyOptimisticSlotAssignment = (
           candidatePlayer,
           sessionPlayerId,
           targetStatus,
+          timestamp,
         );
       }
 
@@ -239,6 +258,7 @@ const applyOptimisticSlotAssignment = (
           candidatePlayer,
           occupiedPlayerId,
           isSwap ? sourceStatus : "waiting",
+          timestamp,
         );
       }
 
@@ -793,6 +813,7 @@ const Game = () => {
           if (!prev.matchCourts?.courts) return prev;
 
           let playerIdsToUpdate = [];
+          const startedAt = new Date().toISOString();
 
           const updatedCourts = prev.matchCourts.courts.map((court) => {
             if (court.id !== courtId) return court;
@@ -805,14 +826,43 @@ const Game = () => {
             return {
               ...court,
               status: "started",
-              startedAt: new Date().toISOString(),
+              startedAt,
+              slots: (court.slots || []).map((slot) => ({
+                ...slot,
+                sessionPlayer: slot.sessionPlayer
+                  ? {
+                      ...slot.sessionPlayer,
+                      gameStatus: "playing",
+                      updateStatus: shouldResetPlayerTimer(
+                        slot.sessionPlayer.gameStatus,
+                        "playing",
+                      )
+                        ? startedAt
+                        : slot.sessionPlayer.updateStatus,
+                      updatedAt: shouldResetPlayerTimer(
+                        slot.sessionPlayer.gameStatus,
+                        "playing",
+                      )
+                        ? startedAt
+                        : slot.sessionPlayer.updatedAt,
+                    }
+                  : slot.sessionPlayer,
+              })),
             };
           });
 
           const updatedPlayers = prev.players.map((player) => {
             const pId = player.id || player.sessionPlayerId;
             if (playerIdsToUpdate.includes(pId)) {
-              return { ...player, gameStatus: "playing" };
+              const resetsTimer = shouldResetPlayerTimer(
+                player.gameStatus,
+                "playing",
+              );
+              return {
+                ...player,
+                gameStatus: "playing",
+                updateStatus: resetsTimer ? startedAt : player.updateStatus,
+              };
             }
             return player;
           });
@@ -998,6 +1048,18 @@ const Game = () => {
       return;
     }
 
+    if (targetType === "queue" && player.gameStatus !== "playing") {
+      console.warn("Only players currently playing can be added to a queue.");
+      return;
+    }
+
+    if (targetType === "match" && player.gameStatus === "playing") {
+      console.warn(
+        "A player who is already playing must be queued for their next match instead.",
+      );
+      return;
+    }
+
     const previousSessionData = structuredClone(latestSessionDataRef.current);
     const relatedPlayers = getProjectedCourtRelationshipPlayers(
       previousSessionData,
@@ -1050,6 +1112,25 @@ const Game = () => {
         commitSessionData(previousSessionData); // Fallback transaction rollback if server errors out
       }
     }
+  };
+
+  const collisionDetectionStrategy = (args) => {
+    const playerStatus = args.active?.data.current?.player?.gameStatus;
+    const eligibleDroppables = args.droppableContainers
+      .getEnabled()
+      .filter((container) => {
+        const courtType = container.data.current?.courtType;
+
+        if (courtType === "queue") return playerStatus === "playing";
+        if (courtType === "match") return playerStatus !== "playing";
+
+        return true;
+      });
+
+    return pointerWithin({
+      ...args,
+      droppableContainers: eligibleDroppables,
+    });
   };
 
   const sensors = useSensors(
@@ -1280,7 +1361,7 @@ const Game = () => {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={pointerWithin}
+      collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart} // <-- Captures item configuration data
       onDragEnd={handleDragEnd}
     >

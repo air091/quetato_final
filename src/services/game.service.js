@@ -1,6 +1,11 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
+const shouldResetPlayerTimer = (currentStatus, nextStatus) =>
+  (currentStatus !== "playing" && nextStatus === "playing") ||
+  (currentStatus !== "paid" && nextStatus === "paid") ||
+  (currentStatus === "playing" && nextStatus === "queued");
+
 export const getAllCourts = async (sessionId, type) => {
   if (!sessionId) {
     throw new AppError("Session ID is required", 400);
@@ -620,7 +625,7 @@ export const assignPlayerToSlot = async (
           status: { in: ["accepted", "requested"] },
           isHide: false,
         },
-        select: { id: true, status: true, acceptedAt: true },
+        select: { id: true, status: true, acceptedAt: true, gameStatus: true },
       }),
     ]);
 
@@ -648,6 +653,26 @@ export const assignPlayerToSlot = async (
     if (!playerExistsInSession) {
       throw new AppError(
         "Player is not an eligible, visible member of this session.",
+        400,
+      );
+    }
+
+    if (
+      targetCourt.type === "queue" &&
+      playerExistsInSession.gameStatus !== "playing"
+    ) {
+      throw new AppError(
+        "Only a player who is currently playing can be added to a queue for their next match.",
+        400,
+      );
+    }
+
+    if (
+      targetCourt.type === "match" &&
+      playerExistsInSession.gameStatus === "playing"
+    ) {
+      throw new AppError(
+        "A player who is already playing must be added to a queue for their next match.",
         400,
       );
     }
@@ -682,9 +707,13 @@ export const assignPlayerToSlot = async (
       const sourceCourt = allSessionCourts.find(
         (c) => c.id === sourceSlot.courtId,
       );
-      if (sourceCourt?.type === "match" && sourceCourt.status === "started") {
+      if (
+        sourceCourt?.type === "match" &&
+        sourceCourt.status === "started" &&
+        targetCourt.type !== "queue"
+      ) {
         throw new AppError(
-          "Forbidden: Cannot move a player out of an active live match",
+          "Forbidden: Cannot move a player out of an active live match except into a queue for their next match",
           400,
         );
       }
@@ -743,17 +772,6 @@ export const assignPlayerToSlot = async (
             sessionPlayerId: sessionPlayerId, // Replaces occupant with the incoming user ID
           },
         }),
-        tx.sessionPlayer.update({
-          where: { id: occupiedSlot.sessionPlayerId },
-          data: { gameStatus: "waiting" },
-        }),
-        tx.sessionPlayer.update({
-          where: { id: sessionPlayerId },
-          data: {
-            gameStatus: nextTargetPlayerStatus,
-            updateStatus: new Date(),
-          },
-        }),
       ]);
     }
 
@@ -768,21 +786,26 @@ export const assignPlayerToSlot = async (
             team: targetTeam,
           },
         }),
-        tx.sessionPlayer.update({
-          where: { id: sessionPlayerId },
-          data: {
-            gameStatus: nextTargetPlayerStatus,
-            updateStatus: new Date(),
-          },
-        }),
       ]);
     }
 
-    const touchedSlotPlayerIds = [sourceSlot, occupiedSlot]
-      .map((slot) => slot?.sessionPlayerId)
-      .filter(Boolean);
+    const touchedSlotPlayerIds = [
+      sessionPlayerId,
+      sourceSlot?.sessionPlayerId,
+      occupiedSlot?.sessionPlayerId,
+    ].filter(Boolean);
 
     if (touchedSlotPlayerIds.length > 0) {
+      const previousPlayers = await tx.sessionPlayer.findMany({
+        where: {
+          id: { in: [...new Set(touchedSlotPlayerIds)] },
+          sessionId,
+        },
+        select: { id: true, gameStatus: true },
+      });
+      const previousStatusByPlayerId = new Map(
+        previousPlayers.map((player) => [player.id, player.gameStatus]),
+      );
       const touchedSlots = await tx.courtSlot.findMany({
         where: {
           sessionPlayerId: { in: touchedSlotPlayerIds },
@@ -795,16 +818,32 @@ export const assignPlayerToSlot = async (
         },
       });
 
+      const nextStatusByPlayerId = new Map(
+        touchedSlots.map((slot) => [
+          slot.sessionPlayerId,
+          getSlotGameStatus(slot.court),
+        ]),
+      );
+
+      if (occupiedSlot && !nextStatusByPlayerId.has(occupiedSlot.sessionPlayerId)) {
+        nextStatusByPlayerId.set(occupiedSlot.sessionPlayerId, "waiting");
+      }
+
       await Promise.all(
-        touchedSlots.map((slot) =>
-          tx.sessionPlayer.update({
-            where: { id: slot.sessionPlayerId },
-            data: {
-              gameStatus: getSlotGameStatus(slot.court),
-              updateStatus: new Date(),
-            },
-          }),
-        ),
+        [...nextStatusByPlayerId].map(([playerId, nextStatus]) => {
+          const data = { gameStatus: nextStatus };
+
+          if (
+            shouldResetPlayerTimer(
+              previousStatusByPlayerId.get(playerId),
+              nextStatus,
+            )
+          ) {
+            data.updateStatus = new Date();
+          }
+
+          return tx.sessionPlayer.update({ where: { id: playerId }, data });
+        }),
       );
     }
 
@@ -1138,6 +1177,10 @@ export const startMatchCourt = async (
     // 5. 🌟 UPDATED ATOMIC STATE UPDATE
     // Preserve the original startedAt timestamp if it was already set during a previous pause/resume loop
     const newStartedAt = targetCourt.startedAt || new Date();
+    const playersInMatch = await tx.sessionPlayer.findMany({
+      where: { id: { in: playerIdsInMatch }, sessionId },
+      select: { id: true, gameStatus: true },
+    });
 
     const [updatedCourt] = await Promise.all([
       tx.court.update({
@@ -1149,14 +1192,14 @@ export const startMatchCourt = async (
         },
         include: { slots: true },
       }),
-      tx.sessionPlayer.updateMany({
-        where: {
-          id: { in: playerIdsInMatch },
-        },
-        data: {
-          gameStatus: "playing",
-          updateStatus: new Date(),
-        },
+      ...playersInMatch.map((player) => {
+        const data = { gameStatus: "playing" };
+
+        if (shouldResetPlayerTimer(player.gameStatus, "playing")) {
+          data.updateStatus = new Date();
+        }
+
+        return tx.sessionPlayer.update({ where: { id: player.id }, data });
       }),
     ]);
 
@@ -1363,7 +1406,6 @@ export const endMatchCourt = async (
         },
         data: {
           gameStatus: "waiting",
-          updateStatus: new Date(),
         },
       });
     }

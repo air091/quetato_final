@@ -316,7 +316,6 @@ export const unmarkPlayerAsPaid = async (
     where: { id: sessionPlayerId },
     data: {
       gameStatus: "waiting",
-      updateStatus: new Date(),
     },
     select: {
       id: true,
