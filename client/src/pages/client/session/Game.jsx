@@ -562,8 +562,6 @@ const getProjectedCourtRelationshipPlayers = (
   sessionData,
   { targetType, courtId, position, player, sessionPlayerId },
 ) => {
-  if (targetType !== "match") return [];
-
   const projectedSessionData = applyOptimisticSlotAssignment(sessionData, {
     targetType,
     courtId,
