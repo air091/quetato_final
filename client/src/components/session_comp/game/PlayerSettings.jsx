@@ -44,7 +44,11 @@ const PlayerSettings = ({
   const initialSkillLevel =
     player?.sessionPlayer?.communityPlayer?.skillLevel || "BEG";
   const sessionRole = player?.sessionPlayer?.role;
-  const canRemovePlayer = !PROTECTED_SESSION_ROLES.includes(sessionRole);
+  const sessionPlayerId = player?.id || player?.sessionPlayerId;
+  const canRemovePlayer =
+    canManagePlayers &&
+    Boolean(sessionPlayerId) &&
+    !PROTECTED_SESSION_ROLES.includes(sessionRole);
   const visibilityAction = player?.isHide ? "unhide" : "hide";
 
   const [username, setUsername] = useState(initialUsername);
@@ -125,45 +129,44 @@ const PlayerSettings = ({
   };
 
   // 🌟 Completed handleRemoveplayer implementation
-  const handleRemoveplayer = useCallback(
-    async (sessionPlayerId) => {
-      if (!communityId || !sessionId || !sessionPlayerId || isUpdating) return;
-      try {
-        setIsUpdating(true);
-        const response = await fetchWithAuth(
-          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/remove`,
-          { method: "DELETE" },
-        );
+  const handleRemovePlayer = useCallback(async () => {
+    if (!communityId || !sessionId || !sessionPlayerId || isUpdating) return;
+    try {
+      setIsUpdating(true);
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/remove`,
+        { method: "DELETE" },
+      );
 
-        if (!response || !response.ok) {
-          throw new Error(
-            `HTTP error! Status: ${response?.status || "Unknown"}`,
-          );
-        }
-
-        const resData = await response.json();
-        if (!resData?.success) throw new Error(resData?.message);
-
-        // Refresh data on parent view layout component
-        if (typeof onUpdatePlayerStatus === "function") {
-          onUpdatePlayerStatus();
-        }
-        onClose();
-      } catch (error) {
-        console.error("Remove player failed:", error.message);
-      } finally {
-        setIsUpdating(false);
+      if (!response || !response.ok) {
+        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
       }
-    },
-    [
-      communityId,
-      sessionId,
-      isUpdating,
-      fetchWithAuth,
-      onUpdatePlayerStatus,
-      onClose,
-    ],
-  );
+
+      // This endpoint succeeds with 204 No Content, so there is no JSON
+      // payload to parse on a successful removal.
+      if (response.status !== 204) {
+        const resData = await response.json().catch(() => ({}));
+        if (!resData?.success) throw new Error(resData?.message);
+      }
+
+      if (typeof onUpdatePlayerStatus === "function") {
+        onUpdatePlayerStatus();
+      }
+      onClose();
+    } catch (error) {
+      console.error("Remove player failed:", error.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [
+    communityId,
+    sessionId,
+    isUpdating,
+    fetchWithAuth,
+    onUpdatePlayerStatus,
+    onClose,
+    sessionPlayerId,
+  ]);
 
   const handleToggleVisibility = useCallback(async () => {
     const sessionPlayerId = player?.id;
@@ -330,7 +333,7 @@ const PlayerSettings = ({
                 <button
                   type="button"
                   disabled={isUpdating}
-                  onClick={() => handleRemoveplayer(player?.sessionPlayer?.id)}
+                  onClick={handleRemovePlayer}
                   className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200 w-full"
                 >
                   Remove

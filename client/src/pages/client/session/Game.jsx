@@ -1162,6 +1162,7 @@ const Game = () => {
   const handleTransferQueue = useCallback(
     async (queueCourtId) => {
       if (!communityId || !sessionId || !queueCourtId) return;
+      if (queueTransferRequestRef.current) return;
 
       const previousSessionData = structuredClone(latestSessionDataRef.current);
       const transferVersion = queueTransferVersionRef.current + 1;
@@ -1177,6 +1178,7 @@ const Game = () => {
       }
 
       let transferRequest = null;
+      let transferCommitted = false;
 
       try {
         const url = `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/transfer-queue`;
@@ -1197,33 +1199,29 @@ const Game = () => {
             errData.message || "Failed to transfer queue players",
           );
         }
-
-        const data = await response.json();
+        transferCommitted = true;
 
         if (transferVersion !== queueTransferVersionRef.current) {
           return;
         }
 
-        if (optimisticTransfer.canTransfer) {
-          if (Array.isArray(data?.data?.movedSlots)) {
-            commitSessionData((prev) =>
-              reconcileAssignedSlotIds(prev, data.data.movedSlots),
-            );
-          } else {
-            await fetchDashboardContext(true);
-          }
-        } else {
-          await fetchDashboardContext(true);
-        }
+        // Keep the optimistic layout visible until the transfer transaction
+        // has committed, then replace it with one complete server snapshot.
+        // Reconciling only the moved slots caused an intermediate stale layout
+        // (the visible bounce) before the final match-court state arrived.
+        await fetchDashboardContext(true);
       } catch (error) {
         console.error("Transfer Error:", error);
         if (
+          !transferCommitted &&
           optimisticTransfer.canTransfer &&
           transferVersion === queueTransferVersionRef.current
         ) {
           commitSessionData(previousSessionData);
         }
-        alert(error.message || "Something went wrong during the transfer.");
+        if (!transferCommitted) {
+          alert(error.message || "Something went wrong during the transfer.");
+        }
       } finally {
         if (queueTransferRequestRef.current === transferRequest) {
           queueTransferRequestRef.current = null;
