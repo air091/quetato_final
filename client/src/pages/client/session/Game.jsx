@@ -1116,6 +1116,19 @@ const Game = () => {
     }
 
     const dropTarget = over.data.current || {};
+    if (dropTarget.dropType === "lobby") {
+      if (
+        player.sourceCourtStatus !== "paused" ||
+        !player.sourceCourtId ||
+        !player.sourceSlotId
+      ) {
+        return;
+      }
+
+      await handleRemovePlayer(player.sourceCourtId, player.sourceSlotId);
+      return;
+    }
+
     const targetType = dropTarget.courtType;
     const courtId = dropTarget.courtId;
     const position = Number(dropTarget.position);
@@ -1134,7 +1147,16 @@ const Game = () => {
       return;
     }
 
-    if (targetType === "match" && player.gameStatus === "playing") {
+    const isPausedMatchEdit =
+      targetType === "match" &&
+      dropTarget.courtStatus === "paused" &&
+      player.sourceCourtStatus === "paused";
+
+    if (
+      targetType === "match" &&
+      player.gameStatus === "playing" &&
+      !isPausedMatchEdit
+    ) {
       console.warn(
         "A player who is already playing must be queued for their next match instead.",
       );
@@ -1201,13 +1223,24 @@ const Game = () => {
   };
 
   const collisionDetectionStrategy = (args) => {
-    const playerStatus = args.active?.data.current?.player?.gameStatus;
+    const activePlayer = args.active?.data.current?.player;
+    const playerStatus = activePlayer?.gameStatus;
     const eligibleDroppables = Array.from(args.droppableContainers).filter(
       (container) => {
-        const courtType = container.data.current?.courtType;
+        const dropData = container.data.current || {};
+        const courtType = dropData.courtType;
 
         if (courtType === "queue") return true;
-        if (courtType === "match") return playerStatus !== "playing";
+        if (courtType === "match") {
+          return (
+            playerStatus !== "playing" ||
+            (activePlayer?.sourceCourtStatus === "paused" &&
+              dropData.courtStatus === "paused")
+          );
+        }
+        if (dropData.dropType === "lobby") {
+          return activePlayer?.sourceCourtStatus === "paused";
+        }
 
         return true;
       },

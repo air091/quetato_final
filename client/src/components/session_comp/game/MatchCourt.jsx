@@ -153,6 +153,7 @@ const CourtSlot = ({
   communityId,
   sessionId,
   isCourtPaused, // 🌟 Received context parameter
+  courtStatus,
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(
@@ -167,6 +168,7 @@ const CourtSlot = ({
       courtId,
       courtType,
       position,
+      courtStatus,
     },
     disabled: !isCourtPaused && !slotData?.sessionPlayerId,
   });
@@ -242,7 +244,15 @@ const CourtSlot = ({
   // in Game.jsx still prevent a playing player from being moved to a Match Court.
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
-    data: { player: { ...matchedPoolPlayer, totalGames: displayedTotalGames } },
+    data: {
+      player: {
+        ...matchedPoolPlayer,
+        totalGames: displayedTotalGames,
+        sourceCourtId: courtId,
+        sourceCourtStatus: courtStatus,
+        sourceSlotId: slotData?.id,
+      },
+    },
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
@@ -588,6 +598,7 @@ const MatchCourtCard = ({
               communityId={communityId}
               sessionId={sessionId}
               isCourtPaused={isPaused || matchCourt.status === "idle"}
+              courtStatus={matchCourt.status}
             />
           );
         })}

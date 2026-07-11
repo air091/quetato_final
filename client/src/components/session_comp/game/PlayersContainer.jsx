@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { EllipsisVertical, Gamepad2, Search, X } from "lucide-react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import PlayerSettings from "./PlayerSettings";
 import PlayerAvatar from "../../PlayerAvatar";
@@ -378,6 +378,10 @@ const PlayersContainer = ({
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { setNodeRef: setLobbyDropRef, isOver: isLobbyDropOver } = useDroppable({
+    id: "player-lobby",
+    data: { dropType: "lobby" },
+  });
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -449,7 +453,12 @@ const PlayersContainer = ({
         </div>
       </header>
 
-      <main className="flex flex-wrap gap-2 p-2 justify-center overflow-y-auto border mx-2 rounded-md border-dashed">
+      <main
+        ref={setLobbyDropRef}
+        className={`flex flex-wrap gap-2 p-2 justify-center overflow-y-auto border mx-2 rounded-md border-dashed transition-colors ${
+          isLobbyDropOver ? "border-emerald-500 bg-emerald-50" : ""
+        }`}
+      >
         {filteredPlayers.length === 0 ? (
           <div className="text-center text-xs text-gray-400 font-medium w-full py-4">
             No players found in this category.

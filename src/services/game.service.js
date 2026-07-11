@@ -659,10 +659,11 @@ export const assignPlayerToSlot = async (
 
     if (
       targetCourt.type === "match" &&
-      playerExistsInSession.gameStatus === "playing"
+      playerExistsInSession.gameStatus === "playing" &&
+      targetCourt.status !== "paused"
     ) {
       throw new AppError(
-        "A player who is already playing must be added to a queue for their next match.",
+        "A player in a live match can only be moved after that match is paused.",
         400,
       );
     }
@@ -701,7 +702,7 @@ export const assignPlayerToSlot = async (
     const sourceSlot =
       targetCourt.type === "queue"
         ? queueSlot || (activeMatchSlot ? null : playerSlots[0])
-        : playerSlots[0];
+        : activeMatchSlot || playerSlots[0];
     const isAdditionalQueueAssignment =
       targetCourt.type === "queue" && Boolean(activeMatchSlot) && !queueSlot;
     const occupiedSlot = allActiveSlots.find(
