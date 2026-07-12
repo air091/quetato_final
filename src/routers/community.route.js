@@ -40,6 +40,8 @@ import {
   getAllRequestPlayersController,
   getPlayerByIdController,
   joinCommunityController,
+  kickPlayerInCommunityController,
+  rejectPlayerController,
   updateStaticPlayerController,
 } from "../controllers/player.controller.js";
 import {
@@ -102,6 +104,13 @@ router.put(
 router.delete(
   "/:communityId/players/:userId/static",
   deleteStaticPlayerController,
+);
+
+router.delete("/:communityId/players/:userId/reject", rejectPlayerController);
+
+router.delete(
+  "/:communityId/players/:userId/kick",
+  kickPlayerInCommunityController,
 );
 
 router.post("/:communityId/request", joinCommunityController);

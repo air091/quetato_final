@@ -7,6 +7,8 @@ import {
   getAllRequestPlayers,
   getPlayerById,
   joinCommunity,
+  kickPlayerInCommunity,
+  rejectPlayer,
   updateStaticPlayer,
 } from "../services/player.service.js";
 
@@ -130,7 +132,7 @@ export const getAllRequestPlayersController = async (request, response) => {
     const results = await getAllRequestPlayers(communityId, request.user.sub);
     return response.status(200).json({ success: true, results });
   } catch (error) {
-    console.error("Delete static player failed", error);
+    console.error("Get all requested players failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";
@@ -144,6 +146,25 @@ export const getAllRequestPlayersController = async (request, response) => {
   }
 };
 
+export const rejectPlayerController = async (request, response) => {
+  try {
+    const { communityId, userId } = request.params;
+    await rejectPlayer(communityId, userId, request.user.sub);
+    return response.status(201).json({ success: true });
+  } catch (error) {
+    console.error("Reject requested player failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
 export const joinCommunityController = async (request, response) => {
   try {
     const { communityId } = request.params;
@@ -183,3 +204,25 @@ export const acceptPlayerInCommunityController = async (request, response) => {
     return response.status(statusCode).json({ success: false, message });
   }
 };
+
+export const kickPlayerInCommunityController = async (request, response) => {
+  try {
+    const { communityId, userId } = request.params;
+    await kickPlayerInCommunity(communityId, userId, request.user.sub);
+    return response.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Accept player to community failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+// kickPlayerInCommunity
