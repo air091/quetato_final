@@ -500,6 +500,70 @@ export const joinCommunity = async (communityId, userId) => {
   return player;
 };
 
+export const rejectPlayer = async (communityId, userId, authorizedId) => {
+  if (!communityId || !userId || !authorizedId) {
+    throw new AppError(
+      "Community ID, User ID, and Authorization ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Check if the authorizing user has admin rights in this community
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 2. Find the target player's join request
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Join request not found", 404);
+    }
+
+    // 3. Ensure they are actually in a "requested" state
+    if (targetPlayer.status !== "requested") {
+      throw new AppError(
+        `Player request cannot be rejected (Current status: ${targetPlayer.status})`,
+        400,
+      );
+    }
+
+    // 4. Reject by removing the pending community membership record
+    await tx.communityPlayer.delete({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    return { success: true, message: "Join request rejected successfully" };
+  });
+};
+
 export const acceptPlayerInCommunity = async (
   communityId,
   userId,
@@ -570,5 +634,84 @@ export const acceptPlayerInCommunity = async (
     });
 
     return updatedPlayer;
+  });
+};
+
+export const kickPlayerInCommunity = async (
+  communityId,
+  userId,
+  authorizedId,
+) => {
+  if (!communityId || !userId || !authorizedId) {
+    throw new AppError(
+      "Community ID, User ID, and Authorization ID are required",
+      400,
+    );
+  }
+
+  // Prevent a user from mistakenly executing a kick command on themselves
+  if (userId === authorizedId) {
+    throw new AppError(
+      "Forbidden: You cannot kick yourself from the community",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Check if the authorizing user has admin/owner rights
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    // 2. Verify the target member exists in the community
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Community player not found", 404);
+    }
+
+    // 3. Security Guardrail: Prevent kicking the community owner
+    if (targetPlayer.role === "owner") {
+      throw new AppError(
+        "Forbidden: The primary community owner cannot be kicked",
+        403,
+      );
+    }
+
+    // 4. Remove the member from the community
+    await tx.communityPlayer.delete({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      message: "Player kicked from community successfully",
+    };
   });
 };
