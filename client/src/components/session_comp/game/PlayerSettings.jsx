@@ -29,9 +29,11 @@ const PROTECTED_SESSION_ROLES = ["owner", "admin", "host"];
 
 const PlayerSettings = ({
   player,
+  type,
   onClose,
   toggleButtonRef,
   onUpdatePlayerStatus,
+  isRequest = false,
 }) => {
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
@@ -201,6 +203,57 @@ const PlayerSettings = ({
     onClose,
   ]);
 
+  // 🌟 Action Handler: Accept Request
+  const handleAcceptRequest = async () => {
+    if (isUpdating || !communityId || !player?.communityPlayer?.id) return;
+    try {
+      setIsUpdating(true);
+      const targetUserId = player?.communityPlayer?.id;
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${targetUserId}/accept`,
+        { method: "PATCH" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success)
+        throw new Error(resData?.message || "Failed to accept");
+
+      if (typeof onUpdatePlayerStatus === "function") onUpdatePlayerStatus();
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (isUpdating || !communityId || !player?.communityPlayer?.id) return;
+    if (
+      !window.confirm(`Are you sure you want to decline ${username}'s request?`)
+    )
+      return;
+
+    try {
+      setIsUpdating(true);
+      const targetUserId = player?.communityPlayer?.id;
+      // Rejects by removing the temporary guest record
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${targetUserId}/static`,
+        { method: "DELETE" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success)
+        throw new Error(resData?.message || "Failed to reject");
+
+      if (typeof onUpdatePlayerStatus === "function") onUpdatePlayerStatus();
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (!isReady) return null;
 
   return (
@@ -213,143 +266,65 @@ const PlayerSettings = ({
             top: `${coords.top}px`,
             left: `${coords.left}px`,
           }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onDragStart={(e) => e.preventDefault()}
           className="w-48 bg-white border rounded-md shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-100"
         >
           <header className="bg-stone-800 p-2">
             <h5 className="font-bold text-[12px] text-stone-100 mb-2">
-              Player Settings
+              {isRequest ? "Join Request Settings" : "Player Settings"}
             </h5>
-            <div className="w-full flex items-center justify-between ">
+            <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-x-2">
                 <PlayerAvatar username={username} size="sm" />
-                <span className="text-[12px] font-medium text-stone-100">
+                <span className="text-[12px] font-medium text-stone-100 truncate max-w-[90px]">
                   {username}
                 </span>
               </div>
-              <span className="text-[12px] font-medium text-stone-100">
+              <span className="text-[10px] uppercase font-bold text-amber-400 bg-stone-700/50 px-1.5 py-0.5 rounded">
                 {sessionRole}
               </span>
             </div>
           </header>
-          <form onSubmit={handleSubmit} className="space-y-2  p-2">
-            <div className="flex flex-col gap-y-0.5">
-              <label
-                htmlFor="name"
-                className="text-[10px] font-medium uppercase tracking-wider text-gray-400"
-              >
-                Name
-              </label>
-              {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
-                <span className="block w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
-                  {username}
+
+          <div className="p-2 space-y-3">
+            {/* Context Info Fields rendered as text labels instead of editable forms */}
+            <div className="text-[11px] space-y-1 text-stone-600 bg-stone-50 p-1.5 rounded border border-stone-100">
+              <div>
+                <span className="font-semibold text-stone-400 uppercase text-[9px] block">
+                  Skill Level
                 </span>
-              ) : (
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={isUpdating}
-                  className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
-                />
-              )}
+                {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
+              </div>
             </div>
 
-            {/* Skill level */}
-            <div className="flex flex-col gap-y-0.5">
-              <label
-                htmlFor="skill-level"
-                className="text-[10px] font-medium uppercase tracking-wider text-gray-400 block"
-              >
-                Skill level
-              </label>
-              {player?.sessionPlayer?.communityPlayer?.type === "user" ? (
-                <span className="block w-full text-xs rounded py-1 outline-none focus:border-blue-500 bg-gray-50/50">
-                  {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
-                </span>
-              ) : (
-                <select
-                  name="skill-level"
-                  id="skill-level"
-                  value={skillLevel}
-                  onChange={(e) => setSkillLevel(e.target.value)}
-                  disabled={isUpdating}
-                  className="w-full text-xs border rounded px-2 py-1 outline-none focus:border-blue-500 bg-gray-50/50"
-                >
-                  <option value="LB">Low Beginner</option>
-                  <option value="BEG">Beginner</option>
-                  <option value="HG">High Beginner</option>
-                  <option value="LI">Low Intermediate</option>
-                  <option value="INT">Intermediate</option>
-                  <option value="UI">Upper Intermediate</option>
-                  <option value="ADV">Advanced</option>
-                  <option value="EXP">Experience</option>
-                </select>
-              )}
-            </div>
-            <div>
-              <button
-                type="button"
-                onClick={() => setIsGameHistoryOpen(true)}
-                className="w-full text-[10px] font-medium py-1 rounded cursor-pointer bg-stone-200 hover:bg-stone-300"
-              >
-                Game History
-              </button>
-              {canManagePlayers && (
+            {/* Conditionally swap the action footer layouts */}
+            {isRequest ? (
+              <div className="flex gap-x-1.5 pt-1">
                 <button
                   type="button"
                   disabled={isUpdating}
-                  onClick={handleToggleVisibility}
-                  className={`w-full text-[10px] font-medium py-1 rounded cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-                    player?.isHide
-                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                      : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                  }`}
+                  onClick={handleAcceptRequest}
+                  className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center shadow-sm"
                 >
-                  {isUpdating
-                    ? "Updating..."
-                    : visibilityAction === "hide"
-                      ? "Hide player"
-                      : "Unhide player"}
+                  {isUpdating ? "Processing..." : "Accept"}
                 </button>
-              )}
-            </div>
-
-            <div className="flex gap-x-1.5 pt-1">
-              <button
-                type="submit"
-                disabled={isUpdating}
-                className="cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center"
-              >
-                {isUpdating ? "Saving..." : "Save"}
-              </button>
-
-              {/* 🌟 Attached functional handler and Tailwind styling to the button */}
-              {canRemovePlayer && (
                 <button
                   type="button"
                   disabled={isUpdating}
-                  onClick={handleRemovePlayer}
-                  className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 disabled:border-stone-200 w-full"
+                  onClick={handleRejectRequest}
+                  className="cursor-pointer bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] py-1 rounded w-full transition-colors font-medium text-center"
                 >
-                  Remove
+                  Reject
                 </button>
-              )}
-            </div>
-          </form>
+              </div>
+            ) : (
+              /* Original Non-Request settings inputs and buttons can go here if sharing file */
+              <div className="text-[11px] text-stone-400 text-center py-2">
+                Regular config disabled
+              </div>
+            )}
+          </div>
         </div>,
         document.body,
-      )}
-
-      {isGameHistoryOpen && (
-        <PlayerGameHistory
-          player={player}
-          onClose={() => setIsGameHistoryOpen(false)}
-        />
       )}
     </>
   );
