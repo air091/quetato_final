@@ -30,6 +30,7 @@ const PlayerSettings = ({
   toggleButtonRef,
   onUpdatePlayerStatus,
   type, // "static" (guest) or "user" (registered user)
+  isRequest = false, // 🌟 New flag passed when mapping through requested players
 }) => {
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
@@ -135,7 +136,6 @@ const PlayerSettings = ({
     const endpoint = isStatic
       ? `${API_URL}/api/communities/${communityId}/players/${userId}/static`
       : `${API_URL}/api/communities/${communityId}/players/${userId}/kick`;
-    // Or DELETE depending on your Kick implementation backend rules
 
     try {
       setIsUpdating(true);
@@ -170,6 +170,55 @@ const PlayerSettings = ({
     onClose,
   ]);
 
+  // 🌟 Action Handler: Accept Join Request
+  const handleAcceptRequest = async () => {
+    if (isUpdating || !communityId || !userId) return;
+    try {
+      setIsUpdating(true);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${userId}/accept`,
+        { method: "PATCH" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success)
+        throw new Error(resData?.message || "Failed to accept");
+
+      if (typeof onUpdatePlayerStatus === "function") onUpdatePlayerStatus();
+      onClose();
+    } catch (err) {
+      console.error("Accept applicant request failed:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 🌟 Action Handler: Reject Join Request
+  const handleRejectRequest = async () => {
+    if (isUpdating || !communityId || !userId) return;
+    if (
+      !window.confirm(`Are you sure you want to decline ${username}'s request?`)
+    )
+      return;
+
+    try {
+      setIsUpdating(true);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${userId}/static`,
+        { method: "DELETE" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success)
+        throw new Error(resData?.message || "Failed to reject");
+
+      if (typeof onUpdatePlayerStatus === "function") onUpdatePlayerStatus();
+      onClose();
+    } catch (err) {
+      console.error("Reject applicant request failed:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (!isReady) return null;
 
   return (
@@ -189,7 +238,7 @@ const PlayerSettings = ({
         >
           <header className="bg-stone-800 p-2.5">
             <h5 className="font-bold text-[11px] uppercase tracking-wider text-stone-400 mb-2">
-              Community Settings
+              {isRequest ? "Join Request Settings" : "Community Settings"}
             </h5>
             <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-x-2">
@@ -199,122 +248,154 @@ const PlayerSettings = ({
                 </span>
               </div>
               <span className="text-[10px] uppercase font-bold text-stone-300 bg-stone-900 px-1.5 py-0.5 rounded">
-                {type}
+                {isRequest ? "requested" : type}
               </span>
             </div>
           </header>
 
-          {type === "static" ? (
-            /* STATIC / GUEST PLAYER: Can edit name, skill level and delete profile */
-            <form onSubmit={handleSubmit} className="space-y-2 p-2">
-              <div className="flex flex-col gap-y-0.5">
-                <label
-                  htmlFor="name"
-                  className="text-[10px] font-medium uppercase tracking-wider text-gray-400"
-                >
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={isUpdating}
-                  className="w-full text-xs border border-stone-200 rounded px-2 py-1 outline-none focus:border-stone-400 bg-gray-50/50"
-                />
-              </div>
+          <div className="p-2">
+            {isRequest ? (
+              /* 🎯 JOIN REQUESTED (GUEST) PLAYERS SETTINGS LAYOUT */
+              <div className="space-y-3 p-0.5">
+                <div className="flex flex-col gap-y-0.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+                    Skill Level
+                  </span>
+                  <span className="text-xs font-semibold text-stone-700">
+                    {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
+                  </span>
+                </div>
 
-              <div className="flex flex-col gap-y-0.5">
-                <label
-                  htmlFor="skill-level"
-                  className="text-[10px] font-medium uppercase tracking-wider text-gray-400 block"
-                >
-                  Skill level
-                </label>
-                <select
-                  name="skill-level"
-                  id="skill-level"
-                  value={skillLevel}
-                  onChange={(e) => setSkillLevel(e.target.value)}
-                  disabled={isUpdating}
-                  className="w-full text-xs border border-stone-200 rounded px-2 py-1 outline-none focus:border-stone-400 bg-gray-50/50 cursor-pointer"
-                >
-                  <option value="LB">Low Beginner</option>
-                  <option value="BEG">Beginner</option>
-                  <option value="HG">High Beginner</option>
-                  <option value="LI">Low Intermediate</option>
-                  <option value="INT">Intermediate</option>
-                  <option value="UI">Upper Intermediate</option>
-                  <option value="ADV">Advanced</option>
-                  <option value="EXP">Experience</option>
-                </select>
-              </div>
-
-              <div className="flex gap-x-1.5 pt-1">
-                <button
-                  type="submit"
-                  disabled={isUpdating}
-                  className="cursor-pointer bg-stone-950 hover:bg-stone-850 disabled:bg-stone-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center"
-                >
-                  {isUpdating ? "Saving..." : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRemovePlayer}
-                  disabled={isUpdating}
-                  className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 w-full"
-                >
-                  Delete
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCommunityHistoryOpen(true)}
-                className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
-              >
-                Points & session history
-              </button>
-            </form>
-          ) : (
-            /* REGISTERED USER PLAYER: Read-only data layout */
-            <div className="p-2.5 space-y-3">
-              <div className="flex flex-col gap-y-0.5">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
-                  Skill Level
-                </span>
-                <span className="text-xs font-semibold text-stone-700">
-                  {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsCommunityHistoryOpen(true)}
-                className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
-              >
-                Points & session history
-              </button>
-
-              {/* Only show kick option if the member target isn't the primary owner */}
-              {player?.role !== "owner" ? (
                 <div className="flex gap-x-1.5 pt-1">
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    onClick={handleAcceptRequest}
+                    className="w-full cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
+                  >
+                    {isUpdating ? "Processing..." : "Accept Player"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    onClick={handleRejectRequest}
+                    className="w-full cursor-pointer bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] py-1.5 rounded transition-colors font-semibold text-center"
+                  >
+                    Reject Player
+                  </button>
+                </div>
+              </div>
+            ) : type === "static" ? (
+              /* STATIC / GUEST PLAYER: Can edit name, skill level and delete profile */
+              <form onSubmit={handleSubmit} className="space-y-2">
+                <div className="flex flex-col gap-y-0.5">
+                  <label
+                    htmlFor="name"
+                    className="text-[10px] font-medium uppercase tracking-wider text-gray-400"
+                  >
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={isUpdating}
+                    className="w-full text-xs border border-stone-200 rounded px-2 py-1 outline-none focus:border-stone-400 bg-gray-50/50"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-y-0.5">
+                  <label
+                    htmlFor="skill-level"
+                    className="text-[10px] font-medium uppercase tracking-wider text-gray-400 block"
+                  >
+                    Skill level
+                  </label>
+                  <select
+                    name="skill-level"
+                    id="skill-level"
+                    value={skillLevel}
+                    onChange={(e) => setSkillLevel(e.target.value)}
+                    disabled={isUpdating}
+                    className="w-full text-xs border border-stone-200 rounded px-2 py-1 outline-none focus:border-stone-400 bg-gray-50/50 cursor-pointer"
+                  >
+                    <option value="LB">Low Beginner</option>
+                    <option value="BEG">Beginner</option>
+                    <option value="HG">High Beginner</option>
+                    <option value="LI">Low Intermediate</option>
+                    <option value="INT">Intermediate</option>
+                    <option value="UI">Upper Intermediate</option>
+                    <option value="ADV">Advanced</option>
+                    <option value="EXP">Experience</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-x-1.5 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isUpdating}
+                    className="cursor-pointer bg-stone-950 hover:bg-stone-850 disabled:bg-stone-400 text-white text-[11px] py-1 rounded w-full transition-colors font-semibold text-center"
+                  >
+                    {isUpdating ? "Saving..." : "Save"}
+                  </button>
                   <button
                     type="button"
                     onClick={handleRemovePlayer}
                     disabled={isUpdating}
-                    className="w-full cursor-pointer bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
+                    className="cursor-pointer bg-red-50 hover:bg-red-100 hover:text-red-700 disabled:bg-stone-50 disabled:text-stone-400 text-red-600 text-[11px] px-2 py-1 rounded transition-colors font-medium text-center border border-red-200 w-full"
                   >
-                    {isUpdating ? "Processing..." : "Kick Player"}
+                    Delete
                   </button>
                 </div>
-              ) : (
-                <div className="text-[11px] italic text-stone-400 text-center pt-1 border-t border-stone-100">
-                  Creator role cannot be kicked
+                <button
+                  type="button"
+                  onClick={() => setIsCommunityHistoryOpen(true)}
+                  className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  Points & session history
+                </button>
+              </form>
+            ) : (
+              /* REGISTERED USER PLAYER: Read-only data layout */
+              <div className="space-y-3 p-0.5">
+                <div className="flex flex-col gap-y-0.5">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
+                    Skill Level
+                  </span>
+                  <span className="text-xs font-semibold text-stone-700">
+                    {SKILL_LEVEL_LABELS[skillLevel] || skillLevel}
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsCommunityHistoryOpen(true)}
+                  className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  Points & session history
+                </button>
+
+                {player?.role !== "owner" ? (
+                  <div className="flex gap-x-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleRemovePlayer}
+                      disabled={isUpdating}
+                      className="w-full cursor-pointer bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
+                    >
+                      {isUpdating ? "Processing..." : "Kick Player"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[11px] italic text-stone-400 text-center pt-1 border-t border-stone-100">
+                    Creator role cannot be kicked
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>,
         document.body,
       )}
