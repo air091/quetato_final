@@ -1,10 +1,12 @@
 import { AppError } from "../libs/errorHandle.js";
 import {
+  acceptPlayerInCommunity,
   createStaticPlayers,
   deleteStaticPlayer,
   getAllPlayers,
+  getAllRequestPlayers,
   getPlayerById,
-  requestToJoinCommunity,
+  joinCommunity,
   updateStaticPlayer,
 } from "../services/player.service.js";
 
@@ -122,10 +124,30 @@ export const deleteStaticPlayerController = async (request, response) => {
   }
 };
 
-export const requestToJoinCommunityController = async (request, response) => {
+export const getAllRequestPlayersController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    await requestToJoinCommunity(communityId, request.user.sub);
+    const results = await getAllRequestPlayers(communityId, request.user.sub);
+    return response.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error("Delete static player failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const joinCommunityController = async (request, response) => {
+  try {
+    const { communityId } = request.params;
+    await joinCommunity(communityId, request.user.sub);
     return response.status(201).json({ success: true });
   } catch (error) {
     console.error("Request to join community failed", error);

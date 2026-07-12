@@ -3,8 +3,10 @@ import { useCommunity } from "../../../hooks/useCommunity";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { Dot, Users, Calendar } from "lucide-react"; // Added standard icons for clarity
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../hooks/useAuth";
 
 const CommunityFind = () => {
+  const { user } = useAuth();
   const { communities } = useCommunity();
   const navigate = useNavigate();
 
@@ -60,12 +62,14 @@ const CommunityFind = () => {
             </div>
 
             {/* Action Button */}
-            <button
-              onClick={(e) => handleJoinClick(e, community?.id)}
-              className="w-full mt-4 border border-stone-300 bg-white font-semibold text-stone-700 cursor-pointer px-4 py-2 rounded-lg text-sm transition-colors hover:bg-stone-100 active:bg-stone-100"
-            >
-              Join Community
-            </button>
+            {community.ownerId != user.id && (
+              <button
+                onClick={(e) => handleJoinClick(e, community?.id)}
+                className="w-full mt-4 border border-stone-300 bg-white font-semibold text-stone-700 cursor-pointer px-4 py-2 rounded-lg text-sm transition-colors hover:bg-stone-100 active:bg-stone-100"
+              >
+                Join Community
+              </button>
+            )}
           </div>
         ))}
       </div>

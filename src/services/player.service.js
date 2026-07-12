@@ -226,6 +226,7 @@ export const createStaticPlayers = async (
           username: trimmedName,
           email: `${trimmedName}-${randomUUID()}@static-quetato.com`,
           password: `${trimmedName}-${randomUUID()}`,
+          status: "accepted",
           type: "static",
           skillLevel,
           // Nested relation write: Creates the community player automatically!
@@ -401,7 +402,68 @@ export const deleteStaticPlayer = async (communityId, userId, authorizedId) => {
   });
 };
 
-export const requestToJoinCommunity = async (communityId, userId) => {
+export const getAllRequestPlayers = async (communityId, authorizedId) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!authorizedId) throw new AppError("Authorization ID is required", 400);
+
+  // 1. Authorization check: Ensure the operator is part of the community and holds an administrative role
+  const operatorRole = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { role: true },
+  });
+
+  const validRoles = ["owner", "admin"];
+  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+    throw new AppError(
+      "Unauthorized: Only community owners, admins, or hosts can view pending join requests.",
+      403,
+    );
+  }
+
+  // 2. Verify the community exists
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { id: true },
+  });
+
+  if (!community) throw new AppError("Community not found", 404);
+
+  // 3. Fetch all players with a "requested" status
+  const requestPlayers = await prisma.communityPlayer.findMany({
+    where: {
+      communityId: communityId,
+      status: "requested",
+    },
+    select: {
+      id: true,
+      communityId: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      communityPlayer: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          skillLevel: true,
+          type: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc", // Oldest requests first
+    },
+  });
+
+  return requestPlayers;
+};
+
+export const joinCommunity = async (communityId, userId) => {
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: { id: true },
@@ -465,7 +527,7 @@ export const acceptPlayerInCommunity = async (
       throw new AppError("Forbidden", 403);
     }
 
-    const allowedRoles = ["admin", "host", "owner"];
+    const allowedRoles = ["admin", "owner"];
     if (!allowedRoles.includes(authorizedPlayer.role)) {
       throw new AppError("Forbidden", 403);
     }

@@ -37,8 +37,9 @@ import {
   createStaticPlayersController,
   deleteStaticPlayerController,
   getAllPlayersController,
+  getAllRequestPlayersController,
   getPlayerByIdController,
-  requestToJoinCommunityController,
+  joinCommunityController,
   updateStaticPlayerController,
 } from "../controllers/player.controller.js";
 import {
@@ -86,6 +87,9 @@ router.get(
   "/:communityId/players/:communityPlayerId/history",
   getCommunityPlayerHistoryController,
 );
+
+router.get("/:communityId/players/requests", getAllRequestPlayersController);
+
 router.get("/:communityId/players/:playerId", getPlayerByIdController);
 
 router.post("/:communityId/players/static", createStaticPlayersController);
@@ -100,7 +104,7 @@ router.delete(
   deleteStaticPlayerController,
 );
 
-router.post("/:communityId/request", requestToJoinCommunityController);
+router.post("/:communityId/request", joinCommunityController);
 
 router.patch(
   "/:communityId/players/:userId/accept",
