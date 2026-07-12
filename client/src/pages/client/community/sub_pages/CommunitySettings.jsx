@@ -10,6 +10,9 @@ const CommunitySettings = () => {
   const { fetchWithAuth } = useAuth();
   const navigate = useNavigate(); // Hooked up routing redirects
 
+  const context = useOutletContext();
+  const communityPlayer = context?.communityPlayer;
+
   // Consume shared data context from parent Layout wrapper
   const { community, setCommunity } = useOutletContext();
 
@@ -106,6 +109,8 @@ const CommunitySettings = () => {
     }
   }, [communityId, fetchWithAuth, navigate, community?.name]);
 
+  const isManagement = communityPlayer?.role === "owner";
+
   return (
     <div className="w-full max-w-[720px] mx-auto p-6 bg-white rounded-xl border border-stone-200 shadow-sm mt-6">
       <form onSubmit={handleOnSubmit} className="flex flex-col gap-y-6">
@@ -175,51 +180,52 @@ const CommunitySettings = () => {
             </p>
           )}
         </div>
-
+        {isManagement && (
+          <div className="flex items-center justify-end pt-4 border-t border-stone-100 mt-2">
+            {!isEditing ? (
+              <div className="flex items-center gap-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                >
+                  <Edit2 size={12} />
+                  Edit Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={deleteCommunity}
+                  disabled={isDeleting}
+                  className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-red-900 text-red-100 hover:bg-red-800 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                >
+                  {isDeleting ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Trash size={12} />
+                  )}
+                  Delete Community
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-x-2">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-4 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer outline-none"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                >
+                  Save Changes
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {/* MUTABLE ACTION MANAGEMENT STRIP */}
-        <div className="flex items-center justify-end pt-4 border-t border-stone-100 mt-2">
-          {!isEditing ? (
-            <div className="flex items-center gap-x-2">
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
-              >
-                <Edit2 size={12} />
-                Edit Profile
-              </button>
-              <button
-                type="button"
-                onClick={deleteCommunity}
-                disabled={isDeleting}
-                className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-red-900 text-red-100 hover:bg-red-800 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
-              >
-                {isDeleting ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <Trash size={12} />
-                )}
-                Delete Community
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-x-2">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-4 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer outline-none"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
-              >
-                Save Changes
-              </button>
-            </div>
-          )}
-        </div>
       </form>
     </div>
   );
