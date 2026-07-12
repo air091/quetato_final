@@ -2,7 +2,16 @@ import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
 export const getAllCommunities = async () => {
-  const communities = await prisma.community.findMany({});
+  const communities = await prisma.community.findMany({
+    select: {
+      id: true,
+      ownerId: true,
+      name: true,
+      _count: {
+        select: { players: true, sessions: true },
+      },
+    },
+  });
   return communities;
 };
 
