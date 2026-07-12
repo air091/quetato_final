@@ -11,7 +11,6 @@ const PRESET_COLORS = [
   "bg-cyan-500 text-white border-cyan-600",
 ];
 
-// Master size configuration covering layout classes for both images and divs
 const SIZE_MAP = {
   sm: { dimensions: "w-6 h-6", font: "text-[10px] font-bold" },
   md: { dimensions: "w-8 h-8", font: "text-[12px] font-bold tracking-wider" },
@@ -19,7 +18,6 @@ const SIZE_MAP = {
   xl: { dimensions: "w-16 h-16", font: "text-[24px] font-bold" },
 };
 
-// Maps simple string variants to Tailwind boundary border radius classes
 const ROUNDED_MAP = {
   md: "rounded-md",
   lg: "rounded-lg",
@@ -30,16 +28,14 @@ const ROUNDED_MAP = {
 const PlayerAvatar = ({
   username = "Unknown Player",
   size = "md",
-  rounded = "full", // 🌟 Added new prop with "full" fallback to maintain design system defaults
+  rounded = "full",
   customImageUrl,
 }) => {
-  // Resolve the sizing safely or fallback to medium structure
   const currentSize = SIZE_MAP[size] || SIZE_MAP.md;
-
-  // Resolve border radius style class safely
   const roundedClass = ROUNDED_MAP[rounded] || ROUNDED_MAP.full;
 
-  const baseImgClasses = `object-cover border shadow-xs select-none pointer-events-none ${roundedClass}`;
+  // 💡 REMOVED 'pointer-events-none' from here
+  const baseImgClasses = `object-cover border shadow-xs select-none ${roundedClass}`;
 
   // If the player already has a custom uploaded avatar image, use it instead
   if (customImageUrl) {
@@ -47,12 +43,13 @@ const PlayerAvatar = ({
       <img
         src={customImageUrl}
         alt={`${username}'s profile`}
+        title={username} // 💡 Added title here too so custom images show tooltips
         className={`${baseImgClasses} ${currentSize.dimensions}`}
       />
     );
   }
 
-  // 1. Get Initials (e.g., "John Doe" -> "JD", "alex" -> "AL")
+  // 1. Get Initials
   const cleanedName = username.trim().toUpperCase();
   const parts = cleanedName.split(/\s+/);
   let initials = "";
@@ -64,7 +61,7 @@ const PlayerAvatar = ({
     initials = cleanedName[0] || "?";
   }
 
-  // 2. Pick a stable background color index based on username hash string code
+  // 2. Pick a stable background color
   const hash = Array.from(username).reduce(
     (acc, char) => acc + char.charCodeAt(0),
     0,
@@ -73,7 +70,9 @@ const PlayerAvatar = ({
 
   return (
     <div
-      className={`flex items-center justify-center border shadow-xs select-none pointer-events-none uppercase font-mono ${roundedClass} ${
+      title={username} // 💡 Using the original username looks cleaner in tooltips than full UPPERCASE
+      // 💡 REMOVED 'pointer-events-none' from the template literal below
+      className={`flex items-center justify-center border shadow-xs select-none uppercase font-mono ${roundedClass} ${
         currentSize.dimensions
       } ${currentSize.font} ${colorClass}`}
     >
