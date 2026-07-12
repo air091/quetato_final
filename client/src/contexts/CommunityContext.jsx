@@ -30,7 +30,6 @@ export const CommunityProvider = ({ children }) => {
       if (!data.success) {
         throw new Error(data?.message || "Internal server error");
       }
-      console.log(data);
       setCommunities(data.communities || []);
     } catch (error) {
       console.error("Failed to fetch communities:", error);
