@@ -29,6 +29,7 @@ const DraggableSlotPlayer = ({
   onRefreshData,
   totalGames,
   isOverdue,
+  canRemovePlayer = true,
 }) => {
   const [isPlayerSettingsOpen, setIsPlayerSettingsOpen] = useState(false);
   const playerButtonRef = useRef(null);
@@ -106,17 +107,19 @@ const DraggableSlotPlayer = ({
 
       <div className="flex items-center gap-x-1 relative">
         {timer}
-        <button
-          title={`Remove ${username} from slot`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemovePlayer();
-          }}
-          className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full z-30"
-        >
-          <CornerDownLeft size={14} />
-        </button>
+        {canRemovePlayer && (
+          <button
+            title={`Remove ${username} from slot`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemovePlayer();
+            }}
+            className="text-gray-400 p-0.5 cursor-pointer hover:bg-gray-200 rounded-full z-30"
+          >
+            <CornerDownLeft size={14} />
+          </button>
+        )}
         <button
           title="Settings"
           ref={playerButtonRef}
@@ -259,6 +262,7 @@ const CourtSlot = ({
   });
 
   const hasPlayer = slotData && matchedPoolPlayer && username;
+  const canRemovePlayer = courtStatus !== "started";
 
   const LiveTimerNode = hasPlayer ? (
     <PlayerTimer timestamp={timestamp} />
@@ -309,6 +313,7 @@ const CourtSlot = ({
             onRefreshData={onRefreshData}
             totalGames={displayedTotalGames}
             isOverdue={isOverdue}
+            canRemovePlayer={canRemovePlayer}
           />
 
           {draggableProps.isDragging && (
@@ -343,9 +348,11 @@ const CourtSlot = ({
 
               <div className="flex items-center gap-x-1">
                 {LiveTimerNode}
-                <button className="text-gray-400 p-0.5">
-                  <CornerDownLeft size={14} />
-                </button>
+                {canRemovePlayer && (
+                  <button className="text-gray-400 p-0.5">
+                    <CornerDownLeft size={14} />
+                  </button>
+                )}
                 <button className="text-gray-400 p-0.5">
                   <EllipsisVertical size={14} />
                 </button>
