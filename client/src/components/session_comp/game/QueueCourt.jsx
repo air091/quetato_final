@@ -9,18 +9,6 @@ import { PlayerTimer } from "./PlayersContainer";
 import { useAuth } from "../../../hooks/useAuth";
 import { API_URL } from "../../../contexts/AuthContext";
 
-const getLatestTimerTimestamp = (...timestamps) => {
-  const validTimestamps = timestamps.filter(Boolean);
-
-  if (validTimestamps.length === 0) return null;
-
-  return validTimestamps.reduce((latestTimestamp, timestamp) =>
-    new Date(timestamp).getTime() > new Date(latestTimestamp).getTime()
-      ? timestamp
-      : latestTimestamp,
-  );
-};
-
 const DraggableSlotPlayer = ({
   username,
   timer,
@@ -208,10 +196,7 @@ const CourtSlot = ({
 
   // 🌟 Active threshold check effect monitoring the 20-minute marker
   const timestamp =
-    getLatestTimerTimestamp(
-      slotData?.queuedAt,
-      matchedPoolPlayer?.updateStatus,
-    ) || matchedPoolPlayer?.updatedAt;
+    matchedPoolPlayer?.updateStatus || matchedPoolPlayer?.updatedAt;
   useEffect(() => {
     const checkOverdueStatus = () => {
       if (!timestamp) {

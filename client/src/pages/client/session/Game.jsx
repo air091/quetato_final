@@ -320,9 +320,7 @@ const reconcileAssignedSlotIds = (
   const validBackendSlots = backendSlots.filter(
     (slot) => slot?.sessionPlayerId,
   );
-  // A player can occupy both a live Match Court and a Queue Court for their
-  // next match. Court position, rather than player ID, is therefore the
-  // stable identity for reconciling the returned slot layout.
+
   const getSlotLocationKey = (courtId, position) => `${courtId}:${position}`;
   const backendSlotLocationKeys = new Set(
     validBackendSlots.map((slot) =>
@@ -367,19 +365,31 @@ const reconcileAssignedSlotIds = (
               !backendPlayerIds.has(resolveSlotSessionPlayerId(slot)))
           );
         });
+
         const reconciledSlots = validBackendSlots
           .filter((backendSlot) => backendSlot.courtId === court.id)
-          .map((backendSlot) => ({
-            ...(currentSlotByLocation.get(
+          .map((backendSlot) => {
+            const existingSlot = currentSlotByLocation.get(
               getSlotLocationKey(backendSlot.courtId, backendSlot.position),
-            ) || {}),
-            id: backendSlot.id,
-            courtId: backendSlot.courtId,
-            position: backendSlot.position,
-            team: backendSlot.team,
-            sessionPlayerId: backendSlot.sessionPlayerId,
-            queuedAt: backendSlot.queuedAt,
-          }));
+            );
+
+            // Look up the full player configuration from the active pool if missing
+            const playerFromPool = sessionData.players.find(
+              (p) => resolveSessionPlayerId(p) === backendSlot.sessionPlayerId,
+            );
+
+            return {
+              ...(existingSlot || {}),
+              id: backendSlot.id,
+              courtId: backendSlot.courtId,
+              position: backendSlot.position,
+              team: backendSlot.team,
+              sessionPlayerId: backendSlot.sessionPlayerId,
+              queuedAt: backendSlot.queuedAt,
+              sessionPlayer:
+                existingSlot?.sessionPlayer || playerFromPool || null,
+            };
+          });
 
         return {
           ...court,
