@@ -39,7 +39,9 @@ import {
   getAllPlayersController,
   getAllRequestPlayersController,
   getPlayerByIdController,
+  getRequestedPlayerToJoinSessionController,
   joinCommunityController,
+  joinSessionController,
   kickPlayerInCommunityController,
   rejectPlayerController,
   updateStaticPlayerController,
@@ -131,6 +133,7 @@ router.get(
 );
 
 router.post("/:communityId/sessions", createSessionController);
+router.post("/:communityId/sessions/:sessionId", joinSessionController);
 
 router.patch("/:communityId/sessions/:sessionId", updateSessionController);
 router.put("/:communityId/sessions/:sessionId/start", startSessionController);
@@ -148,6 +151,11 @@ router.get(
 router.get(
   "/:communityId/sessions/:sessionId/players/static",
   getStaticPlayerNotInSessionController,
+);
+
+router.get(
+  "/:communityId/sessions/:sessionId/players/requested",
+  getRequestedPlayerToJoinSessionController,
 );
 
 router.post(

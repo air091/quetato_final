@@ -131,10 +131,7 @@ export const getStaticPlayerNotInSession = async (
         select: {
           id: true,
           username: true,
-          email: true,
           skillLevel: true,
-          type: true,
-          createdAt: true,
         },
       },
     },
@@ -714,4 +711,166 @@ export const kickPlayerInCommunity = async (
       message: "Player kicked from community successfully",
     };
   });
+};
+
+export const joinSession = async (communityId, sessionId, userId) => {
+  if (!communityId || !sessionId || !userId) {
+    throw new AppError(
+      "Community ID, Session ID, and User ID are required",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Verify the session exists and belongs to this community
+    const session = await tx.session.findFirst({
+      where: {
+        id: sessionId,
+        communityId: communityId,
+      },
+    });
+
+    if (!session) {
+      throw new AppError("Session not found within this community", 404);
+    }
+
+    // 2. Security Guardrail: Check if the session is open for registration
+    if (!session.isAvailable) {
+      throw new AppError(
+        "This session is currently closed for new player entries",
+        400,
+      );
+    }
+
+    // 3. Find the target user's CommunityPlayer record to get their bridge ID
+    const communityPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: communityId,
+          userId: userId,
+        },
+      },
+    });
+
+    // 4. Enforce that only approved community members can join a session
+    if (!communityPlayer || communityPlayer.status !== "accepted") {
+      throw new AppError(
+        "Forbidden: You must be an accepted community member to join this session",
+        403,
+      );
+    }
+
+    // 5. Prevent duplicate entries into the same session
+    const existingSessionPlayer = await tx.sessionPlayer.findUnique({
+      where: {
+        sessionId_playerId: {
+          sessionId: sessionId,
+          playerId: communityPlayer.id, // 🎯 Matches the bridge ID
+        },
+      },
+    });
+
+    if (existingSessionPlayer) {
+      throw new AppError("Player is already registered in this session", 400);
+    }
+
+    // 6. Create the registration entry
+    const newSessionPlayer = await tx.sessionPlayer.create({
+      data: {
+        sessionId: sessionId,
+        playerId: communityPlayer.id,
+        status: "requested",
+      },
+      include: {
+        sessionPlayer: {
+          select: {
+            role: true,
+            communityPlayer: {
+              select: {
+                id: true,
+                username: true,
+                skillLevel: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return newSessionPlayer;
+  });
+};
+
+export const getRequestedPlayerToJoinSession = async (
+  communityId,
+  sessionId,
+  authorizedId,
+) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!sessionId) throw new AppError("Session ID is required", 400);
+  if (!authorizedId) throw new AppError("Authorization ID is required", 400);
+
+  // 1. Authorization check: Ensure the operator belongs to the community and holds admin/host privileges
+  const operatorRole = await prisma.communityPlayer.findUnique({
+    where: {
+      communityId_userId: {
+        communityId: communityId,
+        userId: authorizedId,
+      },
+    },
+    select: { role: true },
+  });
+
+  const validRoles = ["owner", "admin", "host"];
+  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+    throw new AppError(
+      "Unauthorized: Only community owners, admins, or hosts can view pending session requests.",
+      403,
+    );
+  }
+
+  // 2. Verify the session exists and belongs to the specified community
+  const sessionExists = await prisma.session.findFirst({
+    where: {
+      id: sessionId,
+      communityId: communityId,
+    },
+  });
+
+  if (!sessionExists) {
+    throw new AppError("Session not found within this community.", 404);
+  }
+
+  // 3. Query all SessionPlayer entries for this session where the registration status is 'requested'
+  const requestedPlayers = await prisma.sessionPlayer.findMany({
+    where: {
+      sessionId: sessionId,
+      status: "requested", // 🎯 Filters for pending session join requests
+    },
+    select: {
+      id: true,
+      playerId: true,
+      status: true,
+      // ⬇️ Include the community player relationship bridge data
+      sessionPlayer: {
+        select: {
+          id: true,
+          role: true,
+          // ⬇️ Include the actual user profile data (username, skill level, type)
+          communityPlayer: {
+            select: {
+              id: true,
+              username: true,
+              skillLevel: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      requestedAt: "asc", // Oldest requests first
+    },
+  });
+
+  return requestedPlayers;
 };

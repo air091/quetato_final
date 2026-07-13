@@ -10,9 +10,60 @@ const RequestPlayers = () => {
   const { fetchWithAuth } = useAuth();
   const { refreshSessionContext } = useSession();
   const { communityId, sessionId } = useParams();
-  const [staticPlayers, setStaticPlayers] = useState([]);
-  const [isStaticMinimized, setIsStaticMinimized] = useState(false);
 
+  const [staticPlayers, setStaticPlayers] = useState([]);
+  const [registeredPlayers, setRegisteredPlayers] = useState([]); // 👈 Added for users not in session
+  const [Players, setPlayers] = useState([]); // Pending requests state
+
+  const [isStaticMinimized, setIsStaticMinimized] = useState(false);
+  const [isRegisteredMinimized, setIsRegisteredMinimized] = useState(false); // 👈 Control states
+  const [isRequestsMinimized, setIsRequestsMinimized] = useState(false);
+
+  // 1. Fetch pending requests for this session
+  const getRequestedPlayers = useCallback(async () => {
+    if (!communityId || !sessionId) return;
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/requested`,
+        { method: "GET" },
+      );
+
+      if (!response || !response.ok) {
+        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
+      }
+
+      const data = await response.json();
+      if (!data?.success) throw new Error(data?.message);
+
+      setPlayers(data?.results || []);
+    } catch (error) {
+      console.error("Fetch requested session players failed:", error.message);
+    }
+  }, [communityId, sessionId, fetchWithAuth]);
+
+  // 2. Fetch registered community users who aren't in this session yet
+  const getRegisteredPlayersNotInSession = useCallback(async () => {
+    if (!communityId || !sessionId) return;
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/registered`,
+        { method: "GET" },
+      );
+
+      if (!response || !response.ok) {
+        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
+      }
+
+      const data = await response.json();
+      if (!data?.success) throw new Error(data?.message);
+
+      setRegisteredPlayers(data?.results || []);
+    } catch (error) {
+      console.error("Fetch available registered users failed:", error.message);
+    }
+  }, [communityId, sessionId, fetchWithAuth]);
+
+  // 3. Fetch static players who aren't in this session
   const getStaticPlayersNotInSession = useCallback(async () => {
     if (!communityId || !sessionId) return;
     try {
@@ -26,10 +77,7 @@ const RequestPlayers = () => {
       }
 
       const data = await response.json();
-
-      if (!data?.success) {
-        throw new Error(data?.message);
-      }
+      if (!data?.success) throw new Error(data?.message);
 
       setStaticPlayers(data?.results || []);
     } catch (error) {
@@ -37,12 +85,20 @@ const RequestPlayers = () => {
     }
   }, [communityId, sessionId, fetchWithAuth]);
 
+  // Trigger initial lifecycle data collection
   useEffect(() => {
+    getRequestedPlayers();
+    getRegisteredPlayersNotInSession();
     getStaticPlayersNotInSession();
-  }, [getStaticPlayersNotInSession]);
+  }, [
+    getRequestedPlayers,
+    getRegisteredPlayersNotInSession,
+    getStaticPlayersNotInSession,
+  ]);
 
+  // 4. Accept a pending session request OR add an available player directly
   const addToSession = useCallback(
-    async (communityPlayerId) => {
+    async (communityPlayerId, isIncomingRequest = false) => {
       if (!communityId || !sessionId || !communityPlayerId) return;
       try {
         const response = await fetchWithAuth(
@@ -57,30 +113,37 @@ const RequestPlayers = () => {
         }
 
         const data = await response.json();
-        if (!data?.success) {
-          throw new Error(data?.message);
+        if (!data?.success) throw new Error(data?.message);
+
+        // Optimistically clean up active arrays immediately
+        if (isIncomingRequest) {
+          setPlayers((prev) => prev.filter((p) => p.id !== communityPlayerId));
+        } else {
+          setRegisteredPlayers((prev) =>
+            prev.filter((p) => p.id !== communityPlayerId),
+          );
+          setStaticPlayers((prev) =>
+            prev.filter((p) => p.id !== communityPlayerId),
+          );
         }
 
-        // Optimistically remove from view for snap UI feedback
-        setStaticPlayers((prevPlayers) =>
-          prevPlayers.filter(
-            (wrapper) =>
-              wrapper.id !== communityPlayerId &&
-              wrapper.communityPlayer?.id !== communityPlayerId,
-          ),
-        );
-
-        // Fetch fresh state from the source
-        await getStaticPlayersNotInSession();
+        // Re-sync all state lists safely
+        await Promise.all([
+          getRequestedPlayers(),
+          getRegisteredPlayersNotInSession(),
+          getStaticPlayersNotInSession(),
+        ]);
         await refreshSessionContext({ silent: true });
       } catch (error) {
-        console.error("Fetch available static players failed:", error.message);
+        console.error("Adding player to session failed:", error.message);
       }
     },
     [
       communityId,
       sessionId,
       fetchWithAuth,
+      getRequestedPlayers,
+      getRegisteredPlayersNotInSession,
       getStaticPlayersNotInSession,
       refreshSessionContext,
     ],
@@ -90,7 +153,6 @@ const RequestPlayers = () => {
     <div className="w-full max-w-5xl mx-auto space-y-4">
       {/* TOP TOOLBAR */}
       <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-        {/* Sort Menu */}
         <div className="flex items-center gap-x-2">
           <label
             htmlFor="sort"
@@ -110,7 +172,150 @@ const RequestPlayers = () => {
         </div>
       </div>
 
-      {/* STATIC PLAYERS PROFILE CONTAINER */}
+      {/* 1. PENDING REQUESTS CONTAINER */}
+      <div className="border border-stone-200/80 rounded-xl bg-white overflow-hidden shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsRequestsMinimized((prev) => !prev)}
+          className="w-full flex items-center justify-between cursor-pointer bg-amber-50/40 hover:bg-amber-50/70 py-3 px-4 transition-colors border-b border-stone-100"
+        >
+          <div className="flex items-center gap-x-2">
+            <h4 className="font-semibold text-sm text-amber-900">
+              Session Join Requests
+            </h4>
+            <span className="text-xs text-amber-600 font-medium">
+              ({Players?.length || 0})
+            </span>
+          </div>
+          <ChevronDown
+            size={16}
+            className={`text-amber-700 transition-transform duration-200 ${isRequestsMinimized ? "-rotate-90" : ""}`}
+          />
+        </button>
+
+        {!isRequestsMinimized && (
+          <div className="p-2 animate-in fade-in duration-150">
+            {Players.length === 0 ? (
+              <p className="text-xs text-stone-400 italic p-3 text-center">
+                No pending session requests found.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-y-1">
+                {Players.map((request) => {
+                  const targetUser = request?.sessionPlayer?.communityPlayer;
+                  return (
+                    <div
+                      key={request.id}
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-x-3 min-w-0">
+                        <PlayerAvatar
+                          username={targetUser?.username}
+                          size="md"
+                        />
+                        <div className="min-w-0">
+                          <h5 className="font-semibold text-sm text-stone-900 truncate">
+                            {targetUser?.username}
+                          </h5>
+                          <div className="flex items-center gap-x-1.5 mt-0.5 text-[10px] font-bold uppercase tracking-wider">
+                            {targetUser?.skillLevel && (
+                              <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
+                                {targetUser?.skillLevel}
+                              </span>
+                            )}
+                            <span className="text-stone-400 font-normal lowercase">
+                              requested to join
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addToSession(request?.id, true)} // true targets request approval flow
+                        className="cursor-pointer text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors"
+                      >
+                        Approve Request
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 2. REGISTERED MEMBERS (NOT IN SESSION) */}
+      <div className="border border-stone-200/80 rounded-xl bg-white overflow-hidden shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsRegisteredMinimized((prev) => !prev)}
+          className="w-full flex items-center justify-between cursor-pointer bg-stone-50/70 hover:bg-stone-50 py-3 px-4 transition-colors border-b border-stone-100"
+        >
+          <div className="flex items-center gap-x-2">
+            <h4 className="font-semibold text-sm text-stone-800">
+              Community Members
+            </h4>
+            <span className="text-xs text-stone-400 font-normal">
+              ({registeredPlayers?.length || 0})
+            </span>
+          </div>
+          <ChevronDown
+            size={16}
+            className={`text-stone-500 transition-transform duration-200 ${isRegisteredMinimized ? "-rotate-90" : ""}`}
+          />
+        </button>
+
+        {!isRegisteredMinimized && (
+          <div className="p-2 animate-in fade-in duration-150">
+            {registeredPlayers.length === 0 ? (
+              <p className="text-xs text-stone-400 italic p-3 text-center">
+                All registered members are already in this session.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-y-1">
+                {registeredPlayers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-x-3 min-w-0">
+                      <PlayerAvatar
+                        username={member?.communityPlayer?.username}
+                        size="md"
+                      />
+                      <div className="min-w-0">
+                        <h5 className="font-semibold text-sm text-stone-900 truncate">
+                          {member?.communityPlayer?.username}
+                        </h5>
+                        <div className="flex items-center gap-x-1.5 mt-0.5 text-[10px] font-bold uppercase tracking-wider">
+                          {member?.communityPlayer?.skillLevel && (
+                            <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
+                              {member?.communityPlayer?.skillLevel}
+                            </span>
+                          )}
+                          <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md normal-case font-semibold">
+                            {member.role || "Member"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addToSession(member?.id, false)}
+                      className="cursor-pointer text-xs bg-stone-900 hover:bg-stone-800 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors"
+                    >
+                      Add to Session
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 3. STATIC PLAYERS PANEL */}
       <div className="border border-stone-200/80 rounded-xl bg-white overflow-hidden shadow-sm">
         <button
           type="button"
@@ -125,14 +330,12 @@ const RequestPlayers = () => {
           </div>
           <ChevronDown
             size={16}
-            className={`text-stone-500 transition-transform duration-200 ${
-              isStaticMinimized ? "-rotate-90" : ""
-            }`}
+            className={`text-stone-500 transition-transform duration-200 ${isStaticMinimized ? "-rotate-90" : ""}`}
           />
         </button>
 
         {!isStaticMinimized && (
-          <div className="p-2 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="p-2 animate-in fade-in duration-150">
             {staticPlayers.length === 0 ? (
               <p className="text-xs text-stone-400 italic p-3 text-center">
                 No available static guest accounts found.
@@ -142,7 +345,7 @@ const RequestPlayers = () => {
                 {staticPlayers.map((wrapper) => (
                   <div
                     key={wrapper.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors group"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors"
                   >
                     <div className="flex items-center gap-x-3 min-w-0">
                       <PlayerAvatar
@@ -165,11 +368,10 @@ const RequestPlayers = () => {
                         </div>
                       </div>
                     </div>
-
                     <button
                       type="button"
-                      onClick={() => addToSession(wrapper?.id)}
-                      className="cursor-pointer text-xs bg-stone-900 hover:bg-stone-800 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors shrink-0"
+                      onClick={() => addToSession(wrapper?.id, false)}
+                      className="cursor-pointer text-xs bg-stone-900 hover:bg-stone-800 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors"
                     >
                       Add to Session
                     </button>

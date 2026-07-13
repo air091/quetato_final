@@ -6,7 +6,9 @@ import {
   getAllPlayers,
   getAllRequestPlayers,
   getPlayerById,
+  getRequestedPlayerToJoinSession,
   joinCommunity,
+  joinSession,
   kickPlayerInCommunity,
   rejectPlayer,
   updateStaticPlayer,
@@ -212,7 +214,7 @@ export const kickPlayerInCommunityController = async (request, response) => {
     await kickPlayerInCommunity(communityId, userId, request.user.sub);
     return response.status(200).json({ success: true });
   } catch (error) {
-    console.error("Accept player to community failed", error);
+    console.error("Kick player to community failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";
@@ -226,4 +228,49 @@ export const kickPlayerInCommunityController = async (request, response) => {
   }
 };
 
-// kickPlayerInCommunity
+export const joinSessionController = async (request, response) => {
+  try {
+    const { communityId, sessionId } = request.params;
+    await joinSession(communityId, sessionId, request.user.sub);
+    return response.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Join session failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const getRequestedPlayerToJoinSessionController = async (
+  request,
+  response,
+) => {
+  try {
+    const { communityId, sessionId } = request.params;
+    const results = await getRequestedPlayerToJoinSession(
+      communityId,
+      sessionId,
+      request.user.sub,
+    );
+    return response.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error("Get requested players not in session failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};

@@ -292,7 +292,10 @@ export const hideAuthorizedPlayerInSession = async (
   });
 
   if (!session) {
-    throw new AppError("Session not found within the specified community.", 404);
+    throw new AppError(
+      "Session not found within the specified community.",
+      404,
+    );
   }
 
   // 2. Authorization check: Ensure the operator is part of the community and holds an administrative role
@@ -378,7 +381,10 @@ export const unhideAuthorizedPlayerInSession = async (
   });
 
   if (!session) {
-    throw new AppError("Session not found within the specified community.", 404);
+    throw new AppError(
+      "Session not found within the specified community.",
+      404,
+    );
   }
 
   const operatorRole = await prisma.communityPlayer.findUnique({
@@ -454,7 +460,10 @@ export const removePlayerFromSession = async (
   });
 
   if (!session) {
-    throw new AppError("Session not found within the specified community.", 404);
+    throw new AppError(
+      "Session not found within the specified community.",
+      404,
+    );
   }
 
   // 2. Authorization check: Ensure the operator is part of the community and holds an administrative role
