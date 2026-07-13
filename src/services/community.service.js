@@ -13,13 +13,20 @@ export const getAllCommunities = async () => {
           sessions: true,
         },
       },
-      // 👇 Fetches the list of players who requested to join this community
+      // 👇 Fetches players that match EITHER status in a single query block
       players: {
         where: {
-          status: "requested", // 👈 Filters only for "requested" status
+          status: {
+            in: ["requested", "accepted"], // 👈 Pulls both groups together
+          },
         },
         select: {
-          communityPlayer: { select: { id: true } },
+          status: true, // 👈 CRITICAL: Return the status so your frontend can tell who is accepted vs requested!
+          communityPlayer: {
+            select: {
+              id: true,
+            },
+          },
         },
       },
     },

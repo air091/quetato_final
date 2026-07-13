@@ -28,7 +28,7 @@ const CommunityFind = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {communities?.map((community) => {
           // 1. Check if the current user is the owner
-          const isOwner = community.ownerId === user?.id;
+          const isJoined = community.ownerId === user?.id;
 
           // 2. Check if the current user has a pending request in the array
           // Note: If your backend mapped User data inside 'communityPlayer', use: p.communityPlayer?.id === user?.id
@@ -65,22 +65,10 @@ const CommunityFind = () => {
               </div>
 
               {/* 3. Conditional Action UI */}
-              {!isOwner && (
-                <>
-                  {isRequested ? (
-                    /* Disabled visual feedback state instead of disappearing completely, which prevents layout shifts */
-                    <div className="w-full mt-4 text-center border border-stone-200 bg-stone-50 font-medium text-stone-400 px-4 py-2 rounded-lg text-sm select-none">
-                      Requested
-                    </div>
-                  ) : (
-                    <button
-                      onClick={(e) => handleJoinClick(e, community?.id)}
-                      className="w-full mt-4 border border-stone-300 bg-white font-semibold text-stone-700 cursor-pointer px-4 py-2 rounded-lg text-sm transition-colors hover:bg-stone-100 active:bg-stone-100"
-                    >
-                      Join Community
-                    </button>
-                  )}
-                </>
+              {isRequested && (
+                <div className="w-full mt-4 text-center border border-stone-200 bg-stone-50 font-medium text-stone-400 px-4 py-2 rounded-lg text-sm select-none">
+                  Requested
+                </div>
               )}
             </div>
           );

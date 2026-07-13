@@ -138,7 +138,7 @@ const CommunityActivities = () => {
 
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
-  const isGuest = !communityPlayer;
+  const isGuest = !communityPlayer || communityPlayer?.status === "requested";
 
   return (
     <>
