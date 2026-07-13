@@ -157,14 +157,18 @@ const applyOptimisticSlotAssignment = (
 ) => {
   const targetCourtLocation = findCourtLocation(sessionData, courtId);
   const targetCourt = targetCourtLocation?.court;
-  const activeMatchLocation = findSlotLocation(sessionData, (slot, court) =>
-    resolveSlotSessionPlayerId(slot) === sessionPlayerId &&
-    court.type === "match" &&
-    (court.status === "started" || court.status === "paused"),
+  const activeMatchLocation = findSlotLocation(
+    sessionData,
+    (slot, court) =>
+      resolveSlotSessionPlayerId(slot) === sessionPlayerId &&
+      court.type === "match" &&
+      (court.status === "started" || court.status === "paused"),
   );
-  const queueSourceLocation = findSlotLocation(sessionData, (slot, court) =>
-    resolveSlotSessionPlayerId(slot) === sessionPlayerId &&
-    court.type === "queue",
+  const queueSourceLocation = findSlotLocation(
+    sessionData,
+    (slot, court) =>
+      resolveSlotSessionPlayerId(slot) === sessionPlayerId &&
+      court.type === "queue",
   );
   const sourceLocation =
     targetType === "queue"
@@ -274,7 +278,10 @@ const applyOptimisticSlotAssignment = (
       const candidatePlayerId = resolveSessionPlayerId(candidatePlayer);
 
       if (candidatePlayerId === sessionPlayerId) {
-        if (targetType === "queue" && candidatePlayer.gameStatus === "playing") {
+        if (
+          targetType === "queue" &&
+          candidatePlayer.gameStatus === "playing"
+        ) {
           return candidatePlayer;
         }
 
@@ -343,32 +350,28 @@ const reconcileAssignedSlotIds = (
     return {
       ...currentCourtsObj,
       courts: currentCourtsObj.courts.map((court) => {
-        const untouchedSlots = (court.slots || []).filter(
-          (slot) => {
-            const locationKey = getSlotLocationKey(court.id, slot.position);
-            const isLiveMatchSlotToPreserve =
+        const untouchedSlots = (court.slots || []).filter((slot) => {
+          const locationKey = getSlotLocationKey(court.id, slot.position);
+          const isLiveMatchSlotToPreserve =
+            preserveLiveMatchSlotForPlayerId &&
+            resolveSlotSessionPlayerId(slot) ===
               preserveLiveMatchSlotForPlayerId &&
-              resolveSlotSessionPlayerId(slot) ===
-                preserveLiveMatchSlotForPlayerId &&
-              court.type === "match" &&
-              (court.status === "started" || court.status === "paused") &&
-              !backendSlotLocationKeys.has(locationKey);
+            court.type === "match" &&
+            (court.status === "started" || court.status === "paused") &&
+            !backendSlotLocationKeys.has(locationKey);
 
-            return (
-              isLiveMatchSlotToPreserve ||
-              (!backendSlotLocationKeys.has(locationKey) &&
-                !backendPlayerIds.has(resolveSlotSessionPlayerId(slot)))
-            );
-          },
-        );
+          return (
+            isLiveMatchSlotToPreserve ||
+            (!backendSlotLocationKeys.has(locationKey) &&
+              !backendPlayerIds.has(resolveSlotSessionPlayerId(slot)))
+          );
+        });
         const reconciledSlots = validBackendSlots
           .filter((backendSlot) => backendSlot.courtId === court.id)
           .map((backendSlot) => ({
-            ...(
-              currentSlotByLocation.get(
-                getSlotLocationKey(backendSlot.courtId, backendSlot.position),
-              ) || {}
-            ),
+            ...(currentSlotByLocation.get(
+              getSlotLocationKey(backendSlot.courtId, backendSlot.position),
+            ) || {}),
             id: backendSlot.id,
             courtId: backendSlot.courtId,
             position: backendSlot.position,
@@ -691,7 +694,7 @@ const Game = () => {
     relationshipToastTimerRef.current = setTimeout(() => {
       setRelationshipToast(null);
       relationshipToastTimerRef.current = null;
-    }, 10000);
+    }, 5000);
   }, []);
 
   const fetchRelationshipToastData = useCallback(

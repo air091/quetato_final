@@ -13,6 +13,10 @@ import { useAuth } from "../../../../hooks/useAuth";
 import AddPlayerModal from "../../../../components/session_comp/players/AddPlayerModal";
 import { SKILL_LEVEL_LABELS } from "../../../../components/community_comp/players/AddStaticPlayer";
 import { API_URL } from "../../../../contexts/AuthContext";
+import {
+  getPlayerNameValidation,
+  parsePlayerNames,
+} from "../../../../utils/playerNameValidation";
 
 const getPlayerMetric = (player, metric) => {
   const value =
@@ -50,6 +54,12 @@ const AllPlayers = () => {
     Object.keys(SKILL_LEVEL_LABELS)[0] || "",
   ); // Tracks selected dropdown value
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [communityPlayerNames, setCommunityPlayerNames] = useState([]);
+  const [isCheckingNames, setIsCheckingNames] = useState(false);
+  const nameValidation = useMemo(
+    () => getPlayerNameValidation(newPlayerNames, communityPlayerNames),
+    [newPlayerNames, communityPlayerNames],
+  );
 
   // Close modal and clear field handler
   const closeModal = useCallback(() => {
@@ -68,6 +78,51 @@ const AllPlayers = () => {
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen, closeModal]);
+
+  useEffect(() => {
+    if (!isModalOpen || !communityId) return;
+
+    let isCurrent = true;
+
+    const getCommunityPlayerNames = async () => {
+      setIsCheckingNames(true);
+      try {
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/players`,
+          { method: "GET" },
+        );
+
+        if (!response?.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+        if (!data?.success) {
+          throw new Error(data?.message || "Failed to load community players");
+        }
+
+        if (isCurrent) {
+          setCommunityPlayerNames(
+            (data.player || [])
+              .map((player) => player?.communityPlayer?.username)
+              .filter(Boolean),
+          );
+        }
+      } catch (error) {
+        console.error("Fetch community player names failed:", error.message);
+      } finally {
+        if (isCurrent) setIsCheckingNames(false);
+      }
+    };
+
+    getCommunityPlayerNames();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isModalOpen, communityId, fetchWithAuth]);
 
   const getAcceptedPlayers = async () => {
     try {
@@ -121,11 +176,9 @@ const AllPlayers = () => {
   const addStaticPlayerInSession = async (e) => {
     if (e) e.preventDefault();
     if (!newPlayerNames.trim() || isSubmitting) return;
+    if (nameValidation.hasError) return;
 
-    const usernamesArray = newPlayerNames
-      .split("\n")
-      .map((name) => name.trim())
-      .filter((name) => name.length > 0);
+    const usernamesArray = parsePlayerNames(newPlayerNames);
 
     if (usernamesArray.length === 0) return;
 
@@ -142,10 +195,13 @@ const AllPlayers = () => {
         },
       );
 
-      if (!createStaticRes.ok)
-        throw new Error("Failed to create static profiles");
-
       const createdPlayersData = await createStaticRes.json();
+      if (!createStaticRes.ok || !createdPlayersData?.success) {
+        throw new Error(
+          createdPlayersData?.message || "Failed to create static profiles",
+        );
+      }
+
       const targetPlayersArray = Array.isArray(createdPlayersData)
         ? createdPlayersData
         : createdPlayersData?.players;
@@ -346,6 +402,8 @@ const AllPlayers = () => {
         setSkillLevel={setSkillLevel}
         SKILL_LEVEL_LABELS={SKILL_LEVEL_LABELS}
         isSubmitting={isSubmitting}
+        existingPlayerNames={communityPlayerNames}
+        isCheckingNames={isCheckingNames}
       />
     </div>
   );

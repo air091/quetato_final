@@ -127,6 +127,7 @@ const All = () => {
                 getAllSession={getAllSession}
                 isOpen={isAddStaticPlayerModalOpen}
                 setIsOpen={setIsAddStaticPlayerModalOpen}
+                existingPlayers={players}
               />
             </>
           )}

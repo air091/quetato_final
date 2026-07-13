@@ -1,6 +1,7 @@
 import React from "react";
 import Modal from "../../createPortal";
 import { UserPlus, X, Loader2 } from "lucide-react";
+import { getPlayerNameValidation } from "../../../utils/playerNameValidation";
 
 const AddPlayerModal = ({
   isOpen,
@@ -12,7 +13,15 @@ const AddPlayerModal = ({
   setSkillLevel,
   SKILL_LEVEL_LABELS = {},
   isSubmitting,
+  existingPlayerNames = [],
+  isCheckingNames = false,
 }) => {
+  const nameValidation = getPlayerNameValidation(
+    newPlayerNames,
+    existingPlayerNames,
+  );
+  const hasNameError = nameValidation.hasError;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -54,10 +63,22 @@ const AddPlayerModal = ({
                 placeholder={"JohnDoe\nJaneDoe\nPlayerThree"}
                 value={newPlayerNames}
                 onChange={(e) => setNewPlayerNames(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50/50 border border-stone-200 rounded-lg text-sm text-stone-800 placeholder-stone-400 font-medium outline-none focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all disabled:opacity-60 resize-none font-mono"
+                className={`w-full px-3 py-2 bg-stone-50/50 border rounded-lg text-sm text-stone-800 placeholder-stone-400 font-medium outline-none focus:bg-white focus:ring-1 transition-all disabled:opacity-60 resize-none font-mono ${
+                  hasNameError
+                    ? "border-red-300 focus:border-red-400 focus:ring-red-300"
+                    : "border-stone-200 focus:border-stone-400 focus:ring-stone-400"
+                }`}
               />
-              <p className="text-[11px] text-stone-400 font-medium">
-                Press Enter to add multiple players at once.
+              <p
+                className={`text-[11px] font-medium ${
+                  hasNameError ? "text-red-600" : "text-stone-400"
+                }`}
+              >
+                {hasNameError
+                  ? nameValidation.message
+                  : isCheckingNames
+                    ? "Checking existing community players..."
+                    : "Press Enter to add multiple players at once."}
               </p>
             </div>
 
@@ -95,7 +116,12 @@ const AddPlayerModal = ({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !newPlayerNames.trim()}
+                disabled={
+                  isSubmitting ||
+                  isCheckingNames ||
+                  !newPlayerNames.trim() ||
+                  hasNameError
+                }
                 className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 disabled:bg-stone-400 disabled:cursor-not-allowed rounded-lg transition-colors shadow-sm outline-none"
               >
                 {isSubmitting ? (

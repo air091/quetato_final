@@ -1,6 +1,10 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { API_URL } from "../../../contexts/AuthContext";
+import {
+  getPlayerNameValidation,
+  parsePlayerNames,
+} from "../../../utils/playerNameValidation";
 
 // Skill level labels dictionary
 export const SKILL_LEVEL_LABELS = {
@@ -20,11 +24,23 @@ const AddStaticPlayer = ({
   getAllSession,
   isOpen,
   setIsOpen,
+  existingPlayers = [],
 }) => {
   const [namesText, setNamesText] = useState("");
   // Default to the first key in your dictionary ("LB")
   const [skillLevel, setSkillLevel] = useState("LB");
   const [loading, setLoading] = useState(false);
+  const existingPlayerNames = useMemo(
+    () =>
+      existingPlayers
+        .map((player) => player?.communityPlayer?.username)
+        .filter(Boolean),
+    [existingPlayers],
+  );
+  const nameValidation = getPlayerNameValidation(
+    namesText,
+    existingPlayerNames,
+  );
 
   if (!isOpen) return null;
 
@@ -37,10 +53,9 @@ const AddStaticPlayer = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const parsedNames = namesText
-      .split("\n")
-      .map((name) => name.trim())
-      .filter((name) => name.length > 0);
+    if (nameValidation.hasError) return;
+
+    const parsedNames = parsePlayerNames(namesText);
 
     if (parsedNames.length === 0) return;
 
@@ -100,10 +115,20 @@ const AddStaticPlayer = ({
               value={namesText}
               onChange={(e) => setNamesText(e.target.value)}
               placeholder={"john\ndoe\njane"}
-              className="w-full border rounded-md px-3 py-2 text-sm outline-none focus:border-stone-500 font-mono resize-none"
+              className={`w-full border rounded-md px-3 py-2 text-sm outline-none font-mono resize-none ${
+                nameValidation.hasError
+                  ? "border-red-300 focus:border-red-400"
+                  : "focus:border-stone-500"
+              }`}
             />
-            <p className="text-[12px] text-stone-500 mt-1">
-              Press Enter to add multiple players at once.
+            <p
+              className={`text-[12px] mt-1 ${
+                nameValidation.hasError ? "text-red-600" : "text-stone-500"
+              }`}
+            >
+              {nameValidation.hasError
+                ? nameValidation.message
+                : "Press Enter to add multiple players at once."}
             </p>
           </div>
 
@@ -136,7 +161,7 @@ const AddStaticPlayer = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || nameValidation.hasError}
               className="bg-stone-800 text-white px-4 py-2 text-sm font-medium rounded-md hover:bg-stone-700 cursor-pointer disabled:opacity-50"
             >
               {loading ? "Adding..." : "Add Players"}
