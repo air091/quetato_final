@@ -694,7 +694,7 @@ const Game = () => {
     relationshipToastTimerRef.current = setTimeout(() => {
       setRelationshipToast(null);
       relationshipToastTimerRef.current = null;
-    }, 5000);
+    }, 3000);
   }, []);
 
   const fetchRelationshipToastData = useCallback(
@@ -1475,25 +1475,7 @@ const Game = () => {
     >
       {relationshipToast && (
         <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-red-500 bg-red-100 shadow-xl">
-          <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-gray-950">
-                Match history
-              </p>
-              <p className="text-xs text-gray-500">
-                {relationshipToast.subjectName} with this court
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={dismissRelationshipToast}
-              className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-              aria-label="Dismiss match history notification"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="space-y-3 px-4 py-3">
+          <div className="flex items-center justify-between px-[16px] py-[8px]">
             {relationshipToast.relationships.map((relationship) => (
               <div key={relationship.sessionPlayerId} className="text-xs">
                 <p className="font-semibold text-gray-900">
@@ -1505,6 +1487,14 @@ const Game = () => {
                 </p>
               </div>
             ))}
+            <button
+              type="button"
+              onClick={dismissRelationshipToast}
+              className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Dismiss match history notification"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}
