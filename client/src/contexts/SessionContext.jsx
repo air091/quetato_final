@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { SessionContext } from "./SessionContextValue";
@@ -24,7 +24,7 @@ const normalizeCourtsPayload = (payload) => {
 export const SessionProvider = ({ children }) => {
   const { communityId, sessionId } = useParams();
   const { fetchWithAuth } = useAuth();
-  const [sessionData, setSessionData] = useState({
+  const [sessionData, setSessionDataState] = useState({
     dashboard: null,
     pricingData: null,
     players: [],
@@ -35,6 +35,15 @@ export const SessionProvider = ({ children }) => {
   const [canManagePlayers, setCanManagePlayers] = useState(false);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState("");
+  const sessionDataVersionRef = useRef(0);
+
+  // UI actions can optimistically update session data while a previous fetch
+  // is still in flight. Version those writes so an older response cannot put
+  // courts back into their pre-action state.
+  const setSessionData = useCallback((updater) => {
+    sessionDataVersionRef.current += 1;
+    setSessionDataState(updater);
+  }, []);
 
   const baseUrl = useMemo(() => {
     if (!communityId || !sessionId) return "";
@@ -44,6 +53,14 @@ export const SessionProvider = ({ children }) => {
   const refreshSessionContext = useCallback(
     async ({ silent = false, updateState = true } = {}) => {
       if (!baseUrl) return null;
+
+      const requestVersion = updateState
+        ? sessionDataVersionRef.current + 1
+        : null;
+
+      if (updateState) {
+        sessionDataVersionRef.current = requestVersion;
+      }
 
       try {
         if (!silent) setIsSessionLoading(true);
@@ -98,8 +115,11 @@ export const SessionProvider = ({ children }) => {
           queueCourts: normalizeCourtsPayload(queueData),
         };
 
-        if (updateState) {
-          setSessionData(nextSessionData);
+        if (
+          updateState &&
+          requestVersion === sessionDataVersionRef.current
+        ) {
+          setSessionDataState(nextSessionData);
           setCurrentUserRole(playersData.currentUserRole || null);
           setCanManagePlayers(Boolean(playersData.canManagePlayers));
         }
@@ -119,6 +139,9 @@ export const SessionProvider = ({ children }) => {
     async ({ silent = true } = {}) => {
       if (!baseUrl) return [];
 
+      const requestVersion = sessionDataVersionRef.current + 1;
+      sessionDataVersionRef.current = requestVersion;
+
       try {
         if (!silent) setIsSessionLoading(true);
         const response = await fetchWithAuth(`${baseUrl}/players`, {
@@ -136,12 +159,14 @@ export const SessionProvider = ({ children }) => {
           throw new Error(data?.message || "Failed to load players");
         }
 
-        setSessionData((prev) => ({
-          ...prev,
-          players: data.players || [],
-        }));
-        setCurrentUserRole(data.currentUserRole || null);
-        setCanManagePlayers(Boolean(data.canManagePlayers));
+        if (requestVersion === sessionDataVersionRef.current) {
+          setSessionDataState((prev) => ({
+            ...prev,
+            players: data.players || [],
+          }));
+          setCurrentUserRole(data.currentUserRole || null);
+          setCanManagePlayers(Boolean(data.canManagePlayers));
+        }
 
         return data.players || [];
       } finally {
