@@ -9,6 +9,7 @@ const CommunityLayout = () => {
   const { communityId } = useParams();
   const { accessToken, fetchWithAuth } = useAuth(); // Make sure you have fetchWithAuth here
   const [community, setCommunity] = useState(null);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);

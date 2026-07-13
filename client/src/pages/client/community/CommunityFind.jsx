@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useCommunity } from "../../../hooks/useCommunity";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { Dot, Users, Calendar } from "lucide-react"; // Added standard icons for clarity
@@ -9,6 +9,8 @@ const CommunityFind = () => {
   const { user } = useAuth();
   const { communities } = useCommunity();
   const navigate = useNavigate();
+
+  console.log(communities);
 
   const handleJoinClick = (e, communityId) => {
     e.stopPropagation(); // Prevents navigating to the community page when clicking 'Join'

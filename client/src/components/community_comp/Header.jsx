@@ -5,7 +5,7 @@ import { API_URL } from "../../contexts/AuthContext";
 import { useAuth } from "../../hooks/useAuth";
 
 const Header = ({ communityId, communityPlayer, accessToken }) => {
-  const { fetchWithAuth } = useAuth();
+  const { fetchWithAuth, user } = useAuth();
   const [community, setCommunity] = useState();
 
   const getCommunityById = useCallback(async () => {
@@ -38,8 +38,30 @@ const Header = ({ communityId, communityPlayer, accessToken }) => {
     getCommunityById();
   }, [getCommunityById]);
 
+  const joinCommunity = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/request`,
+        { method: "POST" },
+      );
+      if (!response) return;
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Get community by ID failed", error);
+    }
+  }, [accessToken, communityId, fetchWithAuth]);
+
+  const handleOnJoinCommunity = async () => {
+    await joinCommunity();
+  };
+
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
+  const isRequested = communityPlayer?.status === "requested";
   const isGuest = !communityPlayer;
 
   return (
@@ -52,7 +74,6 @@ const Header = ({ communityId, communityPlayer, accessToken }) => {
             {community?.name}
           </h3>
         </div>
-
         {/* Context Metadata Row */}
         <div className="flex items-center flex-wrap gap-x-2 text-sm text-stone-500">
           <span className="font-medium text-stone-700">
@@ -73,8 +94,18 @@ const Header = ({ communityId, communityPlayer, accessToken }) => {
             {community?._count?.sessions === 1 ? "session" : "sessions"}
           </span>
         </div>
+        {isRequested && (
+          <div className="flex items-center justify-center gap-x-[8px]">
+            <span className="bg-gray-300 py-1 rounded-full my-1 text-[14px] text-center px-[16px]">
+              Requested
+            </span>
+          </div>
+        )}
         {isGuest && (
-          <button className="bg-blue-300 py-1 rounded-full my-1 hover:bg-blue-500 hover:text-white cursor-pointer text-[14px]">
+          <button
+            onClick={handleOnJoinCommunity}
+            className="bg-blue-300 py-1 rounded-full my-1 hover:bg-blue-500 hover:text-white cursor-pointer text-[14px]"
+          >
             Join Community
           </button>
         )}

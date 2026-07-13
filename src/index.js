@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routers/auth.route.js";
 import communityRoutes from "./routers/community.route.js";
 import { prisma } from "./libs/prisma.js";
+import compression from "compression";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,8 @@ const allowedOrigins = [
   "https://quetato-sport.vercel.app",
   "http://localhost:5173",
 ].filter(Boolean);
+
+app.use(compression());
 
 app.use(
   cors({

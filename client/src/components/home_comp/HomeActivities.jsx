@@ -10,7 +10,6 @@ const HomeActivities = () => {
   const [sessions, setSessions] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const navigate = useNavigate();
-  console.log(sessions);
   useEffect(() => {
     if (loading || !accessToken) return;
 

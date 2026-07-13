@@ -8,10 +8,23 @@ export const getAllCommunities = async () => {
       ownerId: true,
       name: true,
       _count: {
-        select: { players: true, sessions: true },
+        select: {
+          players: true,
+          sessions: true,
+        },
+      },
+      // 👇 Fetches the list of players who requested to join this community
+      players: {
+        where: {
+          status: "requested", // 👈 Filters only for "requested" status
+        },
+        select: {
+          id: true,
+        },
       },
     },
   });
+
   return communities;
 };
 

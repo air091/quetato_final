@@ -165,6 +165,7 @@ export const rejectPlayerController = async (request, response) => {
     return response.status(statusCode).json({ success: false, message });
   }
 };
+
 export const joinCommunityController = async (request, response) => {
   try {
     const { communityId } = request.params;
