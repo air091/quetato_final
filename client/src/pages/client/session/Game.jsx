@@ -14,7 +14,7 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
-import { Gamepad2, X } from "lucide-react";
+import { AlertTriangle, Gamepad2, X } from "lucide-react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useSession } from "../../../hooks/useSession";
 import { API_URL } from "../../../contexts/AuthContext";
@@ -578,6 +578,7 @@ const getProjectedCourtRelationshipPlayers = (
     projectedSessionData,
     courtId,
   )?.court;
+  const targetTeam = position % 2 === 0 ? "a" : "b";
 
   return (projectedCourt?.slots || [])
     .filter((slot) => resolveSlotSessionPlayerId(slot))
@@ -590,10 +591,12 @@ const getProjectedCourtRelationshipPlayers = (
           (candidatePlayer) =>
             resolveSessionPlayerId(candidatePlayer) === relatedSessionPlayerId,
         );
+      const relatedTeam = slot.team || (slot.position % 2 === 0 ? "a" : "b");
 
       return {
         sessionPlayerId: relatedSessionPlayerId,
         username: getPlayerUsername(relatedPlayer),
+        relationshipType: relatedTeam === targetTeam ? "teamed" : "against",
       };
     });
 };
@@ -699,24 +702,35 @@ const Game = () => {
     setRelationshipToast(null);
   }, []);
 
-  const showRelationshipToast = useCallback((subjectName, relationships) => {
-    if (!relationships?.length) return;
+  const showRelationshipToast = useCallback(
+    (subjectName, relationships, courtName) => {
+      const notifications = (relationships || [])
+        .map((relationship) => ({
+          ...relationship,
+          count: Number(relationship[relationship.relationshipType]) || 0,
+        }))
+        .filter((relationship) => relationship.count > 0);
 
-    if (relationshipToastTimerRef.current) {
-      clearTimeout(relationshipToastTimerRef.current);
-    }
+      if (!notifications.length) return;
 
-    setRelationshipToast({
-      id: Date.now(),
-      subjectName,
-      relationships,
-    });
+      if (relationshipToastTimerRef.current) {
+        clearTimeout(relationshipToastTimerRef.current);
+      }
 
-    relationshipToastTimerRef.current = setTimeout(() => {
-      setRelationshipToast(null);
-      relationshipToastTimerRef.current = null;
-    }, 3000);
-  }, []);
+      setRelationshipToast({
+        id: Date.now(),
+        subjectName,
+        courtName,
+        notifications,
+      });
+
+      relationshipToastTimerRef.current = setTimeout(() => {
+        setRelationshipToast(null);
+        relationshipToastTimerRef.current = null;
+      }, 5000);
+    },
+    [],
+  );
 
   const fetchRelationshipToastData = useCallback(
     async (sessionPlayerId, relatedPlayers) => {
@@ -1187,6 +1201,8 @@ const Game = () => {
     }
 
     const previousSessionData = structuredClone(latestSessionDataRef.current);
+    const targetCourtName =
+      findCourtLocation(previousSessionData, courtId)?.court?.name || "Court";
     const relatedPlayers = getProjectedCourtRelationshipPlayers(
       previousSessionData,
       {
@@ -1235,7 +1251,11 @@ const Game = () => {
           relatedPlayers,
         );
 
-        showRelationshipToast(getPlayerUsername(player), relationships);
+        showRelationshipToast(
+          getPlayerUsername(player),
+          relationships,
+          targetCourtName,
+        );
       }
     } catch (error) {
       console.error("Backend slot assignment synchronization failed:", error);
@@ -1513,28 +1533,39 @@ const Game = () => {
       onDragEnd={handleDragEnd}
     >
       {relationshipToast && (
-        <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-red-500 bg-red-200 shadow-xl">
-          <div className="flex items-center justify-between px-[16px] py-[8px]">
-            {relationshipToast.relationships.map((relationship) => (
-              <div key={relationship.sessionPlayerId} className="text-xs">
-                <p className="font-semibold text-gray-900">
-                  {relationshipToast.subjectName} and {relationship.username}
-                </p>
-                <p className="text-gray-700">
-                  Teamed {formatTimes(relationship.teamed)}. Played against{" "}
-                  {formatTimes(relationship.against)}.
-                </p>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={dismissRelationshipToast}
-              className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-              aria-label="Dismiss match history notification"
+        <div className="fixed right-5 top-4 z-50 flex w-[min(540px,calc(100vw-2rem))] flex-col gap-1">
+          {relationshipToast.notifications.map((notification) => (
+            <div
+              key={`${notification.sessionPlayerId}-${notification.relationshipType}`}
+              className="flex min-h-[46px] items-center gap-3 rounded bg-red-600 px-4 py-2 text-white shadow-lg"
             >
-              <X size={16} />
-            </button>
-          </div>
+              <AlertTriangle size={17} className="shrink-0" />
+              <p className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                {notification.relationshipType === "teamed" ? (
+                  <>
+                    {relationshipToast.subjectName} and {notification.username}{" "}
+                    have teamed up {formatTimes(notification.count)} before (
+                    {relationshipToast.courtName})
+                  </>
+                ) : (
+                  <>
+                    {relationshipToast.subjectName} vs {notification.username}{" "}
+                    have faced each other {formatTimes(notification.count)}{" "}
+                    before ({relationshipToast.courtName})
+                  </>
+                )}
+              </p>
+              <Gamepad2 size={16} className="shrink-0" />
+              <button
+                type="button"
+                onClick={dismissRelationshipToast}
+                className="shrink-0 rounded p-1 text-white transition cursor-pointer hover:bg-white/15"
+                aria-label="Dismiss match history notification"
+              >
+                <X size={17} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
