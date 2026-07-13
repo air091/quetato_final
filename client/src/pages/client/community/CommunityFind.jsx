@@ -9,6 +9,7 @@ const CommunityFind = () => {
   const { user } = useAuth();
   const { communities } = useCommunity();
   const navigate = useNavigate();
+
   const handleJoinClick = (e, communityId) => {
     e.stopPropagation();
     console.log(`Joining community: ${communityId}`);
@@ -27,14 +28,20 @@ const CommunityFind = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {communities?.map((community) => {
-          // 1. Check if the current user is the owner
-          const isJoined = community.ownerId === user?.id;
+          // 1. Is the user the creator/owner?
+          const isOwner = community.ownerId === user?.id;
 
-          // 2. Check if the current user has a pending request in the array
-          // Note: If your backend mapped User data inside 'communityPlayer', use: p.communityPlayer?.id === user?.id
-          const isRequested = community?.players?.some(
+          // Find if this specific user has a relation entry in this community card
+          const userRelation = community?.players?.find(
             (p) => p.communityPlayer?.id === user?.id,
           );
+
+          // 2. Is the user an accepted member?
+          const isAccepted = userRelation?.status === "accepted";
+
+          // 3. Is the user's join request pending?
+          const isRequested = userRelation?.status === "requested";
+
           return (
             <div
               key={community?.id}
@@ -64,12 +71,28 @@ const CommunityFind = () => {
                 </div>
               </div>
 
-              {/* 3. Conditional Action UI */}
-              {isRequested && (
-                <div className="w-full mt-4 text-center border border-stone-200 bg-stone-50 font-medium text-stone-400 px-4 py-2 rounded-lg text-sm select-none">
-                  Requested
-                </div>
-              )}
+              {/* 4. Conditional Action UI Layout Engine */}
+              <div className="mt-4">
+                {isOwner || isAccepted ? (
+                  /* User is already safely inside this community */
+                  <div className="w-full text-center border border-stone-200 bg-stone-50 font-medium text-stone-500 px-4 py-2 rounded-lg text-sm select-none">
+                    {isOwner ? "Owner" : "Member"}
+                  </div>
+                ) : isRequested ? (
+                  /* Request is logged but awaiting confirmation */
+                  <div className="w-full text-center border border-stone-200 bg-amber-50 font-medium text-amber-600 px-4 py-2 rounded-lg text-sm select-none">
+                    Requested
+                  </div>
+                ) : (
+                  /* Active state hook for pristine users */
+                  <button
+                    onClick={(e) => handleJoinClick(e, community?.id)}
+                    className="w-full border border-stone-300 bg-white font-semibold text-stone-700 cursor-pointer px-4 py-2 rounded-lg text-sm transition-colors hover:bg-stone-100 active:bg-stone-50"
+                  >
+                    Join Community
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

@@ -31,6 +31,7 @@ const PlayerSettings = ({
   onUpdatePlayerStatus,
   type, // "static" (guest) or "user" (registered user)
   isRequest = false, // 🌟 New flag passed when mapping through requested players
+  isManagement = false,
 }) => {
   const containerRef = useRef(null);
   const { fetchWithAuth } = useAuth();
@@ -369,15 +370,17 @@ const PlayerSettings = ({
                   </span>
                 </div>
 
+                {/* 🔵 This stays visible to everyone, including the member! */}
                 <button
                   type="button"
                   onClick={() => setIsCommunityHistoryOpen(true)}
-                  className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                  className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 cursor-pointer"
                 >
                   Points & session history
                 </button>
 
-                {player?.role !== "owner" ? (
+                {/* 👇 Protect the administrative kick logic via isManagement check */}
+                {isManagement && player?.role !== "owner" && (
                   <div className="flex gap-x-1.5 pt-1">
                     <button
                       type="button"
@@ -388,7 +391,9 @@ const PlayerSettings = ({
                       {isUpdating ? "Processing..." : "Kick Player"}
                     </button>
                   </div>
-                ) : (
+                )}
+
+                {player?.role === "owner" && (
                   <div className="text-[11px] italic text-stone-400 text-center pt-1 border-t border-stone-100">
                     Creator role cannot be kicked
                   </div>

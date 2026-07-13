@@ -348,7 +348,8 @@ const All = () => {
                         )}
 
                       <div className="relative">
-                        {isManagement && (
+                        {/* 👇 ALLOW trigger if you are management OR if the card belongs to the logged-in user */}
+                        {(isManagement || isCurrentUser) && (
                           <div className="relative">
                             <button
                               onClick={(e) => handleToggleMenu(e, player)}
@@ -364,6 +365,8 @@ const All = () => {
                                 toggleButtonRef={activeMenu}
                                 onClose={() => setActiveMenu(null)}
                                 onUpdatePlayerStatus={getAllSession}
+                                // 👇 Pass along whether the viewer has management access or is viewing themselves
+                                isManagement={isManagement}
                               />
                             )}
                           </div>
