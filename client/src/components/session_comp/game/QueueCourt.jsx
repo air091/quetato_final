@@ -362,79 +362,19 @@ const QueueCourtCard = ({
   const hasPlayingPlayer = (queueCourt?.slots || []).some((slot) => {
     const player =
       slot.sessionPlayer ||
-      players.find((candidatePlayer) => candidatePlayer.id === slot.sessionPlayerId);
+      players.find(
+        (candidatePlayer) => candidatePlayer.id === slot.sessionPlayerId,
+      );
 
     return player?.gameStatus === "playing";
   });
 
   return (
     <div
-      className={`relative p-2 rounded-md bg-white shadow-sm transition-all ${
+      className={`relative p-2 rounded-md bg-stone-800/95 shadow-sm transition-all ${
         isSettingsOpen ? "z-40" : "z-10"
       }`}
     >
-      <svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 300 150"
-        fill="none"
-        stroke="rgba(200, 200, 200, 0.8)"
-        strokeWidth="2"
-        preserveAspectRatio="none"
-        className="bg-stone-800/95 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
-      >
-        <rect
-          x="25"
-          y="25"
-          width="250"
-          height="100"
-          fill="none"
-          stroke="rgba(200, 200, 200, 0.8)"
-          strokeWidth="2"
-        />
-        <line
-          x1="150"
-          y1="25"
-          x2="150"
-          y2="125"
-          stroke="rgba(200, 200, 200, 0.8)"
-          strokeWidth="2"
-          strokeDasharray="5,5"
-        />
-        <line
-          x1="25"
-          y1="50"
-          x2="275"
-          y2="50"
-          stroke="rgba(200, 200, 200, 0.8)"
-          strokeWidth="1.5"
-        />
-        <line
-          x1="25"
-          y1="100"
-          x2="275"
-          y2="100"
-          stroke="rgba(200, 200, 200, 0.8)"
-          strokeWidth="1.5"
-        />
-        <line
-          x1="50"
-          y1="25"
-          x2="50"
-          y2="125"
-          stroke="rgba(200, 200, 200, 0.8)"
-          strokeWidth="1.5"
-        />
-        <line
-          x1="250"
-          y1="25"
-          x2="250"
-          y2="125"
-          stroke="rgba(200, 200, 200, 0.8)"
-          strokeWidth="1.5"
-        />
-      </svg>
-
       <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
         <div className="flex items-center justify-between w-full">
           <span className="text-[14px] font-semibold">{queueCourt?.name}</span>
