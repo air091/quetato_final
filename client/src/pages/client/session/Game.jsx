@@ -28,7 +28,8 @@ const resolveSlotSessionPlayerId = (slot) =>
 const shouldResetPlayerTimer = (currentStatus, nextStatus) =>
   (currentStatus !== "playing" && nextStatus === "playing") ||
   (currentStatus !== "paid" && nextStatus === "paid") ||
-  (currentStatus === "playing" && nextStatus === "queued");
+  (currentStatus === "playing" &&
+    (nextStatus === "queued" || nextStatus === "waiting"));
 
 const setPlayerGameStatus = (
   player,
@@ -1001,12 +1002,13 @@ const Game = () => {
 
       try {
         // 1. Optimistic UI update: Instantly move court status back to "idle",
-        // clear its timer values, and empty out its slots array.
+        // reset affected player timers, and empty out its slots array.
         setSessionData((prev) => {
           if (!prev.matchCourts?.courts) return prev;
 
           // Collect player IDs currently attached to this court before clearing them
           let playerIdsToFree = [];
+          const endedAt = new Date().toISOString();
           const targetedCourt = prev.matchCourts.courts.find(
             (c) => c.id === courtId,
           );
@@ -1038,9 +1040,19 @@ const Game = () => {
           const updatedPlayers = prev.players.map((player) => {
             const pId = player.id || player.sessionPlayerId;
             if (playerIdsToFree.includes(pId)) {
+              const nextStatus = queuedPlayerIds.has(pId)
+                ? "queued"
+                : "waiting";
+              const resetsTimer = shouldResetPlayerTimer(
+                player.gameStatus,
+                nextStatus,
+              );
+
               return {
                 ...player,
-                gameStatus: queuedPlayerIds.has(pId) ? "queued" : "waiting",
+                gameStatus: nextStatus,
+                updateStatus: resetsTimer ? endedAt : player.updateStatus,
+                updatedAt: resetsTimer ? endedAt : player.updatedAt,
                 totalGames: (Number(player.totalGames) || 0) + 1,
               };
             }
@@ -1474,14 +1486,14 @@ const Game = () => {
       onDragEnd={handleDragEnd}
     >
       {relationshipToast && (
-        <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-red-500 bg-red-100 shadow-xl">
+        <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-md border border-red-500 bg-red-200 shadow-xl">
           <div className="flex items-center justify-between px-[16px] py-[8px]">
             {relationshipToast.relationships.map((relationship) => (
               <div key={relationship.sessionPlayerId} className="text-xs">
                 <p className="font-semibold text-gray-900">
                   {relationshipToast.subjectName} and {relationship.username}
                 </p>
-                <p className="text-gray-600">
+                <p className="text-gray-700">
                   Teamed {formatTimes(relationship.teamed)}. Played against{" "}
                   {formatTimes(relationship.against)}.
                 </p>

@@ -4,7 +4,8 @@ import { prisma } from "../libs/prisma.js";
 const shouldResetPlayerTimer = (currentStatus, nextStatus) =>
   (currentStatus !== "playing" && nextStatus === "playing") ||
   (currentStatus !== "paid" && nextStatus === "paid") ||
-  (currentStatus === "playing" && nextStatus === "queued");
+  (currentStatus === "playing" &&
+    (nextStatus === "queued" || nextStatus === "waiting"));
 
 export const getAllCourts = async (sessionId, type) => {
   if (!sessionId) {
@@ -1468,6 +1469,7 @@ export const endMatchCourt = async (
     const playerIdsInMatch = currentSlots
       .map((s) => s.sessionPlayerId)
       .filter(Boolean);
+    const endedAt = new Date();
 
     // 4. Create MatchHistory Log & Nested Players Log
     if (currentSlots.length > 0) {
@@ -1497,26 +1499,41 @@ export const endMatchCourt = async (
     // 6. Players who already joined a Queue Court remain queued for their
     // next match; everyone else returns to the lobby.
     if (playerIdsInMatch.length > 0) {
-      const queueSlots = await tx.courtSlot.findMany({
-        where: {
-          sessionPlayerId: { in: playerIdsInMatch },
-          court: { sessionId, type: "queue" },
-        },
-        select: { sessionPlayerId: true },
-      });
+      const [queueSlots, playersInMatch] = await Promise.all([
+        tx.courtSlot.findMany({
+          where: {
+            sessionPlayerId: { in: playerIdsInMatch },
+            court: { sessionId, type: "queue" },
+          },
+          select: { sessionPlayerId: true },
+        }),
+        tx.sessionPlayer.findMany({
+          where: { id: { in: playerIdsInMatch }, sessionId },
+          select: { id: true, gameStatus: true },
+        }),
+      ]);
       const queuedPlayerIds = new Set(
         queueSlots.map((slot) => slot.sessionPlayerId),
       );
 
       await Promise.all(
-        playerIdsInMatch.map((playerId) =>
-          tx.sessionPlayer.update({
-            where: { id: playerId },
-            data: {
-              gameStatus: queuedPlayerIds.has(playerId) ? "queued" : "waiting",
-            },
-          }),
-        ),
+        playersInMatch.map((player) => {
+          const nextStatus = queuedPlayerIds.has(player.id)
+            ? "queued"
+            : "waiting";
+          const data = {
+            gameStatus: nextStatus,
+          };
+
+          if (shouldResetPlayerTimer(player.gameStatus, nextStatus)) {
+            data.updateStatus = endedAt;
+          }
+
+          return tx.sessionPlayer.update({
+            where: { id: player.id },
+            data,
+          });
+        }),
       );
     }
 
@@ -1526,7 +1543,7 @@ export const endMatchCourt = async (
       data: {
         status: "idle",
         startedAt: null,
-        endedAt: new Date(),
+        endedAt,
         updatedBy: authorizingAttendee.id,
       },
       include: {
