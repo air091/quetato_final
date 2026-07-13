@@ -9,7 +9,6 @@ const CommunityFind = () => {
   const { user } = useAuth();
   const { communities } = useCommunity();
   const navigate = useNavigate();
-  console.log(communities);
   const handleJoinClick = (e, communityId) => {
     e.stopPropagation();
     console.log(`Joining community: ${communityId}`);
@@ -34,10 +33,8 @@ const CommunityFind = () => {
           // 2. Check if the current user has a pending request in the array
           // Note: If your backend mapped User data inside 'communityPlayer', use: p.communityPlayer?.id === user?.id
           const isRequested = community?.players?.some(
-            (p) => p.id === user?.id,
+            (p) => p.communityPlayer?.id === user?.id,
           );
-
-          console.log(community?.players?.id, "user:", user?.id);
           return (
             <div
               key={community?.id}
