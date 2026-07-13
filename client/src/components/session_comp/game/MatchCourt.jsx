@@ -108,6 +108,7 @@ const DraggableSlotPlayer = ({
         {timer}
         <button
           title={`Remove ${username} from slot`}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onRemovePlayer();
@@ -119,6 +120,7 @@ const DraggableSlotPlayer = ({
         <button
           title="Settings"
           ref={playerButtonRef}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             setIsPlayerSettingsOpen((prev) => !prev);

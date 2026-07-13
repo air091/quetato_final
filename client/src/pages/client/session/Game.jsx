@@ -433,15 +433,45 @@ const applyOptimisticSlotRemoval = (
     };
   };
 
-  return {
+  const nextSessionData = {
     ...sessionData,
     matchCourts: removeFromCourtsList(sessionData.matchCourts),
     queueCourts: removeFromCourtsList(sessionData.queueCourts),
+  };
+
+  const getRemainingPlayerStatus = () => {
+    const remainingSlots = [
+      ...(nextSessionData.matchCourts?.courts || []),
+      ...(nextSessionData.queueCourts?.courts || []),
+    ].flatMap((court) =>
+      (court.slots || [])
+        .filter((slot) => resolveSlotSessionPlayerId(slot) === sessionPlayerId)
+        .map((slot) => ({ court, slot })),
+    );
+
+    if (
+      remainingSlots.some(
+        ({ court }) =>
+          court.type === "match" &&
+          (court.status === "started" || court.status === "paused"),
+      )
+    ) {
+      return "playing";
+    }
+
+    return remainingSlots.length > 0 ? "queued" : "waiting";
+  };
+  const remainingPlayerStatus = sessionPlayerId
+    ? getRemainingPlayerStatus()
+    : null;
+
+  return {
+    ...nextSessionData,
     players: sessionPlayerId
-      ? sessionData.players.map((player) =>
-          setPlayerGameStatus(player, sessionPlayerId, "waiting"),
+      ? nextSessionData.players.map((player) =>
+          setPlayerGameStatus(player, sessionPlayerId, remainingPlayerStatus),
         )
-      : sessionData.players,
+      : nextSessionData.players,
   };
 };
 
@@ -912,7 +942,6 @@ const Game = () => {
 
       // Immediately hit the backend endpoint using the newly resolved ID on the same click.
       await removePlayerToSlot(targetCourtId, targetSlotId);
-      await fetchDashboardContext(true);
     } catch (error) {
       console.error("Removal engine execution failure:", error);
       if (removalVersion === slotRemovalVersionRef.current) {
