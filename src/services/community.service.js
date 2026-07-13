@@ -19,7 +19,7 @@ export const getAllCommunities = async () => {
           status: "requested", // 👈 Filters only for "requested" status
         },
         select: {
-          id: true,
+          communityPlayer: { select: { id: true } },
         },
       },
     },
