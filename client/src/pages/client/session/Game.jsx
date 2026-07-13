@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayersContainer, {
   PlayerTimer,
@@ -658,6 +658,26 @@ const Game = () => {
   const queueTransferRequestRef = useRef(null);
   const latestSessionDataRef = useRef(sessionData);
   const relationshipToastTimerRef = useRef(null);
+  const queuedSessionPlayerIds = useMemo(
+    () =>
+      new Set(
+        (sessionData.queueCourts?.courts || [])
+          .flatMap((court) => court.slots || [])
+          .map((slot) => resolveSlotSessionPlayerId(slot))
+          .filter(Boolean),
+      ),
+    [sessionData.queueCourts],
+  );
+  const visibleSessionPlayersWithQueueState = useMemo(
+    () =>
+      visibleSessionPlayers.map((player) => ({
+        ...player,
+        isQueuedForNextMatch: queuedSessionPlayerIds.has(
+          resolveSessionPlayerId(player),
+        ),
+      })),
+    [queuedSessionPlayerIds, visibleSessionPlayers],
+  );
 
   useEffect(() => {
     latestSessionDataRef.current = sessionData;
@@ -1471,12 +1491,19 @@ const Game = () => {
   const statusBgClasses = {
     waiting: "bg-stone-200 border-gray-500 text-gray-800",
     queued: "bg-amber-200 border-amber-500 text-amber-900",
+    playingQueued: "bg-orange-200 border-orange-500 text-orange-950",
     playing: "bg-emerald-200 border-emerald-500 text-emerald-950",
     paid: "bg-rose-200 border-rose-500 text-rose-950",
   };
 
   const currentStatus = activePlayerData?.gameStatus || "waiting";
-  const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
+  const activeDisplayStatus =
+    activePlayerData?.gameStatus === "playing" &&
+    activePlayerData?.isQueuedForNextMatch
+      ? "playingQueued"
+      : currentStatus;
+  const bgTheme =
+    statusBgClasses[activeDisplayStatus] || statusBgClasses.waiting;
 
   return (
     <DndContext
@@ -1513,7 +1540,7 @@ const Game = () => {
 
       <div className="flex gap-x-2 h-full">
         <PlayersContainer
-          players={visibleSessionPlayers}
+          players={visibleSessionPlayersWithQueueState}
           onRefreshData={() => fetchDashboardContext(true)}
           communityId={communityId}
           sessionId={sessionId}

@@ -9,6 +9,18 @@ import { PlayerTimer } from "./PlayersContainer";
 import { useAuth } from "../../../hooks/useAuth";
 import { API_URL } from "../../../contexts/AuthContext";
 
+const getLatestTimerTimestamp = (...timestamps) => {
+  const validTimestamps = timestamps.filter(Boolean);
+
+  if (validTimestamps.length === 0) return null;
+
+  return validTimestamps.reduce((latestTimestamp, timestamp) =>
+    new Date(timestamp).getTime() > new Date(latestTimestamp).getTime()
+      ? timestamp
+      : latestTimestamp,
+  );
+};
+
 const DraggableSlotPlayer = ({
   username,
   timer,
@@ -38,12 +50,14 @@ const DraggableSlotPlayer = ({
   const statusBgClasses = {
     waiting: "bg-white border-gray-500 text-gray-800",
     queued: "bg-amber-200 border-amber-500 text-amber-900",
+    playingQueued: "bg-orange-200 border-orange-500 text-orange-950",
     playing: "bg-emerald-200 border-emerald-500 text-emerald-950",
     paid: "bg-rose-200 border-rose-500 text-rose-950",
   };
 
   // Queue membership is independent from the player's active match status.
-  const currentStatus = "queued";
+  const currentStatus =
+    player?.gameStatus === "playing" ? "playingQueued" : "queued";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   const overdueStyle =
@@ -174,11 +188,13 @@ const CourtSlot = ({
   const statusBgClasses = {
     waiting: "bg-stone-100 border-gray-500 text-gray-800",
     queued: "bg-amber-100 border-amber-500 text-amber-900",
+    playingQueued: "bg-orange-100 border-orange-500 text-orange-950",
     playing: "bg-emerald-100 border-emerald-500 text-emerald-950",
     paid: "bg-rose-100 border-rose-500 text-rose-950",
   };
 
-  const currentStatus = "queued";
+  const currentStatus =
+    matchedPoolPlayer?.gameStatus === "playing" ? "playingQueued" : "queued";
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   const stablePlayerId =
@@ -192,9 +208,10 @@ const CourtSlot = ({
 
   // 🌟 Active threshold check effect monitoring the 20-minute marker
   const timestamp =
-    slotData?.queuedAt ||
-    matchedPoolPlayer?.updateStatus ||
-    matchedPoolPlayer?.updatedAt;
+    getLatestTimerTimestamp(
+      slotData?.queuedAt,
+      matchedPoolPlayer?.updateStatus,
+    ) || matchedPoolPlayer?.updatedAt;
   useEffect(() => {
     const checkOverdueStatus = () => {
       if (!timestamp) {
@@ -253,7 +270,13 @@ const CourtSlot = ({
 
   const draggableProps = useDraggable({
     id: `draggable-${matchedPoolPlayer?.sessionPlayer?.id || matchedPoolPlayer?.id || stablePlayerId}`,
-    data: { player: { ...matchedPoolPlayer, totalGames: displayedTotalGames } },
+    data: {
+      player: {
+        ...matchedPoolPlayer,
+        totalGames: displayedTotalGames,
+        isQueuedForNextMatch: true,
+      },
+    },
     disabled: matchedPoolPlayer?.gameStatus === "paid",
   });
 

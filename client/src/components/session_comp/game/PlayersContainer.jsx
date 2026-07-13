@@ -10,6 +10,11 @@ import { API_URL } from "../../../contexts/AuthContext";
 
 // NEW helper function to convert an ISO date into hh:mm:ss elapsed time string
 
+const getPlayerDisplayStatus = (player) =>
+  player?.gameStatus === "playing" && player?.isQueuedForNextMatch
+    ? "playingQueued"
+    : player?.gameStatus || "waiting";
+
 export const PlayerTimer = ({ timestamp }) => {
   const [displayTime, setDisplayTime] = useState(() =>
     formatElapsedTime(timestamp),
@@ -69,11 +74,12 @@ export const PlayerCard = ({
   const statusBgClasses = {
     waiting: "bg-white border-gray-500 text-gray-800",
     queued: "bg-amber-200 border-amber-500 text-amber-900",
+    playingQueued: "bg-orange-200 border-orange-500 text-orange-950",
     playing: "bg-emerald-200 border-emerald-500 text-emerald-950",
     paid: "bg-rose-200 border-rose-500 text-rose-950",
   };
 
-  const currentStatus = player?.gameStatus || "waiting";
+  const currentStatus = getPlayerDisplayStatus(player);
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   // 🌟 Inject an explicit keyframe style targeting ONLY border-color
@@ -292,11 +298,12 @@ const DraggablePlayer = ({
   const statusBgClasses = {
     waiting: "bg-stone-100 border-gray-500 text-gray-800",
     queued: "bg-amber-100 border-amber-500 text-amber-900",
+    playingQueued: "bg-orange-100 border-orange-500 text-orange-950",
     playing: "bg-emerald-100 border-emerald-500 text-emerald-950",
     paid: "bg-rose-100 border-rose-500 text-rose-950",
   };
 
-  const currentStatus = player?.gameStatus || "waiting";
+  const currentStatus = getPlayerDisplayStatus(player);
   const bgTheme = statusBgClasses[currentStatus] || statusBgClasses.waiting;
 
   // 🌟 Same border animation settings applied to the placeholder card layout variation
@@ -391,7 +398,14 @@ const PlayersContainer = ({
   }, [searchQuery]);
 
   const filteredPlayers = players.filter((player) => {
-    if (activeTab !== "all" && player?.gameStatus !== activeTab) {
+    const isPlayingQueued =
+      player?.gameStatus === "playing" && player?.isQueuedForNextMatch;
+    const isInActiveTab =
+      activeTab === "all" ||
+      player?.gameStatus === activeTab ||
+      (activeTab === "queued" && isPlayingQueued);
+
+    if (!isInActiveTab) {
       return false;
     }
 
