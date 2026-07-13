@@ -780,6 +780,7 @@ export const joinSession = async (communityId, sessionId, userId) => {
         sessionId: sessionId,
         playerId: communityPlayer.id,
         status: "requested",
+        requestedAt: new Date(),
       },
       include: {
         sessionPlayer: {

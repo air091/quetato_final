@@ -41,28 +41,6 @@ const RequestPlayers = () => {
     }
   }, [communityId, sessionId, fetchWithAuth]);
 
-  // 2. Fetch registered community users who aren't in this session yet
-  const getRegisteredPlayersNotInSession = useCallback(async () => {
-    if (!communityId || !sessionId) return;
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/registered`,
-        { method: "GET" },
-      );
-
-      if (!response || !response.ok) {
-        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
-      }
-
-      const data = await response.json();
-      if (!data?.success) throw new Error(data?.message);
-
-      setRegisteredPlayers(data?.results || []);
-    } catch (error) {
-      console.error("Fetch available registered users failed:", error.message);
-    }
-  }, [communityId, sessionId, fetchWithAuth]);
-
   // 3. Fetch static players who aren't in this session
   const getStaticPlayersNotInSession = useCallback(async () => {
     if (!communityId || !sessionId) return;
@@ -88,13 +66,8 @@ const RequestPlayers = () => {
   // Trigger initial lifecycle data collection
   useEffect(() => {
     getRequestedPlayers();
-    getRegisteredPlayersNotInSession();
     getStaticPlayersNotInSession();
-  }, [
-    getRequestedPlayers,
-    getRegisteredPlayersNotInSession,
-    getStaticPlayersNotInSession,
-  ]);
+  }, [getRequestedPlayers, getStaticPlayersNotInSession]);
 
   // 4. Accept a pending session request OR add an available player directly
   const addToSession = useCallback(
@@ -117,7 +90,9 @@ const RequestPlayers = () => {
 
         // Optimistically clean up active arrays immediately
         if (isIncomingRequest) {
-          setPlayers((prev) => prev.filter((p) => p.id !== communityPlayerId));
+          setPlayers((prev) =>
+            prev.filter((request) => request.playerId !== communityPlayerId),
+          );
         } else {
           setRegisteredPlayers((prev) =>
             prev.filter((p) => p.id !== communityPlayerId),
@@ -130,7 +105,6 @@ const RequestPlayers = () => {
         // Re-sync all state lists safely
         await Promise.all([
           getRequestedPlayers(),
-          getRegisteredPlayersNotInSession(),
           getStaticPlayersNotInSession(),
         ]);
         await refreshSessionContext({ silent: true });
@@ -143,7 +117,6 @@ const RequestPlayers = () => {
       sessionId,
       fetchWithAuth,
       getRequestedPlayers,
-      getRegisteredPlayersNotInSession,
       getStaticPlayersNotInSession,
       refreshSessionContext,
     ],
@@ -231,7 +204,7 @@ const RequestPlayers = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => addToSession(request?.id, true)} // true targets request approval flow
+                        onClick={() => addToSession(request?.playerId, true)}
                         className="cursor-pointer text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors"
                       >
                         Approve Request
@@ -239,76 +212,6 @@ const RequestPlayers = () => {
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 2. REGISTERED MEMBERS (NOT IN SESSION) */}
-      <div className="border border-stone-200/80 rounded-xl bg-white overflow-hidden shadow-sm">
-        <button
-          type="button"
-          onClick={() => setIsRegisteredMinimized((prev) => !prev)}
-          className="w-full flex items-center justify-between cursor-pointer bg-stone-50/70 hover:bg-stone-50 py-3 px-4 transition-colors border-b border-stone-100"
-        >
-          <div className="flex items-center gap-x-2">
-            <h4 className="font-semibold text-sm text-stone-800">
-              Community Members
-            </h4>
-            <span className="text-xs text-stone-400 font-normal">
-              ({registeredPlayers?.length || 0})
-            </span>
-          </div>
-          <ChevronDown
-            size={16}
-            className={`text-stone-500 transition-transform duration-200 ${isRegisteredMinimized ? "-rotate-90" : ""}`}
-          />
-        </button>
-
-        {!isRegisteredMinimized && (
-          <div className="p-2 animate-in fade-in duration-150">
-            {registeredPlayers.length === 0 ? (
-              <p className="text-xs text-stone-400 italic p-3 text-center">
-                All registered members are already in this session.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-y-1">
-                {registeredPlayers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-x-3 min-w-0">
-                      <PlayerAvatar
-                        username={member?.communityPlayer?.username}
-                        size="md"
-                      />
-                      <div className="min-w-0">
-                        <h5 className="font-semibold text-sm text-stone-900 truncate">
-                          {member?.communityPlayer?.username}
-                        </h5>
-                        <div className="flex items-center gap-x-1.5 mt-0.5 text-[10px] font-bold uppercase tracking-wider">
-                          {member?.communityPlayer?.skillLevel && (
-                            <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
-                              {member?.communityPlayer?.skillLevel}
-                            </span>
-                          )}
-                          <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md normal-case font-semibold">
-                            {member.role || "Member"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => addToSession(member?.id, false)}
-                      className="cursor-pointer text-xs bg-stone-900 hover:bg-stone-800 text-white font-medium py-1.5 px-3 rounded-lg shadow-sm transition-colors"
-                    >
-                      Add to Session
-                    </button>
-                  </div>
-                ))}
               </div>
             )}
           </div>

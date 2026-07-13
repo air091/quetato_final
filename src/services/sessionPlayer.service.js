@@ -36,7 +36,9 @@ export const getAllSessionPlayers = async (
   const managerRoles = ["owner", "admin", "host"];
   const includeHidden = managerRoles.includes(authorizedPlayer?.role);
 
-  const whereFilter = { sessionId: session.id };
+  // Pending applications are returned by the dedicated /players/requested
+  // endpoint. The regular roster contains accepted players only.
+  const whereFilter = { sessionId: session.id, status: "accepted" };
 
   // If we do NOT want to include hidden players, filter them out in the database query
   if (!includeHidden) {
@@ -250,6 +252,32 @@ export const acceptPlayer = async (
     });
 
     if (!session) throw new AppError("Session not found", 404);
+
+    // A join request already has a SessionPlayer record. Promote it rather
+    // than attempting to create a duplicate record for the same player.
+    const existingRequest = await tx.sessionPlayer.findUnique({
+      where: {
+        sessionId_playerId: {
+          sessionId: session.id,
+          playerId: validPlayer.id,
+        },
+      },
+    });
+
+    if (existingRequest?.status === "accepted") {
+      throw new AppError("Player is already accepted into this session", 400);
+    }
+
+    if (existingRequest) {
+      return tx.sessionPlayer.update({
+        where: { id: existingRequest.id },
+        data: {
+          status: "accepted",
+          acceptedBy: authorizedPlayer.id,
+          acceptedAt: new Date(),
+        },
+      });
+    }
 
     // 3. Safety Guard: Check if player is already inside this session
     const alreadyInSession = await tx.sessionPlayer.findFirst({
