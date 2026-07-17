@@ -34,6 +34,8 @@ import {
 } from "../controllers/session.controller.js";
 import {
   acceptPlayerInCommunityController,
+  assignAdminController,
+  assignHostController,
   createStaticPlayersController,
   deleteStaticPlayerController,
   getAllPlayersController,
@@ -102,6 +104,13 @@ router.put(
   "/:communityId/players/:userId/static",
   updateStaticPlayerController,
 );
+
+router.patch(
+  "/:communityId/players/:userId/assign-admin",
+  assignAdminController,
+);
+
+router.patch("/:communityId/players/:userId/assign-host", assignHostController);
 
 router.delete(
   "/:communityId/players/:userId/static",
