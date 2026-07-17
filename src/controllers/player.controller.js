@@ -14,6 +14,7 @@ import {
   joinSession,
   kickPlayerInCommunity,
   rejectPlayer,
+  removeAsAdmin,
   updateStaticPlayer,
 } from "../services/player.service.js";
 
@@ -285,6 +286,26 @@ export const assignAdminController = async (request, response) => {
     return response.status(200).json({ success: true, result });
   } catch (error) {
     console.error("Assign community player as admin failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const removeAsAdminController = async (request, response) => {
+  try {
+    const { communityId, userId } = request.params;
+    const result = await removeAsAdmin(communityId, userId, request.user.sub);
+    return response.status(200).json({ success: true, result });
+  } catch (error) {
+    console.error("Remove admin failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";

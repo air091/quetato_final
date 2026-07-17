@@ -982,6 +982,92 @@ export const assignAdmin = async (communityId, userId, authorizedId) => {
   });
 };
 
+export const removeAsAdmin = async (communityId, userId, authorizedId) => {
+  if (!communityId || !userId || !authorizedId) {
+    throw new AppError(
+      "Community ID, User ID, and Authorization ID are required",
+      400,
+    );
+  }
+
+  // Prevent an owner from removing their own administrative/owner role
+  if (userId === authorizedId) {
+    throw new AppError(
+      "Forbidden: You cannot modify your own administrative ownership role",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Authorization check: ONLY the primary community owner can demote admins
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer || authorizedPlayer.role !== "owner") {
+      throw new AppError(
+        "Forbidden: Only the community owner can remove administrator privileges",
+        403,
+      );
+    }
+
+    // 2. Verify the target member exists inside this community
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Target player not found in this community", 404);
+    }
+
+    // 3. Ensure they currently hold the "admin" role
+    if (targetPlayer.role !== "admin") {
+      throw new AppError(
+        `Target player is not an admin (Current role: ${targetPlayer.role})`,
+        400,
+      );
+    }
+
+    // 4. Downgrade the player's role back to "player"
+    const updatedPlayer = await tx.communityPlayer.update({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+      data: {
+        role: "player",
+      },
+      select: {
+        id: true,
+        communityId: true,
+        userId: true,
+        role: true,
+        status: true,
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    return updatedPlayer;
+  });
+};
+
 export const assignHost = async (
   communityId,
   userId,
@@ -1137,5 +1223,127 @@ export const assignHost = async (
     });
 
     return { player: updatedPlayer, sessionPlayer };
+  });
+};
+
+export const removeAsHost = async (
+  communityId,
+  userId,
+  authorizedId,
+  sessionId,
+) => {
+  if (!communityId || !userId || !authorizedId || !sessionId) {
+    throw new AppError(
+      "Community ID, User ID, Authorization ID, and Session ID are required",
+      400,
+    );
+  }
+
+  // Prevent users from changing their own host assignment
+  if (userId === authorizedId) {
+    throw new AppError(
+      "Forbidden: You cannot modify your own administrative or host role status",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Authorization check: Both "owner" and "admin" can revoke a host role
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["owner", "admin"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only the community owner or administrators can revoke host privileges",
+        403,
+      );
+    }
+
+    // 2. Verify the target session exists inside this community
+    const targetSession = await tx.session.findFirst({
+      where: {
+        id: sessionId,
+        communityId,
+      },
+      select: { id: true },
+    });
+
+    if (!targetSession) {
+      throw new AppError("Target session not found in this community", 404);
+    }
+
+    // 3. Verify the target member exists inside this community
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Target player not found in this community", 404);
+    }
+
+    // 4. Ensure the target player is actually a host
+    if (targetPlayer.role !== "host") {
+      throw new AppError(
+        `Target player is not a host (Current role: ${targetPlayer.role})`,
+        400,
+      );
+    }
+
+    // 5. Demote the communityPlayer record to a standard "player"
+    const updatedPlayer = await tx.communityPlayer.update({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+      data: {
+        role: "player",
+      },
+      select: {
+        id: true,
+        communityId: true,
+        userId: true,
+        role: true,
+        status: true,
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    // 6. Optional: Demote their session registration state.
+    // If your `sessionPlayer` schema has a session-level role or status that needs resetting,
+    // we can update it or delete the entry. Here, we'll keep them in the session as a regular accepted player.
+    const updatedSessionPlayer = await tx.sessionPlayer.updateMany({
+      where: {
+        sessionId: targetSession.id,
+        playerId: updatedPlayer.id,
+      },
+      data: {
+        status: "accepted", // Ensuring they remain inside the session roster, just no longer with host privileges
+      },
+    });
+
+    return { player: updatedPlayer, updatedSessionPlayer };
   });
 };

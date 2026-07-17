@@ -275,20 +275,75 @@ const CommunityActivities = () => {
               <tbody className="divide-y divide-stone-100">
                 {sessions?.map((session) => {
                   // 🎯 FIX: Matches explicitly assigned hosts OR community owners/admins
-                  const hosts = session?.players
-                    ?.filter((p) => {
-                      const sessionRole = p?.sessionPlayer?.role;
-                      const communityRole =
-                        p?.sessionPlayer?.communityPlayer?.role;
-                      return (
-                        sessionRole === "host" ||
-                        communityRole === "owner" ||
-                        communityRole === "admin"
-                      );
-                    })
-                    ?.map((p) => p?.sessionPlayer?.communityPlayer?.username);
 
-                  console.log(hosts);
+                  const hosts = (() => {
+                    // 1. Get the usernames of players explicitly assigned as "host", "owner", or "admin" in this session
+                    const explicitSessionHosts =
+                      session?.players
+                        ?.filter((p) => {
+                          const role = p?.sessionPlayer?.role;
+                          return (
+                            role === "host" ||
+                            role === "owner" ||
+                            role === "admin"
+                          );
+                        })
+                        ?.map(
+                          (p) => p?.sessionPlayer?.communityPlayer?.username,
+                        )
+                        ?.filter(Boolean) || [];
+
+                    // 2. Fetch the community-level roster from context to identify global Owners & Admins
+                    const communityRoster =
+                      context?.community?.players || context?.players || [];
+
+                    const communityManagementUsernames =
+                      communityRoster
+                        ?.filter(
+                          (member) =>
+                            member?.role === "owner" ||
+                            member?.role === "admin",
+                        )
+                        ?.map(
+                          (member) =>
+                            member?.username ||
+                            member?.communityPlayer?.username,
+                        )
+                        ?.filter(Boolean) || [];
+
+                    // 3. Find which of those community owners/admins have actually joined this specific session
+                    const sessionUsernames =
+                      session?.players
+                        ?.map(
+                          (p) => p?.sessionPlayer?.communityPlayer?.username,
+                        )
+                        ?.filter(Boolean) || [];
+
+                    const activeManagementHosts =
+                      communityManagementUsernames.filter((username) =>
+                        sessionUsernames.includes(username),
+                      );
+
+                    // 4. Combine explicit hosts/owners/admins and present management, filtering out duplicates
+                    const allHosts = Array.from(
+                      new Set([
+                        ...explicitSessionHosts,
+                        ...activeManagementHosts,
+                      ]),
+                    );
+
+                    // 5. Absolute fallback: If no management/hosts are active in the session yet,
+                    // display the current viewing admin/owner so the cell isn't empty
+                    if (
+                      allHosts.length === 0 &&
+                      isManagement &&
+                      communityPlayer?.username
+                    ) {
+                      return [communityPlayer.username];
+                    }
+                    return allHosts;
+                  })();
+
                   return (
                     <tr
                       key={session.id}

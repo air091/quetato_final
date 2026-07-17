@@ -46,6 +46,7 @@ import {
   joinSessionController,
   kickPlayerInCommunityController,
   rejectPlayerController,
+  removeAsAdminController,
   updateStaticPlayerController,
 } from "../controllers/player.controller.js";
 import {
@@ -108,6 +109,11 @@ router.put(
 router.patch(
   "/:communityId/players/:userId/assign-admin",
   assignAdminController,
+);
+
+router.patch(
+  "/:communityId/players/:userId/demote-admin",
+  removeAsAdminController,
 );
 
 router.patch("/:communityId/players/:userId/assign-host", assignHostController);

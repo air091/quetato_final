@@ -173,6 +173,36 @@ const PlayerSettings = ({
     onClose,
   ]);
 
+  // 🛡️ Action Handler: Demote Admin to Player
+  const handleRemoveAsAdmin = async () => {
+    if (isUpdating || !communityId || !userId) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to remove admin privileges from ${username}?`,
+      )
+    )
+      return;
+
+    try {
+      setIsUpdating(true);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${userId}/demote-admin`,
+        { method: "PATCH" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success)
+        throw new Error(resData?.message || "Failed to demote admin");
+
+      if (typeof onUpdatePlayerStatus === "function") onUpdatePlayerStatus();
+      onClose();
+    } catch (err) {
+      console.error("Demote admin request failed:", err);
+      alert(err.message || "Failed to demote admin.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // 🌟 Action Handler: Accept Join Request
   const handleAcceptRequest = async () => {
     if (isUpdating || !communityId || !userId) return;
@@ -384,15 +414,28 @@ const PlayerSettings = ({
 
                   {/* 👇 Protect the administrative kick logic via isManagement check */}
                   {isManagement && player?.role !== "owner" && (
-                    <div className="flex gap-x-1.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setIsAssignModalOpen(true)}
-                        disabled={isUpdating}
-                        className="w-full cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
-                      >
-                        {isUpdating ? "Processing..." : "Assign as"}
-                      </button>
+                    <div className="flex flex-col gap-y-2 pt-1 border-t border-stone-100">
+                      {player?.role === "admin" ? (
+                        /* 🛡️ NEW ACTION: Demote/Remove admin privilege */
+                        <button
+                          type="button"
+                          onClick={handleRemoveAsAdmin}
+                          disabled={isUpdating}
+                          className="w-full cursor-pointer bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
+                        >
+                          {isUpdating ? "Processing..." : "Remove as Admin"}
+                        </button>
+                      ) : (
+                        /* Standard Player Promotion options */
+                        <button
+                          type="button"
+                          onClick={() => setIsAssignModalOpen(true)}
+                          disabled={isUpdating}
+                          className="w-full cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-[11px] py-1.5 rounded transition-colors font-semibold text-center shadow-sm"
+                        >
+                          {isUpdating ? "Processing..." : "Assign as"}
+                        </button>
+                      )}
 
                       <button
                         type="button"
