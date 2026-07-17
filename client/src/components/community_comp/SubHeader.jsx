@@ -6,7 +6,7 @@ const SubHeader = () => {
     "flex items-center text-sm font-semibold px-1 py-2 border-b-2 transition-all duration-150 outline-none select-none";
 
   return (
-    <header className="border-b border-stone-100 flex items-center justify-center bg-white px-6">
+    <header className="border-b border-stone-200/80 flex items-center justify-center bg-white px-6 selection:bg-orange-500/10 selection:text-orange-950">
       <nav className="flex items-center gap-x-6">
         <NavLink
           to="sessions"
@@ -14,9 +14,9 @@ const SubHeader = () => {
           className={({ isActive }) =>
             `${tabBaseStyles} ${
               isActive
-                ? "border-stone-900 text-stone-900"
-                : "border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-200"
-            }`
+                ? "border-orange-500 text-stone-900 font-extrabold"
+                : "border-transparent text-stone-500 font-bold hover:text-stone-800 hover:border-orange-500/35"
+            } transition-all duration-200`
           }
         >
           Sessions
@@ -27,9 +27,9 @@ const SubHeader = () => {
           className={({ isActive }) =>
             `${tabBaseStyles} ${
               isActive
-                ? "border-stone-900 text-stone-900"
-                : "border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-200"
-            }`
+                ? "border-orange-500 text-stone-900 font-extrabold"
+                : "border-transparent text-stone-500 font-bold hover:text-stone-800 hover:border-orange-500/35"
+            } transition-all duration-200`
           }
         >
           Players
@@ -40,9 +40,9 @@ const SubHeader = () => {
           className={({ isActive }) =>
             `${tabBaseStyles} ${
               isActive
-                ? "border-stone-900 text-stone-900"
-                : "border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-200"
-            }`
+                ? "border-orange-500 text-stone-900 font-extrabold"
+                : "border-transparent text-stone-500 font-bold hover:text-stone-800 hover:border-orange-500/35"
+            } transition-all duration-200`
           }
         >
           Settings

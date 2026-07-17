@@ -65,50 +65,54 @@ const Header = ({ communityId, communityPlayer, accessToken }) => {
   const isGuest = !communityPlayer;
 
   return (
-    <header className="flex items-center justify-center px-6 py-4 border-b border-stone-100 bg-white">
-      <div className="flex flex-col gap-y-1">
-        <div className="flex items-center gap-x-2 mb-2 justify-center">
+    <header className="flex flex-col items-center justify-center px-6 py-5 border-b border-stone-200/60 bg-white selection:bg-orange-500/10 selection:text-orange-950">
+      <div className="flex flex-col items-center gap-y-2 text-center max-w-[720px] w-full">
+        {/* 1. Community Title & Avatar Banner */}
+        <div className="flex items-center gap-x-2.5 justify-center">
           <PlayerAvatar username={community?.name} size="md" />
-          {/* Community Title */}
-          <h3 className="text-xl font-bold tracking-tight text-stone-900">
+          <h3 className="text-xl font-extrabold tracking-tight text-stone-900 leading-none">
             {community?.name}
           </h3>
         </div>
-        {/* Context Metadata Row */}
-        <div className="flex items-center flex-wrap gap-x-2 text-sm text-stone-500">
-          <span className="font-medium text-stone-700">
+
+        {/* 2. Context Metadata Row */}
+        <div className="flex items-center flex-wrap justify-center gap-x-2 text-xs font-bold text-stone-400">
+          <span className="font-bold text-stone-600">
             by {community?.owner?.username}
           </span>
-          <span className="text-stone-300" aria-hidden="true">
+          <span className="text-stone-300 mx-0.5" aria-hidden="true">
             ·
           </span>
-          <span className="font-medium">
+          <span>
             {community?._count?.players ?? 0}{" "}
             {community?._count?.players === 1 ? "player" : "players"}
           </span>
-          <span className="text-stone-300" aria-hidden="true">
+          <span className="text-stone-300 mx-0.5" aria-hidden="true">
             ·
           </span>
-          <span className="font-medium">
+          <span>
             {community?._count?.sessions ?? 0}{" "}
             {community?._count?.sessions === 1 ? "session" : "sessions"}
           </span>
         </div>
-        {isRequested && (
-          <div className="flex items-center justify-center gap-x-[8px]">
-            <span className="bg-gray-300 py-1 rounded-full my-1 text-[14px] text-center px-[16px]">
+
+        {/* 3. Dynamic Roster Membership Controls */}
+        <div className="mt-3 w-full max-w-[180px] flex flex-col gap-y-2">
+          {isRequested && (
+            <div className="w-full text-center border border-orange-100 bg-orange-50/60 font-bold text-orange-600 py-1.5 rounded-full text-xs select-none">
               Requested
-            </span>
-          </div>
-        )}
-        {isGuest && (
-          <button
-            onClick={handleOnJoinCommunity}
-            className="bg-blue-300 py-1 rounded-full my-1 hover:bg-blue-500 hover:text-white cursor-pointer text-[14px]"
-          >
-            Join Community
-          </button>
-        )}
+            </div>
+          )}
+
+          {isGuest && (
+            <button
+              onClick={handleOnJoinCommunity}
+              className="w-full border border-orange-500 bg-orange-500 font-bold text-white cursor-pointer py-1.5 rounded-full text-xs transition-all duration-150 hover:bg-orange-600 active:scale-[0.98] shadow-sm shadow-orange-500/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/10"
+            >
+              Join Community
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

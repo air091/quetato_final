@@ -143,15 +143,15 @@ const CommunityActivities = () => {
 
   return (
     <>
-      <main className="w-full max-w-[1024px] mx-auto select-none mt-4 px-2">
+      <main className="w-full max-w-[1024px] mx-auto select-none mt-6 px-4 selection:bg-orange-500/10 selection:text-orange-950">
         {/* Optimized Top Action Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 pb-4 border-b border-stone-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-4 pb-5 border-b border-stone-200/80">
           <div>
             {isManagement ? (
               <>
                 <button
                   onClick={() => setIsCreateSessionModalOpen(true)}
-                  className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
+                  className="px-5 py-2.5 text-xs font-bold bg-orange-500 text-white hover:bg-orange-600 active:scale-[0.98] rounded-xl transition-all cursor-pointer shadow-md shadow-orange-500/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/10"
                 >
                   Create Session
                 </button>
@@ -165,22 +165,22 @@ const CommunityActivities = () => {
               </>
             ) : (
               <div>
-                <h2 className="text-base font-bold text-stone-900 flex items-center gap-x-1.5">
-                  <Calendar size={18} className="text-stone-500" /> Community
+                <h2 className="text-base font-extrabold text-stone-900 flex items-center gap-x-2 tracking-tight">
+                  <Calendar size={18} className="text-orange-500" /> Community
                   Activities
                 </h2>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p className="text-xs text-stone-500 font-medium mt-1">
                   Explore schedules and look up active matches.
                 </p>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-x-2 w-full sm:w-auto sm:justify-end">
+          <div className="flex items-center gap-x-2.5 w-full sm:w-auto sm:justify-end">
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="bg-stone-50 border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 cursor-pointer rounded-lg outline-none focus:border-stone-400 transition-colors h-[34px]"
+              className="bg-stone-50/50 border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700 cursor-pointer rounded-xl outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all h-[38px] min-w-[130px]"
             >
               <option value="">All Statuses</option>
               <option value="available">Available Only</option>
@@ -193,14 +193,14 @@ const CommunityActivities = () => {
                 autoComplete="off"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border border-stone-200 pl-8 pr-8 py-1.5 text-xs text-stone-900 rounded-lg w-full outline-none focus:border-stone-400 bg-stone-50/50 transition-colors h-[34px] [&::-webkit-search-cancel-button]:appearance-none"
+                className="border border-stone-200 pl-9 pr-8 py-1.5 text-xs text-stone-900 font-medium rounded-xl w-full outline-none focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 bg-stone-50/50 transition-all h-[38px] [&::-webkit-search-cancel-button]:appearance-none"
               />
-              <span className="absolute left-2.5 text-stone-400 pointer-events-none">
+              <span className="absolute left-3 text-stone-400 pointer-events-none">
                 <Search size={14} />
               </span>
               {searchQuery && (
                 <span
-                  className="absolute right-2.5 cursor-pointer text-stone-400 hover:text-stone-600 transition-colors"
+                  className="absolute right-3 cursor-pointer text-stone-400 hover:text-stone-600 transition-colors"
                   onClick={() => setSearchQuery("")}
                 >
                   <X size={14} />
@@ -211,13 +211,13 @@ const CommunityActivities = () => {
         </div>
 
         {/* Table Layout Wrapper Card */}
-        <div className="w-full border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
+        <div className="w-full border border-stone-200/80 rounded-2xl overflow-hidden shadow-sm shadow-stone-100/50 bg-white mt-6">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="bg-stone-50/70 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+                <tr className="bg-stone-50/50 border-b border-stone-200/80 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
                   <th
-                    className="group p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none text-stone-700 normal-case text-sm font-bold"
+                    className="group p-4 cursor-pointer hover:bg-stone-100/50 transition-colors select-none text-stone-700 normal-case text-xs font-bold w-[260px]"
                     onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center gap-x-1">
@@ -239,16 +239,24 @@ const CommunityActivities = () => {
                     </div>
                   </th>
 
-                  <th className="p-4 w-[140px]">Hosts</th>
-                  <th className="p-4 w-[100px] text-center">Sport</th>
-                  <th className="p-4 w-[85px] text-center">Players</th>
-                  <th className="p-4 w-[160px]">Location</th>
+                  <th className="p-4 text-xs text-stone-500 font-bold normal-case w-[140px]">
+                    Hosts
+                  </th>
+                  <th className="p-4 text-xs text-stone-500 font-bold normal-case w-[100px] text-center">
+                    Sport
+                  </th>
+                  <th className="p-4 text-xs text-stone-500 font-bold normal-case w-[85px] text-center">
+                    Players
+                  </th>
+                  <th className="p-4 text-xs text-stone-500 font-bold normal-case w-[160px]">
+                    Location
+                  </th>
 
                   <th
-                    className="group p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none w-[200px]"
+                    className="group p-4 cursor-pointer hover:bg-stone-100/50 transition-colors select-none w-[200px]"
                     onClick={() => handleSort("schedule")}
                   >
-                    <div className="flex items-center gap-x-1">
+                    <div className="flex items-center gap-x-1 text-stone-700 normal-case text-xs font-bold">
                       <span>Schedule</span>
                       <span className="text-stone-400 group-hover:text-stone-600 transition-colors">
                         {sortBy === "schedule" ? (
@@ -267,15 +275,18 @@ const CommunityActivities = () => {
                     </div>
                   </th>
 
-                  <th className="p-4 w-[110px] text-center">Status</th>
-                  <th className="p-4 w-[90px] text-center">Actions</th>
+                  <th className="p-4 text-xs text-stone-500 font-bold normal-case w-[110px] text-center">
+                    Status
+                  </th>
+                  <th className="p-4 text-xs text-stone-500 font-bold normal-case w-[95px] text-center">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-stone-100">
                 {sessions?.map((session) => {
                   // 🎯 FIX: Matches explicitly assigned hosts OR community owners/admins
-
                   const hosts = (() => {
                     // 1. Get the usernames of players explicitly assigned as "host", "owner", or "admin" in this session
                     const explicitSessionHosts =
@@ -353,13 +364,13 @@ const CommunityActivities = () => {
                             `/community/${communityId}/sessions/${session.id}`,
                           );
                       }}
-                      className={`transition-colors duration-150 ${
+                      className={`transition-all duration-150 ${
                         canOpenSession
-                          ? "hover:bg-stone-50/40 cursor-pointer"
+                          ? "hover:bg-orange-50/10 cursor-pointer"
                           : "cursor-default text-stone-500"
                       }`}
                     >
-                      <td className="p-4 text-sm font-semibold text-stone-900">
+                      <td className="p-4 text-sm font-bold text-stone-900">
                         <span
                           className="block max-w-[240px] truncate"
                           title={session?.name}
@@ -368,7 +379,7 @@ const CommunityActivities = () => {
                         </span>
                       </td>
 
-                      <td className="p-4 text-xs text-stone-600 font-medium">
+                      <td className="p-4 text-xs text-stone-600 font-semibold">
                         {hosts && hosts?.length > 0 ? (
                           <span
                             className="block truncate max-w-[130px]"
@@ -384,16 +395,16 @@ const CommunityActivities = () => {
                       </td>
 
                       <td className="p-4 text-center">
-                        <span className="inline-block text-[11px] font-bold uppercase tracking-wider rounded-md bg-stone-100 text-stone-700 px-2 py-0.5 border border-stone-200/40">
+                        <span className="inline-block text-[10px] font-bold uppercase tracking-wider rounded-md bg-orange-50/50 text-orange-700 px-2 py-0.5 border border-orange-100/40">
                           {session?.sport}
                         </span>
                       </td>
 
-                      <td className="p-4 text-center text-sm font-semibold text-stone-700">
+                      <td className="p-4 text-center text-sm font-extrabold text-stone-700">
                         {session?._count.players || 0}
                       </td>
 
-                      <td className="p-4 text-xs text-stone-600 font-medium">
+                      <td className="p-4 text-xs text-stone-600 font-semibold">
                         <span
                           className="block max-w-[150px] truncate"
                           title={session?.location}
@@ -403,8 +414,8 @@ const CommunityActivities = () => {
                       </td>
 
                       <td className="p-4 text-xs text-stone-600">
-                        <div className="flex flex-col gap-y-0.5 justify-center font-medium">
-                          <span className="text-stone-800">
+                        <div className="flex flex-col gap-y-0.5 justify-center font-bold">
+                          <span className="text-stone-850">
                             <span className="text-stone-400 font-normal mr-1">
                               Starts:
                             </span>
@@ -421,10 +432,10 @@ const CommunityActivities = () => {
 
                       <td className="p-4 text-center">
                         <span
-                          className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                          className={`inline-flex items-center text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
                             session?.isAvailable
                               ? "bg-green-50 text-green-700 border-green-100"
-                              : "bg-red-50 text-red-600 border-red-100"
+                              : "bg-stone-50 text-stone-400 border-stone-200"
                           }`}
                         >
                           {session?.isAvailable ? "Available" : "Unavailable"}
@@ -432,34 +443,29 @@ const CommunityActivities = () => {
                       </td>
 
                       {/* ACTIONS COLUMN */}
-                      <td className="p-4">
-                        <div className="flex items-center justify-center">
+                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-x-1">
                           {isManagement ? (
                             <>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                onClick={() => {
                                   setSelectedSession(session);
                                   setIsEditSessionModalOpen(true);
                                 }}
-                                className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-md transition-colors cursor-pointer outline-none"
+                                className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer outline-none"
                               >
                                 <SquarePen size={15} />
                               </button>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteSession(session?.id);
-                                }}
-                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer outline-none"
+                                onClick={() => deleteSession(session?.id)}
+                                className="p-1.5 text-stone-400 hover:text-red-650 hover:bg-red-50 rounded-lg transition-colors cursor-pointer outline-none"
                               >
                                 <Trash size={15} />
                               </button>
                             </>
                           ) : (
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={() => {
                                 if (canOpenSession) {
                                   navigate(
                                     `/community/${communityId}/sessions/${session.id}`,
@@ -471,7 +477,9 @@ const CommunityActivities = () => {
                                   setIsEditSessionModalOpen(true);
                                 }
                               }}
-                              className={`p-1.5 text-stone-500 text-[12px] font-medium hover:text-stone-800 hover:bg-green-100 rounded-md transition-colors cursor-pointer outline-none ${isGuest ? "hidden" : null}`}
+                              className={`px-3 py-1 text-xs font-bold border border-orange-500/20 bg-orange-50/40 text-orange-650 hover:bg-orange-500 hover:text-white rounded-lg transition-all cursor-pointer outline-none active:scale-[0.96] ${
+                                isGuest ? "hidden" : ""
+                              }`}
                             >
                               {canOpenSession ? "Open" : "Join"}
                             </button>
@@ -486,7 +494,7 @@ const CommunityActivities = () => {
                   <tr>
                     <td
                       colSpan={8}
-                      className="p-12 text-center text-sm text-stone-400 italic bg-stone-50/20"
+                      className="p-12 text-center text-xs text-stone-400 font-semibold italic bg-stone-50/20"
                     >
                       No scheduled sessions found
                     </td>
