@@ -274,3 +274,8 @@ export const getRequestedPlayerToJoinSessionController = async (
     return response.status(statusCode).json({ success: false, message });
   }
 };
+
+export const assignAdminController = async () => {
+  try {
+  } catch (error) {}
+};

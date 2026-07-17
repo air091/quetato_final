@@ -874,3 +874,99 @@ export const getRequestedPlayerToJoinSession = async (
 
   return requestedPlayers;
 };
+
+export const assignAdmin = async (communityId, userId, authorizedId) => {
+  if (!communityId || !userId || !authorizedId) {
+    throw new AppError(
+      "Community ID, User ID, and Authorization ID are required",
+      400,
+    );
+  }
+
+  // Prevent an owner from running this endpoint on themselves
+  if (userId === authorizedId) {
+    throw new AppError(
+      "Forbidden: You cannot modify your own administrative ownership role",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Authorization check: ONLY the primary community owner can promote someone to admin
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer || authorizedPlayer.role !== "owner") {
+      throw new AppError(
+        "Forbidden: Only the community owner can assign administrator roles",
+        403,
+      );
+    }
+
+    // 2. Verify the target member exists inside this community
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Target player not found in this community", 404);
+    }
+
+    // 3. Ensure the target player is an active member
+    if (targetPlayer.status !== "accepted") {
+      throw new AppError(
+        "Forbidden: Target user must be an approved member before receiving promotions",
+        400,
+      );
+    }
+
+    // 4. Guardrail: Avoid re-promoting an existing admin or owner
+    if (targetPlayer.role === "admin" || targetPlayer.role === "owner") {
+      throw new AppError(
+        `Target player is already an administrative role (${targetPlayer.role})`,
+        400,
+      );
+    }
+
+    // 5. Upgrade the player's role to "admin"
+    const updatedPlayer = await tx.communityPlayer.update({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+      data: {
+        role: "admin",
+      },
+      select: {
+        id: true,
+        communityId: true,
+        userId: true,
+        role: true,
+        status: true,
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    return updatedPlayer;
+  });
+};
+
+export const assignHost = async () => {};
