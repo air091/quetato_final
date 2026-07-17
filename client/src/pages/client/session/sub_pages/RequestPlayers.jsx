@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import PlayerAvatar from "../../../../components/PlayerAvatar";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
-import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Search, X } from "lucide-react";
 import { useSession } from "../../../../hooks/useSession";
 import { API_URL } from "../../../../contexts/AuthContext";
 
@@ -12,12 +12,15 @@ const RequestPlayers = () => {
   const { communityId, sessionId } = useParams();
 
   const [staticPlayers, setStaticPlayers] = useState([]);
-  const [registeredPlayers, setRegisteredPlayers] = useState([]); // 👈 Added for users not in session
-  const [Players, setPlayers] = useState([]); // Pending requests state
+  const [registeredPlayers, setRegisteredPlayers] = useState([]);
+  const [Players, setPlayers] = useState([]);
 
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
-  const [isRegisteredMinimized, setIsRegisteredMinimized] = useState(false); // 👈 Control states
+  const [isRegisteredMinimized, setIsRegisteredMinimized] = useState(false);
   const [isRequestsMinimized, setIsRequestsMinimized] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 1. Fetch pending requests for this session
   const getRequestedPlayers = useCallback(async () => {
@@ -122,14 +125,31 @@ const RequestPlayers = () => {
     ],
   );
 
+  // Filter players based on search query
+  const filteredRequests = useMemo(() => {
+    if (!searchQuery.trim()) return Players;
+    return Players.filter((request) => {
+      const username = request?.sessionPlayer?.communityPlayer?.username || "";
+      return username.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [Players, searchQuery]);
+
+  const filteredStaticPlayers = useMemo(() => {
+    if (!searchQuery.trim()) return staticPlayers;
+    return staticPlayers.filter((wrapper) => {
+      const username = wrapper?.communityPlayer?.username || "";
+      return username.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [staticPlayers, searchQuery]);
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-4">
-      {/* TOP TOOLBAR */}
-      <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-        <div className="flex items-center gap-x-2">
+      {/* TOP TOOLBAR WITH SEARCH */}
+      <div className="flex items-center justify-between border-b border-stone-100 pb-3 gap-3">
+        <div className="flex items-center gap-x-2 flex-1">
           <label
             htmlFor="sort"
-            className="text-xs font-medium text-stone-500 flex items-center gap-x-1"
+            className="text-xs font-medium text-stone-500 flex items-center gap-x-1 whitespace-nowrap"
           >
             <ArrowUpDown size={13} /> Sort
           </label>
@@ -142,6 +162,28 @@ const RequestPlayers = () => {
             <option value="asc">Ascending</option>
             <option value="desc">Descending</option>
           </select>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-[240px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+            <Search size={14} />
+          </div>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search players..."
+            className="w-full pl-9 pr-9 py-1.5 bg-white border border-stone-200 rounded-lg text-sm placeholder-stone-400 text-stone-800 font-medium outline-none shadow-sm focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -157,7 +199,7 @@ const RequestPlayers = () => {
               Session Join Requests
             </h4>
             <span className="text-xs text-amber-600 font-medium">
-              ({Players?.length || 0})
+              ({filteredRequests?.length || 0})
             </span>
           </div>
           <ChevronDown
@@ -168,13 +210,15 @@ const RequestPlayers = () => {
 
         {!isRequestsMinimized && (
           <div className="p-2 animate-in fade-in duration-150">
-            {Players.length === 0 ? (
+            {filteredRequests.length === 0 ? (
               <p className="text-xs text-stone-400 italic p-3 text-center">
-                No pending session requests found.
+                {searchQuery.trim()
+                  ? `No pending requests found matching "${searchQuery}"`
+                  : "No pending session requests found."}
               </p>
             ) : (
               <div className="flex flex-col gap-y-1">
-                {Players.map((request) => {
+                {filteredRequests.map((request) => {
                   const targetUser = request?.sessionPlayer?.communityPlayer;
                   return (
                     <div
@@ -228,7 +272,7 @@ const RequestPlayers = () => {
           <div className="flex items-center gap-x-2">
             <h4 className="font-semibold text-sm text-stone-800">Statics</h4>
             <span className="text-xs text-stone-400 font-normal">
-              ({staticPlayers?.length || 0})
+              ({filteredStaticPlayers?.length || 0})
             </span>
           </div>
           <ChevronDown
@@ -239,13 +283,15 @@ const RequestPlayers = () => {
 
         {!isStaticMinimized && (
           <div className="p-2 animate-in fade-in duration-150">
-            {staticPlayers.length === 0 ? (
+            {filteredStaticPlayers.length === 0 ? (
               <p className="text-xs text-stone-400 italic p-3 text-center">
-                No available static guest accounts found.
+                {searchQuery.trim()
+                  ? `No static players found matching "${searchQuery}"`
+                  : "No available static guest accounts found."}
               </p>
             ) : (
               <div className="flex flex-col gap-y-1">
-                {staticPlayers.map((wrapper) => (
+                {filteredStaticPlayers.map((wrapper) => (
                   <div
                     key={wrapper.id}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-stone-50 transition-colors"
