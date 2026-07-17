@@ -46,56 +46,56 @@ const HomeActivities = () => {
   const showLoading = loading || isFetching;
 
   return (
-    <div className="w-full max-w-[720px] mx-auto mt-8 mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-sm text-stone-800 uppercase tracking-wider">
+    <div className="w-full max-w-[720px] mx-auto mt-8 mb-4 selection:bg-orange-500/10 selection:text-orange-950">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h3 className="font-extrabold text-[11px] text-stone-400 uppercase tracking-wider">
           Public Sessions
         </h3>
         {showLoading && (
-          <span className="flex items-center gap-x-1.5 text-xs text-stone-400 font-medium">
-            <Loader2 size={12} className="animate-spin" /> Updating...
+          <span className="flex items-center gap-x-1.5 text-xs text-orange-500 font-bold animate-pulse">
+            <Loader2 size={12} className="animate-spin" /> Updating Roster...
           </span>
         )}
       </div>
 
-      {/* Loading Skeleton Row State */}
+      {/* 🌀 Loading Skeleton Row State */}
       {showLoading && sessions.length === 0 && (
         <div className="flex flex-col gap-y-4">
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="w-full h-32 bg-stone-100/70 border border-stone-200/60 rounded-xl animate-pulse"
+              className="w-full h-32 bg-stone-100/50 border border-stone-200/60 rounded-2xl animate-pulse"
             />
           ))}
         </div>
       )}
 
-      {/* Clean Empty State Display */}
+      {/* 🥔 Clean Empty State Display */}
       {!showLoading && sessions.length === 0 && (
-        <div className="flex flex-col items-center justify-center p-12 border border-dashed border-stone-200 rounded-xl bg-white text-center shadow-sm">
-          <div className="p-3 bg-stone-50 text-stone-400 rounded-full mb-3">
+        <div className="flex flex-col items-center justify-center p-12 border border-dashed border-stone-200/80 rounded-2xl bg-white text-center shadow-sm shadow-stone-100/50">
+          <div className="p-3 bg-orange-50 text-orange-500 rounded-full mb-3 border border-orange-100/50">
             <CalendarX size={24} />
           </div>
-          <h4 className="font-semibold text-sm text-stone-800">
-            No active sessions
+          <h4 className="font-bold text-sm text-stone-900">
+            No Active Matchups
           </h4>
-          <p className="text-xs text-stone-400 mt-1 max-w-[280px]">
-            There are no public community sessions hosted right now. Check back
-            later!
+          <p className="text-xs text-stone-400 mt-1.5 max-w-[280px] font-medium leading-relaxed">
+            There are no public community sessions hosted right now. Gather your
+            crew and create one!
           </p>
         </div>
       )}
 
-      {/* Active Session Feeds */}
+      {/* 🏆 Active Session Feeds */}
       {sessions.length > 0 && (
-        <div className="flex flex-col gap-y-4">
+        <div className="flex flex-col gap-y-3.5">
           {sessions.map((session) => (
             <div
               key={session.id}
               onClick={() =>
                 navigate(`/community/${session.community.id}/sessions`)
               }
-              className="transition-transform duration-150 hover:-translate-y-[1px]"
+              className="cursor-pointer transition-all duration-250 hover:-translate-y-0.5 hover:shadow-md hover:shadow-stone-200/40 rounded-2xl active:scale-[0.99]"
             >
               <ActivityCard session={session} />
             </div>

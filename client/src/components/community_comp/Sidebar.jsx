@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   return (
     <nav
       ref={sidebarRef}
-      className={`h-screen bg-stone-50 border-r border-stone-200 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between ${
+      className={`h-screen bg-stone-50 border-r border-stone-200/80 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between selection:bg-orange-500/10 selection:text-orange-950 ${
         isOpen ? "w-[260px]" : "w-[60px]"
       }`}
     >
@@ -67,17 +67,36 @@ const Sidebar = ({ isOpen, onClose }) => {
               to="/"
               title={!isOpen ? "Home" : undefined}
               className={({ isActive }) =>
-                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
-                  isOpen ? "gap-x-4 justify-start" : "justify-center"
-                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+                `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
+                  isOpen ? "gap-x-4 justify-start px-4" : "justify-center"
+                } ${
+                  isActive
+                    ? "font-bold bg-orange-50/60 text-orange-600 border-l-2 border-orange-500 rounded-l-none"
+                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+                }`
               }
             >
-              <House size={20} className="shrink-0" />
-              <span
-                className={`text-sm tracking-wide whitespace-nowrap ${isOpen ? "block" : "hidden"}`}
-              >
-                Home
-              </span>
+              {({ isActive }) => (
+                <>
+                  <House
+                    size={20}
+                    className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                      isActive
+                        ? "text-orange-500"
+                        : "text-stone-500 group-hover:text-stone-900"
+                    }`}
+                  />
+                  <span
+                    className={`text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                      isOpen
+                        ? "opacity-100 max-w-[200px]"
+                        : "opacity-0 max-w-0 pointer-events-none"
+                    }`}
+                  >
+                    Home
+                  </span>
+                </>
+              )}
             </NavLink>
           </li>
 
@@ -88,17 +107,36 @@ const Sidebar = ({ isOpen, onClose }) => {
               end
               title={!isOpen ? "Sessions" : undefined}
               className={({ isActive }) =>
-                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
-                  isOpen ? "gap-x-4 justify-start" : "justify-center"
-                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+                `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
+                  isOpen ? "gap-x-4 justify-start px-4" : "justify-center"
+                } ${
+                  isActive
+                    ? "font-bold bg-orange-50/60 text-orange-600 border-l-2 border-orange-500 rounded-l-none"
+                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+                }`
               }
             >
-              <Newspaper size={20} className="shrink-0" />
-              <span
-                className={`text-sm tracking-wide whitespace-nowrap ${isOpen ? "block" : "hidden"}`}
-              >
-                Sessions
-              </span>
+              {({ isActive }) => (
+                <>
+                  <Newspaper
+                    size={20}
+                    className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                      isActive
+                        ? "text-orange-500"
+                        : "text-stone-500 group-hover:text-stone-900"
+                    }`}
+                  />
+                  <span
+                    className={`text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                      isOpen
+                        ? "opacity-100 max-w-[200px]"
+                        : "opacity-0 max-w-0 pointer-events-none"
+                    }`}
+                  >
+                    Sessions
+                  </span>
+                </>
+              )}
             </NavLink>
           </li>
 
@@ -108,17 +146,36 @@ const Sidebar = ({ isOpen, onClose }) => {
               to="/community/find"
               title={!isOpen ? "Find" : undefined}
               className={({ isActive }) =>
-                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
-                  isOpen ? "gap-x-4 justify-start" : "justify-center"
-                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+                `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
+                  isOpen ? "gap-x-4 justify-start px-4" : "justify-center"
+                } ${
+                  isActive
+                    ? "font-bold bg-orange-50/60 text-orange-600 border-l-2 border-orange-500 rounded-l-none"
+                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+                }`
               }
             >
-              <Compass size={20} className="shrink-0" />
-              <span
-                className={`text-sm tracking-wide whitespace-nowrap ${isOpen ? "block" : "hidden"}`}
-              >
-                Find
-              </span>
+              {({ isActive }) => (
+                <>
+                  <Compass
+                    size={20}
+                    className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                      isActive
+                        ? "text-orange-500"
+                        : "text-stone-500 group-hover:text-stone-900"
+                    }`}
+                  />
+                  <span
+                    className={`text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                      isOpen
+                        ? "opacity-100 max-w-[200px]"
+                        : "opacity-0 max-w-0 pointer-events-none"
+                    }`}
+                  >
+                    Find
+                  </span>
+                </>
+              )}
             </NavLink>
           </li>
 
@@ -128,59 +185,95 @@ const Sidebar = ({ isOpen, onClose }) => {
               to="create-community"
               title={!isOpen ? "Create community" : undefined}
               className={({ isActive }) =>
-                `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
-                  isOpen ? "gap-x-4 justify-start" : "justify-center"
-                } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+                `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
+                  isOpen ? "gap-x-4 justify-start px-4" : "justify-center"
+                } ${
+                  isActive
+                    ? "font-bold bg-orange-50/60 text-orange-600 border-l-2 border-orange-500 rounded-l-none"
+                    : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+                }`
               }
             >
-              <Plus size={18} className="shrink-0" />
-              <span className={isOpen ? "block" : "hidden"}>
-                Create community
-              </span>
+              {({ isActive }) => (
+                <>
+                  <Plus
+                    size={18}
+                    className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                      isActive
+                        ? "text-orange-500"
+                        : "text-stone-500 group-hover:text-stone-900"
+                    }`}
+                  />
+                  <span
+                    className={`text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                      isOpen
+                        ? "opacity-100 max-w-[200px]"
+                        : "opacity-0 max-w-0 pointer-events-none"
+                    }`}
+                  >
+                    Create community
+                  </span>
+                </>
+              )}
             </NavLink>
           </li>
         </ul>
 
         {/* COMMUNITIES LIST SECTION */}
-        <div className="flex flex-col gap-y-2 border-t border-stone-200 pt-4">
+        <div className="flex flex-col gap-y-2 border-t border-stone-200/80 pt-4">
           <div
-            className={`items-center justify-between px-2 ${isOpen ? "flex" : "hidden"}`}
+            className={`items-center justify-between px-2 transition-all duration-200 ${
+              isOpen ? "flex opacity-100" : "hidden opacity-0"
+            }`}
           >
-            <span className="text-[12px] font-bold text-stone-400 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
               Communities
             </span>
             <NavLink
               to="my-community-all"
-              className="text-[11px] font-semibold text-stone-500 hover:text-stone-900 underline"
+              className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline transition-colors"
             >
               See all
             </NavLink>
           </div>
 
           <ul className="flex flex-col gap-y-1">
-            {/* 🌟 Mapping over flatCommunities instead of myCommunities */}
             {flatCommunities.map((myCommunity) => (
               <li key={myCommunity.id}>
                 <NavLink
                   to={`/community/${myCommunity.id}/sessions`}
                   title={!isOpen ? myCommunity.name : undefined}
                   className={({ isActive }) =>
-                    `flex items-center rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+                    `flex items-center rounded-xl transition-all duration-200 group relative ${
                       isOpen
-                        ? "p-2.5 gap-x-4 justify-start text-sm"
+                        ? "p-2.5 gap-x-4 justify-start px-4 text-xs"
                         : "p-2 justify-center"
-                    } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
+                    } ${
+                      isActive
+                        ? "font-bold bg-orange-50/60 text-orange-600 border-l-2 border-orange-500 rounded-l-none"
+                        : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+                    }`
                   }
                 >
-                  {isOpen ? (
-                    <span className="truncate tracking-wide">
-                      {myCommunity.name}
-                    </span>
-                  ) : (
-                    /* Elegant single-letter fallback badge when minimized */
-                    <div className="w-8 h-8 rounded-lg bg-stone-200 text-stone-700 font-bold flex items-center justify-center text-xs uppercase shadow-sm group-hover:bg-stone-300 transition-colors">
-                      {myCommunity.name?.charAt(0) || "C"}
-                    </div>
+                  {({ isActive }) => (
+                    <>
+                      {isOpen ? (
+                        <span className="truncate tracking-wide font-bold">
+                          {myCommunity.name}
+                        </span>
+                      ) : (
+                        /* Elegant single-letter potato fallback badge when minimized */
+                        <div
+                          className={`w-8 h-8 rounded-lg font-extrabold flex items-center justify-center text-xs uppercase shadow-sm transition-all duration-200 group-hover:scale-105 ${
+                            isActive
+                              ? "bg-orange-500 text-white shadow-orange-500/10"
+                              : "bg-orange-50/80 text-orange-600 border border-orange-100 group-hover:bg-orange-100"
+                          }`}
+                        >
+                          {myCommunity.name?.charAt(0) || "C"}
+                        </div>
+                      )}
+                    </>
                   )}
                 </NavLink>
               </li>

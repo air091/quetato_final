@@ -34,10 +34,10 @@ const Login = () => {
       <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-xl shadow-stone-200/40 border border-stone-200/60">
         {/* 🥔 BRAND & HEADER */}
         <div className="text-center">
-          <h3 className="text-2xl font-bold tracking-tight text-stone-900">
+          <h3 className="text-2xl font-bold tracking-tight text-stone-900 leading-4">
             Welcome Back
           </h3>
-          <p className="text-2xl font-bold tracking-tight text-stone-900">to</p>
+          <p className="text-xl font-bold tracking-tight text-stone-900">to</p>
           <div className="inline-flex items-center justify-center px-4 rounded-full bg-orange-50  mb-3 border border-orange-200">
             {/* Elegant sports/queue representation */}
             <p className="font-extrabold text-lg tracking-tight">
