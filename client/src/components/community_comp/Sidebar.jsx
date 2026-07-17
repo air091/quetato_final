@@ -45,6 +45,12 @@ const Sidebar = ({ isOpen, onClose }) => {
     };
   }, [isOpen, onClose]);
 
+  // 🛠️ COMBINE OWNED AND JOINED COMMUNITIES INTO A SINGLE FLAT ARRAY SAFELY
+  const flatCommunities = [
+    ...(myCommunities?.owned || []),
+    ...(myCommunities?.joined || []),
+  ];
+
   return (
     <nav
       ref={sidebarRef}
@@ -152,7 +158,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
 
           <ul className="flex flex-col gap-y-1">
-            {myCommunities?.map((myCommunity) => (
+            {/* 🌟 Mapping over flatCommunities instead of myCommunities */}
+            {flatCommunities.map((myCommunity) => (
               <li key={myCommunity.id}>
                 <NavLink
                   to={`/community/${myCommunity.id}/sessions`}
