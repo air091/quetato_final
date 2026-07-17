@@ -969,4 +969,105 @@ export const assignAdmin = async (communityId, userId, authorizedId) => {
   });
 };
 
-export const assignHost = async () => {};
+export const assignHost = async (communityId, userId, authorizedId) => {
+  if (!communityId || !userId || !authorizedId) {
+    throw new AppError(
+      "Community ID, User ID, and Authorization ID are required",
+      400,
+    );
+  }
+
+  // Prevent users from changing their own host assignment via this endpoint
+  if (userId === authorizedId) {
+    throw new AppError(
+      "Forbidden: You cannot modify your own administrative or host role status",
+      400,
+    );
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Authorization check: Both "owner" and "admin" can assign a host role
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedId,
+        },
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const allowedRoles = ["owner", "admin"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Only the community owner or administrators can assign host privileges",
+        403,
+      );
+    }
+
+    // 2. Verify the target member exists inside this community
+    const targetPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Target player not found in this community", 404);
+    }
+
+    // 3. Ensure the target player is an active, accepted member
+    if (targetPlayer.status !== "accepted") {
+      throw new AppError(
+        "Forbidden: Target user must be an approved member before receiving promotions",
+        400,
+      );
+    }
+
+    // 4. Guardrails: Prevent downgrading the owner, or redundant promotions
+    if (targetPlayer.role === "owner") {
+      throw new AppError(
+        "Forbidden: Cannot modify the community owner's role",
+        403,
+      );
+    }
+
+    if (targetPlayer.role === "host") {
+      throw new AppError("Target player is already a host", 400);
+    }
+
+    // 5. Update the player's role to "host"
+    const updatedPlayer = await tx.communityPlayer.update({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+      data: {
+        role: "host",
+      },
+      select: {
+        id: true,
+        communityId: true,
+        userId: true,
+        role: true,
+        status: true,
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    return updatedPlayer;
+  });
+};
