@@ -301,10 +301,16 @@ export const assignAdminController = async (request, response) => {
 export const assignHostController = async (request, response) => {
   try {
     const { communityId, userId } = request.params;
-    const result = await assignHost(communityId, userId, request.user.sub);
+    const { sessionId } = request.body;
+    const result = await assignHost(
+      communityId,
+      userId,
+      request.user.sub,
+      sessionId,
+    );
     return response.status(200).json({ success: true, result });
   } catch (error) {
-    console.error("Assign community player as admin failed", error);
+    console.error("Assign community player as host failed", error);
 
     let statusCode = 500;
     let message = "Internal server error";

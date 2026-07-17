@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { useOutletContext, useParams } from "react-router-dom";
 import { ChevronDown, EllipsisVertical } from "lucide-react";
@@ -6,7 +6,8 @@ import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
 import AddStaticPlayer from "../../../../../components/community_comp/players/AddStaticPlayer";
 import { API_URL } from "../../../../../contexts/AuthContext";
-import { useCommunity } from "../../../../../hooks/useCommunity";
+
+const MANAGEMENT_ROLES = ["owner", "admin", "host"];
 
 const All = () => {
   const { fetchWithAuth, user } = useAuth();
@@ -16,7 +17,6 @@ const All = () => {
 
   const { communityId } = useParams();
   const [players, setPlayers] = useState([]);
-  const [requests, setRequests] = useState([]);
 
   const [isStaticMinimized, setIsStaticMinimized] = useState(true);
   const [isUserMinimized, setIsUserMinimized] = useState(true);
@@ -55,29 +55,6 @@ const All = () => {
     getAllSession();
   }, [getAllSession]);
 
-  const getAllRequests = useCallback(async () => {
-    if (!communityId) return;
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/:communityId/players/requests`,
-        { method: "GET" },
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data?.message || "An unknown error occurred");
-      }
-
-      setRequests(data.results);
-    } catch (error) {
-      console.error("Failed to fetch request users:", error);
-    }
-  }, []);
-
   // Dynamic assignment handler to pass down specific element triggers
   const handleToggleMenu = (e, player) => {
     e.stopPropagation();
@@ -94,7 +71,6 @@ const All = () => {
 
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
-  const isGuest = !communityPlayer;
 
   return (
     <div className="w-full max-w-[720px] mx-auto select-none bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden my-4">
@@ -144,7 +120,7 @@ const All = () => {
         </div>
       </div>
 
-      {/* Creator and Admin Section */}
+      {/* Creator, Admin and Host Section */}
       <div className="p-2 flex flex-col">
         <header
           title={isUserMinimized ? "Expand container" : "Minimize container"}
@@ -153,13 +129,10 @@ const All = () => {
         >
           <div className="flex items-center gap-x-2">
             <h4 className="font-semibold text-sm text-stone-800">
-              Creator & Admins
+              Creator, Admins & Hosts
             </h4>
             <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
-              {
-                players.filter((p) => p.role === "owner" || p.role === "admin")
-                  .length
-              }
+              {players.filter((p) => MANAGEMENT_ROLES.includes(p.role)).length}
             </span>
           </div>
           <span
@@ -178,9 +151,7 @@ const All = () => {
         >
           <div className="overflow-hidden flex flex-col gap-y-1 px-1">
             {players
-              .filter(
-                (player) => player.role === "owner" || player.role === "admin",
-              )
+              .filter((player) => MANAGEMENT_ROLES.includes(player.role))
               .map((player) => {
                 const isCurrentUser =
                   user && player?.communityPlayer?.id === user?.id;
@@ -215,7 +186,9 @@ const All = () => {
                             className={`px-2 py-0.5 rounded-md capitalize ${
                               player.role === "owner"
                                 ? "bg-amber-50 text-amber-700 border border-amber-100"
-                                : "bg-blue-50 text-blue-700 border border-blue-100"
+                                : player.role === "host"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                  : "bg-blue-50 text-blue-700 border border-blue-100"
                             }`}
                           >
                             {player.role}
@@ -250,6 +223,7 @@ const All = () => {
                               toggleButtonRef={activeMenu}
                               onClose={() => setActiveMenu(null)}
                               onUpdatePlayerStatus={getAllSession}
+                              isManagement={isManagement}
                             />
                           )}
                         </div>

@@ -532,6 +532,19 @@ export const rejectPlayer = async (communityId, userId, authorizedId) => {
           userId,
         },
       },
+      select: {
+        id: true,
+        communityId: true,
+        userId: true,
+        role: true,
+        status: true,
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
     });
 
     if (!targetPlayer) {
@@ -969,10 +982,15 @@ export const assignAdmin = async (communityId, userId, authorizedId) => {
   });
 };
 
-export const assignHost = async (communityId, userId, authorizedId) => {
-  if (!communityId || !userId || !authorizedId) {
+export const assignHost = async (
+  communityId,
+  userId,
+  authorizedId,
+  sessionId,
+) => {
+  if (!communityId || !userId || !authorizedId || !sessionId) {
     throw new AppError(
-      "Community ID, User ID, and Authorization ID are required",
+      "Community ID, User ID, Authorization ID, and Session ID are required",
       400,
     );
   }
@@ -1008,7 +1026,20 @@ export const assignHost = async (communityId, userId, authorizedId) => {
       );
     }
 
-    // 2. Verify the target member exists inside this community
+    // 2. Verify the target session exists inside this community
+    const targetSession = await tx.session.findFirst({
+      where: {
+        id: sessionId,
+        communityId,
+      },
+      select: { id: true },
+    });
+
+    if (!targetSession) {
+      throw new AppError("Target session not found in this community", 404);
+    }
+
+    // 3. Verify the target member exists inside this community
     const targetPlayer = await tx.communityPlayer.findUnique({
       where: {
         communityId_userId: {
@@ -1022,7 +1053,7 @@ export const assignHost = async (communityId, userId, authorizedId) => {
       throw new AppError("Target player not found in this community", 404);
     }
 
-    // 3. Ensure the target player is an active, accepted member
+    // 4. Ensure the target player is an active, accepted member
     if (targetPlayer.status !== "accepted") {
       throw new AppError(
         "Forbidden: Target user must be an approved member before receiving promotions",
@@ -1030,7 +1061,7 @@ export const assignHost = async (communityId, userId, authorizedId) => {
       );
     }
 
-    // 4. Guardrails: Prevent downgrading the owner, or redundant promotions
+    // 5. Guardrails: Prevent downgrading protected management roles.
     if (targetPlayer.role === "owner") {
       throw new AppError(
         "Forbidden: Cannot modify the community owner's role",
@@ -1038,36 +1069,73 @@ export const assignHost = async (communityId, userId, authorizedId) => {
       );
     }
 
-    if (targetPlayer.role === "host") {
-      throw new AppError("Target player is already a host", 400);
+    if (targetPlayer.role === "admin") {
+      throw new AppError(
+        "Target player is already an admin and has host-level access",
+        400,
+      );
     }
 
-    // 5. Update the player's role to "host"
-    const updatedPlayer = await tx.communityPlayer.update({
+    // 6. Promote regular players to host, then make sure they are in the
+    // selected session as an accepted participant.
+    const updatedPlayer =
+      targetPlayer.role === "host"
+        ? targetPlayer
+        : await tx.communityPlayer.update({
+            where: {
+              communityId_userId: {
+                communityId,
+                userId,
+              },
+            },
+            data: {
+              role: "host",
+            },
+            select: {
+              id: true,
+              communityId: true,
+              userId: true,
+              role: true,
+              status: true,
+              communityPlayer: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+            },
+          });
+
+    const sessionPlayer = await tx.sessionPlayer.upsert({
       where: {
-        communityId_userId: {
-          communityId,
-          userId,
+        sessionId_playerId: {
+          sessionId: targetSession.id,
+          playerId: updatedPlayer.id,
         },
       },
-      data: {
-        role: "host",
+      update: {
+        status: "accepted",
+        acceptedBy: authorizedPlayer.id,
+        acceptedAt: new Date(),
+        isHide: false,
+      },
+      create: {
+        sessionId: targetSession.id,
+        playerId: updatedPlayer.id,
+        status: "accepted",
+        acceptedBy: authorizedPlayer.id,
+        acceptedAt: new Date(),
       },
       select: {
         id: true,
-        communityId: true,
-        userId: true,
-        role: true,
+        sessionId: true,
+        playerId: true,
         status: true,
-        communityPlayer: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
+        acceptedBy: true,
+        acceptedAt: true,
       },
     });
 
-    return updatedPlayer;
+    return { player: updatedPlayer, sessionPlayer };
   });
 };

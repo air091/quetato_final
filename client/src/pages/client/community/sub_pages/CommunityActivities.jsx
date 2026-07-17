@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "../../../../hooks/useAuth";
 import {
@@ -16,7 +16,7 @@ import EditSessionModal from "../../../../components/community_comp/activities/E
 import { API_URL } from "../../../../contexts/AuthContext";
 
 const CommunityActivities = () => {
-  const { accessToken, fetchWithAuth, user } = useAuth();
+  const { accessToken, fetchWithAuth } = useAuth();
   const context = useOutletContext();
   const communityPlayer = context?.communityPlayer;
 
@@ -138,6 +138,7 @@ const CommunityActivities = () => {
 
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
+  const canOpenSession = isManagement || communityPlayer?.role === "host";
   const isGuest = !communityPlayer || communityPlayer?.status === "requested";
 
   return (
@@ -273,25 +274,31 @@ const CommunityActivities = () => {
 
               <tbody className="divide-y divide-stone-100">
                 {sessions?.map((session) => {
+                  // 🎯 FIX: Matches explicitly assigned hosts OR community owners/admins
                   const hosts = session?.players
-                    ?.filter(
-                      (p) =>
-                        p?.sessionPlayer?.role === "owner" ||
-                        p?.sessionPlayer?.role === "admin",
-                    )
+                    ?.filter((p) => {
+                      const sessionRole = p?.sessionPlayer?.role;
+                      const communityRole =
+                        p?.sessionPlayer?.communityPlayer?.role;
+                      return (
+                        sessionRole === "host" ||
+                        communityRole === "owner" ||
+                        communityRole === "admin"
+                      );
+                    })
                     ?.map((p) => p?.sessionPlayer?.communityPlayer?.username);
 
                   return (
                     <tr
                       key={session.id}
                       onClick={() => {
-                        if (isManagement)
+                        if (canOpenSession)
                           navigate(
                             `/community/${communityId}/sessions/${session.id}`,
                           );
                       }}
                       className={`transition-colors duration-150 ${
-                        isManagement
+                        canOpenSession
                           ? "hover:bg-stone-50/40 cursor-pointer"
                           : "cursor-default text-stone-500"
                       }`}
@@ -397,12 +404,20 @@ const CommunityActivities = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedSession(session);
-                                setIsEditSessionModalOpen(true);
+                                if (canOpenSession) {
+                                  navigate(
+                                    `/community/${communityId}/sessions/${session.id}`,
+                                  );
+                                  return;
+                                }
+                                if (!isGuest) {
+                                  setSelectedSession(session);
+                                  setIsEditSessionModalOpen(true);
+                                }
                               }}
                               className={`p-1.5 text-stone-500 text-[12px] font-medium hover:text-stone-800 hover:bg-green-100 rounded-md transition-colors cursor-pointer outline-none ${isGuest ? "hidden" : null}`}
                             >
-                              Join
+                              {canOpenSession ? "Open" : "Join"}
                             </button>
                           )}
                         </div>
