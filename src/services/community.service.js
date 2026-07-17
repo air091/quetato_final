@@ -36,12 +36,67 @@ export const getAllCommunities = async () => {
 };
 
 export const getMyCommunities = async (userId) => {
-  if (!userId) throw new AppError("User ID is required");
-  const communities = await prisma.community.findMany({
-    where: { ownerId: userId },
-  });
+  if (!userId) throw new AppError("User ID is required", 400);
 
-  return communities;
+  // Run queries concurrently to optimize performance
+  const [ownedCommunities, joinedCommunities] = await Promise.all([
+    // 1. Communities you own
+    prisma.community.findMany({
+      where: {
+        ownerId: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        _count: {
+          select: {
+            players: true,
+            sessions: true,
+          },
+        },
+      },
+    }),
+
+    // 2. Communities where you are an accepted member (and not the owner)
+    prisma.community.findMany({
+      where: {
+        players: {
+          some: {
+            userId: userId,
+            status: "accepted", // Only verified members
+            role: {
+              not: "owner", // Excludes owned communities to avoid duplicates
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        owner: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            players: true,
+            sessions: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    owned: ownedCommunities,
+    joined: joinedCommunities,
+  };
 };
 
 export const getCommunityById = async (communityId) => {

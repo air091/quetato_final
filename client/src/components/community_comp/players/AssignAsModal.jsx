@@ -156,7 +156,22 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
             </div>
           )}
 
-          {/* Conditional Container 2: Session Table View for Hosts */}
+          {/* as host */}
+          {selectedRole === "host" && (
+            <p className="text-center bg-red-100 p-2 rounded-lg text-[14px]">
+              Under development
+            </p>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.getElementById("modal-root") || document.body, // Target matching index.html hook point[cite: 3]
+  );
+};
+
+/*
+
+{/* Conditional Container 2: Session Table View for Hosts 
           {selectedRole === "host" && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex flex-col">
@@ -211,7 +226,7 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
                 </div>
               </div>
 
-              {/* Action Toolbar for Host selection submission */}
+              {/* Action Toolbar for Host selection submission
               <div className="flex justify-end gap-x-2 pt-2 border-t border-stone-100">
                 <button
                   onClick={onClose}
@@ -229,11 +244,7 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </div>,
-    document.getElementById("modal-root") || document.body, // Target matching index.html hook point[cite: 3]
-  );
-};
+
+*/
 
 export default AssignAsModal;
