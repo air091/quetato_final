@@ -34,7 +34,7 @@ const getClearSessionCookieOptions = () => {
 
 export const registerController = async (request, response) => {
   try {
-    const { username, email, password } = request.body;
+    const { username, email, password, skillLevel } = request.body;
     const agent = request.headers["user-agent"] || "Unknown Device";
     const ipAddress = request.ip || "127.0.0.1";
 
@@ -42,6 +42,7 @@ export const registerController = async (request, response) => {
       username,
       email,
       password,
+      skillLevel,
       ipAddress,
       agent,
     });

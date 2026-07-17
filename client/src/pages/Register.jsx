@@ -3,6 +3,18 @@ import { useAuth } from "../hooks/useAuth"; // Adjust path if necessary
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 
+// Array mapping the Prisma SkillLevel enum variants
+const SKILL_LEVELS = [
+  { value: "LB", label: "Low Beginner (LB)" },
+  { value: "BEG", label: "Beginner (BEG)" },
+  { value: "HB", label: "High Beginner (HB)" },
+  { value: "LI", label: "Low Intermediate (LI)" },
+  { value: "INT", label: "Intermediate (INT)" },
+  { value: "UI", label: "Upper Intermediate (UI)" },
+  { value: "ADV", label: "Advanced (ADV)" },
+  { value: "EXP", label: "Expert (EXP)" },
+];
+
 const Register = () => {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
@@ -10,20 +22,20 @@ const Register = () => {
   // Component States
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [skillLevel, setSkillLevel] = useState("LB"); // Default matches schema fallback
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const [showPassword, setShowPassword] = useState(false); // Added visibility toggle state
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null); // Reset error states
+    setError(null);
 
     try {
-      await register(username, email, password);
-      // Automatically navigate to home once successful
+      // Added skillLevel parameter into your authentication hook call
+      await register(username, email, password, skillLevel);
       navigate("/");
     } catch (err) {
-      // Captures backend error messages sent by registerController
       setError(err.message || "Registration failed. Please try again.");
     }
   };
@@ -31,10 +43,9 @@ const Register = () => {
   return (
     <div className="flex min-h-[85vh] items-center justify-center bg-stone-50/50 px-4 py-12 sm:px-6 lg:px-8 font-sans selection:bg-orange-500/20 selection:text-orange-900">
       <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-xl shadow-stone-200/40 border border-stone-200/60">
-        {/* 🥔 BRAND & HEADER */}
+        {/* BRAND & HEADER */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center px-4 rounded-full bg-orange-50  mb-3 border border-orange-200">
-            {/* Elegant sports/queue representation */}
+          <div className="inline-flex items-center justify-center px-4 rounded-full bg-orange-50 mb-3 border border-orange-200">
             <p className="font-extrabold text-lg tracking-tight">
               QUE<span className="text-orange-500">TATO</span> SPORT
             </p>
@@ -47,7 +58,7 @@ const Register = () => {
           </p>
         </div>
 
-        {/* ⚠️ ERROR STATE */}
+        {/* ERROR STATE */}
         {error && (
           <div className="flex items-start gap-x-2.5 rounded-xl bg-red-50 border border-red-100 p-3.5 text-xs text-red-800 animate-in fade-in slide-in-from-top-1 duration-200">
             <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
@@ -55,7 +66,7 @@ const Register = () => {
           </div>
         )}
 
-        {/* 📝 FORM FIELDS */}
+        {/* FORM FIELDS */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* USERNAME */}
           <div>
@@ -95,6 +106,28 @@ const Register = () => {
             />
           </div>
 
+          {/* SKILL LEVEL SELECTOR */}
+          <div>
+            <label
+              htmlFor="skillLevel"
+              className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1.5"
+            >
+              Skill Level
+            </label>
+            <select
+              id="skillLevel"
+              value={skillLevel}
+              onChange={(e) => setSkillLevel(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-850 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10 text-xs font-medium transition-all duration-200 bg-stone-50/50 focus:bg-white cursor-pointer"
+            >
+              {SKILL_LEVELS.map((level) => (
+                <option key={level.value} value={level.value}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* PASSWORD */}
           <div>
             <label
@@ -124,7 +157,7 @@ const Register = () => {
             </div>
           </div>
 
-          {/* 🚀 SUBMIT BUTTON */}
+          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             disabled={loading}
@@ -141,7 +174,7 @@ const Register = () => {
           </button>
         </form>
 
-        {/* 🔗 SIGN IN REDIRECT */}
+        {/* SIGN IN REDIRECT */}
         <div className="text-center pt-4 border-t border-stone-100 mt-6">
           <p className="text-xs text-stone-400 font-medium">
             Already have an account?{" "}

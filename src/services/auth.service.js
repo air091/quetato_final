@@ -33,7 +33,7 @@ const createRefreshToken = async ({ userId, ipAddress, agent }) => {
 };
 
 export const register = async (payload) => {
-  let { username, email, password, ipAddress, agent } = payload;
+  let { username, email, password, skillLevel, ipAddress, agent } = payload;
 
   if (!username || !email || !password)
     throw new AppError("All fields are required", 400);
@@ -54,11 +54,13 @@ export const register = async (payload) => {
       username,
       email,
       password: hashedPassword,
+      skillLevel, // 2. Add skillLevel to the database record creation step
     },
     select: {
       id: true,
       username: true,
       email: true,
+      skillLevel: true, // Optional: return skill level in return payload if needed
     },
   });
 
