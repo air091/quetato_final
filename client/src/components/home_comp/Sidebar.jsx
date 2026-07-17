@@ -13,7 +13,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         clickedElement.closest("button") ||
         clickedElement.closest("a") ||
         clickedElement.closest("input") ||
-        clickedElement.closest("select");
+        clickedElement.closest("select") ||
+        clickedElement.closest("textarea"); // Added consistency check
 
       if (isInteractive) {
         return;
@@ -48,15 +49,20 @@ const Sidebar = ({ isOpen, onClose }) => {
             end
             title={!isOpen ? "Home" : undefined}
             className={({ isActive }) =>
-              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 group ${
                 isOpen ? "gap-x-4 justify-start" : "justify-center"
               } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <House size={20} className="shrink-0" />
+            <House
+              size={20}
+              className="shrink-0 transition-transform duration-200 group-hover:scale-105"
+            />
             <span
-              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
-                isOpen ? "opacity-100" : "hidden"
+              className={`text-sm tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                isOpen
+                  ? "opacity-100 max-w-[200px]"
+                  : "opacity-0 max-w-0 pointer-events-none"
               }`}
             >
               Home
@@ -70,15 +76,20 @@ const Sidebar = ({ isOpen, onClose }) => {
             to="/find-friends"
             title={!isOpen ? "Friends" : undefined}
             className={({ isActive }) =>
-              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 group ${
                 isOpen ? "gap-x-4 justify-start" : "justify-center"
               } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <Handshake size={20} className="shrink-0" />
+            <Handshake
+              size={20}
+              className="shrink-0 transition-transform duration-200 group-hover:scale-105"
+            />
             <span
-              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
-                isOpen ? "opacity-100" : "hidden"
+              className={`text-sm tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                isOpen
+                  ? "opacity-100 max-w-[200px]"
+                  : "opacity-0 max-w-0 pointer-events-none"
               }`}
             >
               Friends
@@ -92,15 +103,20 @@ const Sidebar = ({ isOpen, onClose }) => {
             to="/community/sessions"
             title={!isOpen ? "Community" : undefined}
             className={({ isActive }) =>
-              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 ${
+              `flex items-center p-2.5 rounded-xl transition-all duration-200 text-stone-600 hover:bg-stone-200/60 hover:text-stone-900 group ${
                 isOpen ? "gap-x-4 justify-start" : "justify-center"
               } ${isActive ? "font-semibold bg-stone-200 text-stone-900" : ""}`
             }
           >
-            <UsersRound size={20} className="shrink-0" />
+            <UsersRound
+              size={20}
+              className="shrink-0 transition-transform duration-200 group-hover:scale-105"
+            />
             <span
-              className={`text-sm tracking-wide transition-opacity duration-200 whitespace-nowrap ${
-                isOpen ? "opacity-100" : "hidden"
+              className={`text-sm tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                isOpen
+                  ? "opacity-100 max-w-[200px]"
+                  : "opacity-0 max-w-0 pointer-events-none"
               }`}
             >
               Community
