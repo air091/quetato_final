@@ -288,6 +288,7 @@ const CommunityActivities = () => {
                     })
                     ?.map((p) => p?.sessionPlayer?.communityPlayer?.username);
 
+                  console.log(hosts);
                   return (
                     <tr
                       key={session.id}
