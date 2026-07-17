@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-} from "react";
+import { createContext, useState, useEffect, useCallback, useRef } from "react";
 
 export const AuthContext = createContext(null);
 // In production, requests go through the Vercel /api rewrite. This makes the
@@ -241,7 +235,7 @@ export const AuthProvider = ({ children }) => {
   }, [applyAccessToken, fetchProfile, refreshSession, resetAuthState]);
 
   // 4. Register Action
-  const register = async (username, email, password) => {
+  const register = async (username, email, password, skillLevel) => {
     setLoading(true);
     // Explicitly bypass initialization hook when changing auth state dynamically
     isInitialMount.current = false;
@@ -250,7 +244,7 @@ export const AuthProvider = ({ children }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ username, email, password, skillLevel }), // Pass to the backend
       });
 
       const data = await response.json();
