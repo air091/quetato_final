@@ -1,35 +1,49 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
-import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { useAuth } from "../hooks/useAuth"; // Adjust path based on your folder structure
+import { NavLink, useNavigate } from "react-router-dom"; // Assuming you are using react-router
+import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 
 const Login = () => {
-  // Assuming these props/states are passed or defined in your parent/wrapper
-  const {
-    email,
-    setEmail,
-    password,
-    setPassword,
-    showPassword,
-    setShowPassword,
-    loading,
-    error,
-    handleSubmit,
-  } = {}; // Replace with your component's actual state hook inputs
+  const { login, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Component state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false); // Added show/hide state
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null); // Clear previous errors
+
+    try {
+      // Calls the logic we mapped out in AuthContext
+      await login(email, password);
+
+      // If login is successful, redirect to dashboard or home
+      navigate("/");
+    } catch (err) {
+      // Captures the AppError messages sent by your Express backend
+      setError(err.message || "Something went wrong. Please try again.");
+    }
+  };
 
   return (
     <div className="flex min-h-[85vh] items-center justify-center bg-stone-50/50 px-4 py-12 sm:px-6 lg:px-8 font-sans selection:bg-orange-500/20 selection:text-orange-900">
       <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-xl shadow-stone-200/40 border border-stone-200/60">
         {/* 🥔 BRAND & HEADER */}
         <div className="text-center">
-          <div className="inline-flex font-extrabold text-lg tracking-tight items-center justify-center px-4 rounded-full bg-orange-50  mb-3 border border-orange-100">
+          <h3 className="text-2xl font-bold tracking-tight text-stone-900">
+            Welcome Back
+          </h3>
+          <p className="text-2xl font-bold tracking-tight text-stone-900">to</p>
+          <div className="inline-flex items-center justify-center px-4 rounded-full bg-orange-50  mb-3 border border-orange-200">
             {/* Elegant sports/queue representation */}
-            <p>
+            <p className="font-extrabold text-lg tracking-tight">
               QUE<span className="text-orange-500">TATO</span> SPORT
             </p>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-stone-900">
-            Welcome Back
-          </h2>
         </div>
 
         {/* ⚠️ ERROR STATE */}
