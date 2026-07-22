@@ -1,6 +1,6 @@
 import emailjs from "@emailjs/nodejs";
 
-export const sendResetPasswordEmail = async (email, resetUrl) => {
+export const sendPasswordResetEmail = async (email, resetUrl) => {
   try {
     const response = await emailjs.send(
       process.env.EMAILJS_SERVICE_ID,
