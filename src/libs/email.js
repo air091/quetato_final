@@ -14,9 +14,6 @@ function getTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS, // Make sure App Password is used for Gmail
       },
-      connectionTimeout: 8000, // 8 seconds max to connect
-      greetingTimeout: 5000,
-      socketTimeout: 8000,
     });
   }
   return transporter;
