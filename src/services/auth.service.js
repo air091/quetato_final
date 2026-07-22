@@ -211,6 +211,44 @@ export const resetPassword = async (payload) => {
   return { message: "Password reset successfully" };
 };
 
+export const validateResetToken = async (token) => {
+  if (!token) {
+    throw new AppError("Token is required", 400);
+  }
+
+  const resetRecord = await prisma.passwordReset.findFirst({
+    where: {
+      token,
+      used: false,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    select: {
+      id: true,
+      userId: true,
+      expiresAt: true,
+    },
+  });
+
+  if (!resetRecord) {
+    throw new AppError("Invalid or expired reset token", 400);
+  }
+
+  return { valid: true, userId: resetRecord.userId };
+};
+
+// Optional: Clean expired reset tokens (run as a background job)
+export const cleanExpiredResetTokens = async () => {
+  await prisma.passwordReset.deleteMany({
+    where: {
+      expiresAt: {
+        lt: new Date(),
+      },
+    },
+  });
+};
+
 export const profile = async (userId) => {
   if (!userId) throw new AppError("User ID is required", 401);
   const user = await prisma.user.findUnique({

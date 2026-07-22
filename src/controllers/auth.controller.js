@@ -6,6 +6,9 @@ import {
   profile,
   refresh,
   register,
+  requestPasswordReset,
+  resetPassword,
+  validateResetToken,
 } from "../services/auth.service.js";
 import { AppError } from "../libs/errorHandle.js";
 
@@ -168,6 +171,68 @@ export const logoutController = async (request, response) => {
     return response.status(200).json({ success: true });
   } catch (error) {
     console.error("Logout failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const requestPasswordResetController = async (request, response) => {
+  try {
+    const result = await requestPasswordReset(request.body);
+    response.status(200).json(result);
+  } catch (error) {
+    console.error("Request password reset failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const resetPasswordController = async (request, response) => {
+  try {
+    const { token, newPassword } = request.body;
+    const result = await resetPassword({ token, newPassword });
+    response.status(200).json(result);
+  } catch (error) {
+    console.error("Reset password failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const validateResetTokenController = async (request, response) => {
+  try {
+    const { token } = request.body;
+    const result = await validateResetToken(token);
+    response.status(200).json(result);
+  } catch (error) {
+    console.error("Validate reset token failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 

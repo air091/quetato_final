@@ -6,6 +6,9 @@ import {
   profileController,
   refreshController,
   registerController,
+  requestPasswordResetController,
+  resetPasswordController,
+  validateResetTokenController,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
@@ -16,5 +19,8 @@ router.post("/login", loginController);
 router.post("/register", registerController);
 router.post("/logout", authMiddleware, logoutController);
 router.post("/refresh", refreshController);
+router.post("/request-password-reset", requestPasswordResetController);
+router.post("/reset-password", resetPasswordController);
+router.post("/validate-reset-token", validateResetTokenController);
 
 export default router;
