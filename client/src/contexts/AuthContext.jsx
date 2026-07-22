@@ -324,6 +324,61 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const requestPasswordReset = async (email) => {
+    try {
+      const response = await fetch(`${AUTH_URL}/request-password-reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to send reset link");
+      }
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const resetPassword = async (token, newPassword) => {
+    try {
+      const response = await fetch(`${AUTH_URL}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to reset password");
+      }
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // 9. Validate Reset Token
+  const validateResetToken = async (token) => {
+    try {
+      const response = await fetch(`${AUTH_URL}/validate-reset-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Invalid token");
+      }
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -333,6 +388,9 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     fetchWithAuth,
+    requestPasswordReset, // NEW
+    resetPassword, // NEW
+    validateResetToken, // NEW
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

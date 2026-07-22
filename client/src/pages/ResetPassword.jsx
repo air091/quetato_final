@@ -8,10 +8,12 @@ import {
   CheckCircle,
   ArrowLeft,
 } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { resetPassword, validateResetToken } = useAuth();
   const [token, setToken] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,25 +38,11 @@ const ResetPassword = () => {
 
     setToken(tokenParam);
     validateToken(tokenParam);
-  }, [location]);
+  }, [location, validateResetToken]);
 
   const validateToken = async (token) => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/auth/validate-reset-token`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Invalid or expired reset link");
-      }
-
+      await validateResetToken(token);
       setTokenValid(true);
     } catch (err) {
       setError(err.message || "This reset link is invalid or has expired");
@@ -81,24 +69,7 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/auth/reset-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            newPassword,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to reset password");
-      }
-
+      await resetPassword(token, newPassword);
       setSuccess(true);
 
       // Redirect to login after 3 seconds

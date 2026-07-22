@@ -13,14 +13,27 @@ import {
 
 const router = express.Router();
 
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 requests per window
+  message: {
+    success: false,
+    message: "Too many password reset requests. Please try again later.",
+  },
+});
+
 router.get("/profile", authMiddleware, profileController);
 
 router.post("/login", loginController);
 router.post("/register", registerController);
 router.post("/logout", authMiddleware, logoutController);
 router.post("/refresh", refreshController);
-router.post("/request-password-reset", requestPasswordResetController);
-router.post("/reset-password", resetPasswordController);
+router.post(
+  "/request-password-reset",
+  resetPasswordLimiter,
+  requestPasswordResetController,
+);
+router.post("/reset-password", resetPasswordLimiter, resetPasswordController);
 router.post("/validate-reset-token", validateResetTokenController);
 
 export default router;

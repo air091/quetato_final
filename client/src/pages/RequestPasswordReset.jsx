@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { AlertCircle, Loader2, CheckCircle, ArrowLeft } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 const RequestPasswordReset = () => {
+  const { requestPasswordReset } = useAuth(); // Get from context
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -14,21 +16,7 @@ const RequestPasswordReset = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/auth/request-password-reset`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong");
-      }
-
+      await requestPasswordReset(email);
       setSuccess(true);
     } catch (err) {
       setError(err.message || "Failed to send reset link. Please try again.");
