@@ -27,6 +27,8 @@ import SessionDashboard from "./pages/client/session/Dashboard";
 import CommunitySettings from "./pages/client/community/sub_pages/CommunitySettings";
 import CommunityCreate from "./pages/client/community/CommunityCreate";
 import AboutUs from "./pages/client/AboutUs";
+import RequestPasswordReset from "./pages/RequestPasswordReset";
+import ResetPassword from "./pages/ResetPassword";
 
 const router = createBrowserRouter([
   {
@@ -39,6 +41,14 @@ const router = createBrowserRouter([
       {
         path: "/register",
         element: <Register />,
+      },
+      {
+        path: "/request-password-reset",
+        element: <RequestPasswordReset />,
+      },
+      {
+        path: "/reset-password",
+        element: <ResetPassword />,
       },
     ],
   },
