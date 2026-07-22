@@ -33,7 +33,8 @@
     "jsonwebtoken": "^9.0.3",
     "ms": "^2.1.3",
     "nodemailer": "^9.0.3",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "resend": "^6.17.2"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
