@@ -8,7 +8,7 @@ export const sendPasswordResetEmail = async (email, resetToken, username) => {
     const resetLink = `${process.env.FRONTEND_URL || "https://quetato-sport.vercel.app"}/reset-password?token=${resetToken}`;
 
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev", // Use this while testing or add your verified domain
+      from: "Quetato Sport <noreply@quetatosport.com>", // Use this while testing or add your verified domain
       to: email,
       subject: "Password Reset Request",
       html: `
@@ -44,7 +44,7 @@ export const sendPasswordResetEmail = async (email, resetToken, username) => {
 export const sendResetConfirmationEmail = async (email, username) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "Quetato Sport <noreply@quetatosport.com>",
       to: email,
       subject: "Password Reset Successful",
       html: `
