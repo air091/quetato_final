@@ -123,9 +123,7 @@ export const requestPasswordReset = async (payload) => {
     select: { id: true, email: true, username: true },
   });
 
-  // For security, don't reveal if user exists or not
   if (!user) {
-    // Still return success to prevent email enumeration
     return { message: "If an account exists, a reset link has been sent" };
   }
 
@@ -142,12 +140,17 @@ export const requestPasswordReset = async (payload) => {
     },
   });
 
-  // Send email
+  // 1. Get your frontend client URL (Fallback to localhost for dev)
+  const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  // 2. Build the complete URL expected by your React router (/reset-password?token=...)
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+  // 3. Send the full resetUrl to email helper
   try {
-    await sendPasswordResetEmail(user.email, resetToken, user.username);
+    await sendPasswordResetEmail(user.email, resetUrl, user.username);
   } catch (error) {
     console.error("Failed to send reset email:", error);
-    // Don't throw, just log - we don't want to reveal to user that email failed
   }
 
   return { message: "If an account exists, a reset link has been sent" };
