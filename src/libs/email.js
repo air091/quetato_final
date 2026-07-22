@@ -1,50 +1,18 @@
 import "dotenv/config";
+import nodemailer from "nodemailer";
 
-let nodemailer;
-let transporter;
+// Lazy-create transporter when needed
+let transporter = null;
 
-// Function to lazy-load nodemailer
-async function getNodemailer() {
-  if (!nodemailer) {
-    try {
-      // Try dynamic import
-      const module = await import('nodemailer');
-      nodemailer = module.default || module;
-      
-      console.log("📧 Nodemailer loaded dynamically:", typeof nodemailer);
-      console.log("📧 Nodemailer createTransporter:", typeof nodemailer?.createTransporter);
-      
-      if (!nodemailer || typeof nodemailer.createTransporter !== 'function') {
-        // If still not working, try requiring it
-        const { createRequire } = await import('module');
-        const require = createRequire(import.meta.url);
-        nodemailer = require('nodemailer');
-        console.log("📧 Nodemailer loaded via require:", typeof nodemailer);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load nodemailer:', error);
-      throw error;
-    }
-  }
-  return nodemailer;
-}
-
-// Get or create transporter
-async function getTransporter() {
+function getTransporter() {
   if (!transporter) {
-    const nodemailer = await getNodemailer();
-    
-    if (!nodemailer || typeof nodemailer.createTransporter !== 'function') {
-      throw new Error('Nodemailer is not properly loaded. createTransporter is not available.');
-    }
-    
-    transporter = nodemailer.createTransporter({
+    transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT) || 587,
+      port: parseInt(process.env.SMTP_PORT, 10) || 587,
       secure: process.env.SMTP_SECURE === "true",
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        pass: process.env.SMTP_PASS, // Make sure App Password is used for Gmail
       },
     });
   }
@@ -53,11 +21,11 @@ async function getTransporter() {
 
 export const sendPasswordResetEmail = async (email, resetToken, username) => {
   try {
-    const transporter = await getTransporter();
+    const transporterInstance = getTransporter();
     const resetLink = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${resetToken}`;
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || "noreply@yourapp.com",
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: email,
       subject: "Password Reset Request",
       html: `
@@ -80,19 +48,18 @@ export const sendPasswordResetEmail = async (email, resetToken, username) => {
       text: `Password Reset Request\n\nHello ${username || "User"},\n\nWe received a request to reset your password. Use the following link to reset your password:\n\n${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
     };
 
-    await transporter.sendMail(mailOptions);
+    await transporterInstance.sendMail(mailOptions);
     console.log(`✅ Password reset email sent to ${email}`);
   } catch (error) {
     console.error(`❌ Failed to send email to ${email}:`, error.message);
-    // Don't throw - keep the flow going
   }
 };
 
 export const sendResetConfirmationEmail = async (email, username) => {
   try {
-    const transporter = await getTransporter();
+    const transporterInstance = getTransporter();
     const mailOptions = {
-      from: process.env.SMTP_FROM || "noreply@yourapp.com",
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: email,
       subject: "Password Reset Successful",
       html: `
@@ -114,7 +81,7 @@ export const sendResetConfirmationEmail = async (email, username) => {
       text: `Password Reset Successful\n\nHello ${username || "User"},\n\nYour password has been successfully reset. If you didn't perform this action, please contact support immediately.\n\nYou can now log in with your new password.`,
     };
 
-    await transporter.sendMail(mailOptions);
+    await transporterInstance.sendMail(mailOptions);
     console.log(`✅ Password reset confirmation sent to ${email}`);
   } catch (error) {
     console.error(`❌ Failed to send confirmation to ${email}:`, error.message);

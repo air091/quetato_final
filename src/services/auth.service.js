@@ -6,7 +6,7 @@ import {
   verifyAccess,
   verifyRefresh,
 } from "../libs/jwt.js";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle.js";
 import {
   sendPasswordResetEmail,
@@ -108,7 +108,7 @@ export const login = async (payload) => {
 };
 
 const generateResetToken = () => {
-  return crypto.randomBytes(32).toString("hex");
+  return randomBytes(32).toString("hex"); // Use randomBytes directly, not crypto.randomBytes
 };
 
 export const requestPasswordReset = async (payload) => {

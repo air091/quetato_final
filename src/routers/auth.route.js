@@ -21,6 +21,7 @@ const resetPasswordLimiter = rateLimit({
     success: false,
     message: "Too many password reset requests. Please try again later.",
   },
+  validate: { trustProxy: false },
 });
 
 router.get("/profile", authMiddleware, profileController);
