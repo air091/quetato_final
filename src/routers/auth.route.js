@@ -10,6 +10,7 @@ import {
   resetPasswordController,
   validateResetTokenController,
 } from "../controllers/auth.controller.js";
+import rateLimit from "express-rate-limit";
 
 const router = express.Router();
 
