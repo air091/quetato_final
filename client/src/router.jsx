@@ -26,6 +26,7 @@ import RequestPlayers from "./pages/client/session/sub_pages/RequestPlayers";
 import SessionDashboard from "./pages/client/session/Dashboard";
 import CommunitySettings from "./pages/client/community/sub_pages/CommunitySettings";
 import CommunityCreate from "./pages/client/community/CommunityCreate";
+import AboutUs from "./pages/client/AboutUs";
 
 const router = createBrowserRouter([
   {
@@ -51,6 +52,10 @@ const router = createBrowserRouter([
           {
             index: true,
             element: <Home />,
+          },
+          {
+            path: "about-us",
+            element: <AboutUs />,
           },
         ],
       },

@@ -1,4 +1,4 @@
-import { Handshake, House, UsersRound } from "lucide-react";
+import { Handshake, House, Info, UsersRound } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 
@@ -154,6 +154,45 @@ const Sidebar = ({ isOpen, onClose }) => {
                   }`}
                 >
                   Community
+                </span>
+              </>
+            )}
+          </NavLink>
+        </li>
+
+        {/* About */}
+        <li>
+          <NavLink
+            to="/about-us"
+            title={!isOpen ? "Community" : undefined}
+            className={({ isActive }) =>
+              `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
+                isOpen ? "gap-x-4 justify-start px-4" : "justify-center"
+              } ${
+                isActive
+                  ? "font-bold bg-orange-50/60 text-orange-600 border-l-2 border-orange-500 rounded-l-none"
+                  : "text-stone-600 hover:bg-stone-200/50 hover:text-stone-900"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Info
+                  size={20}
+                  className={`shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                    isActive
+                      ? "text-orange-500"
+                      : "text-stone-500 group-hover:text-stone-900"
+                  }`}
+                />
+                <span
+                  className={`text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                    isOpen
+                      ? "opacity-100 max-w-[200px]"
+                      : "opacity-0 max-w-0 pointer-events-none"
+                  }`}
+                >
+                  About us
                 </span>
               </>
             )}

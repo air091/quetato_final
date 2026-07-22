@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle.js";
 
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 
 const createRefreshToken = async ({ userId, ipAddress, agent }) => {
   const jti = randomUUID();
@@ -100,6 +101,114 @@ export const login = async (payload) => {
 
   const access = signAccess({ sub: user.id });
   return { refresh, access };
+};
+
+const generateResetToken = () => {
+  return crypto.randomBytes(32).toString("hex");
+};
+
+export const requestPasswordReset = async (payload) => {
+  const { email } = payload;
+
+  if (!email) {
+    throw new AppError("Email is required", 400);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true, email: true, username: true },
+  });
+
+  // For security, don't reveal if user exists or not
+  if (!user) {
+    // Still return success to prevent email enumeration
+    return { message: "If an account exists, a reset link has been sent" };
+  }
+
+  // Generate token
+  const resetToken = generateResetToken();
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+
+  // Store token in database
+  await prisma.passwordReset.create({
+    data: {
+      userId: user.id,
+      token: resetToken,
+      expiresAt,
+    },
+  });
+
+  // Send email
+  try {
+    await sendPasswordResetEmail(user.email, resetToken, user.username);
+  } catch (error) {
+    console.error("Failed to send reset email:", error);
+    // Don't throw, just log - we don't want to reveal to user that email failed
+  }
+
+  return { message: "If an account exists, a reset link has been sent" };
+};
+
+export const resetPassword = async (payload) => {
+  const { token, newPassword } = payload;
+
+  if (!token || !newPassword) {
+    throw new AppError("Token and new password are required", 400);
+  }
+
+  if (newPassword.length < 8) {
+    throw new AppError("Password must be at least 8 characters", 400);
+  }
+
+  // Find the reset token
+  const resetRecord = await prisma.passwordReset.findFirst({
+    where: {
+      token,
+      used: false,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (!resetRecord) {
+    throw new AppError("Invalid or expired reset token", 400);
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  // Update user password and mark token as used in a transaction
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: resetRecord.userId },
+      data: { password: hashedPassword },
+    }),
+    prisma.passwordReset.update({
+      where: { id: resetRecord.id },
+      data: { used: true },
+    }),
+    // Revoke all refresh tokens for security
+    prisma.refreshToken.updateMany({
+      where: { userId: resetRecord.userId },
+      data: { isRevoked: true },
+    }),
+  ]);
+
+  // Send confirmation email
+  try {
+    await sendResetConfirmationEmail(
+      resetRecord.user.email,
+      resetRecord.user.username,
+    );
+  } catch (error) {
+    console.error("Failed to send confirmation email:", error);
+  }
+
+  return { message: "Password reset successfully" };
 };
 
 export const profile = async (userId) => {
