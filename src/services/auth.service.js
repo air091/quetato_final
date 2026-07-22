@@ -8,7 +8,6 @@ import {
 } from "../libs/jwt.js";
 import { randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle.js";
-import { randomUUID } from "crypto";
 import {
   sendPasswordResetEmail,
   sendResetConfirmationEmail,
