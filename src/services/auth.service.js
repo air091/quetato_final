@@ -8,6 +8,11 @@ import {
 } from "../libs/jwt.js";
 import { randomUUID } from "crypto";
 import { AppError } from "../libs/errorHandle.js";
+import { randomUUID } from "crypto";
+import {
+  sendPasswordResetEmail,
+  sendResetConfirmationEmail,
+} from "../libs/email.js";
 
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;

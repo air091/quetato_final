@@ -188,7 +188,7 @@ export const logoutController = async (request, response) => {
 export const requestPasswordResetController = async (request, response) => {
   try {
     const result = await requestPasswordReset(request.body);
-    response.status(200).json(result);
+    response.status(200).json({ success: true, message: result.message });
   } catch (error) {
     console.error("Request password reset failed", error);
     let errMessage = "Internal server error";
@@ -209,7 +209,7 @@ export const resetPasswordController = async (request, response) => {
   try {
     const { token, newPassword } = request.body;
     const result = await resetPassword({ token, newPassword });
-    response.status(200).json(result);
+    response.status(200).json({ success: true, message: result.message });
   } catch (error) {
     console.error("Reset password failed", error);
     let errMessage = "Internal server error";
@@ -230,7 +230,9 @@ export const validateResetTokenController = async (request, response) => {
   try {
     const { token } = request.body;
     const result = await validateResetToken(token);
-    response.status(200).json(result);
+    response
+      .status(200)
+      .json({ success: true, valid: result.valid, userId: result.userId });
   } catch (error) {
     console.error("Validate reset token failed", error);
     let errMessage = "Internal server error";
