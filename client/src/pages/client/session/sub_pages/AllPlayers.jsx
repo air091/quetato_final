@@ -1,12 +1,14 @@
 import {
   ArrowDown,
   ArrowUp,
+  Loader2,
+  Plus,
   Search,
   ShieldAlert,
   Users,
   X,
 } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import PlayerCard from "../../../../components/session_comp/players/PlayerCard";
 import { useSession } from "../../../../hooks/useSession";
 import { useAuth } from "../../../../hooks/useAuth";
@@ -134,7 +136,7 @@ const AllPlayers = () => {
 
   const handleSortToggle = (key) => {
     setSortConfig((prev) => {
-      if (prev.key === "games") {
+      if (prev.key === key) {
         if (prev.direction === "desc") return { key, direction: "asc" };
         return { key: null, direction: "desc" };
       }
@@ -143,7 +145,7 @@ const AllPlayers = () => {
   };
 
   const processedPlayers = useMemo(() => {
-    let result = players.filter((player) => {
+    let result = (players || []).filter((player) => {
       const username =
         player.sessionPlayer?.communityPlayer?.username || "Unknown";
       return username.toLowerCase().includes(searchQuery.toLowerCase());
@@ -190,7 +192,7 @@ const AllPlayers = () => {
           method: "POST",
           body: JSON.stringify({
             usernames: usernamesArray,
-            skillLevel: skillLevel, // Forwarding key down to backend API
+            skillLevel: skillLevel,
           }),
         },
       );
@@ -236,18 +238,21 @@ const AllPlayers = () => {
 
   if (isSessionLoading) {
     return (
-      <div className="rounded-xl border border-stone-200 bg-white p-8 text-center text-sm font-medium text-stone-400 shadow-sm">
-        Loading players...
+      <div className="flex min-h-[320px] items-center justify-center p-6">
+        <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-white px-5 py-4 text-xs font-bold text-stone-600 shadow-sm">
+          <Loader2 className="animate-spin text-orange-500" size={16} />
+          Loading players directory...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 px-4 sm:px-0">
+    <div className="w-full flex flex-col gap-y-5 selection:bg-orange-500/10 selection:text-orange-950">
       {/* ACTIONS CONTROLS HEADER */}
-      <header className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-full sm:max-w-[320px]">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
             <Search size={15} />
           </div>
           <input
@@ -255,32 +260,35 @@ const AllPlayers = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search player..."
-            className="w-full pl-9 pr-9 py-2 bg-white border border-stone-200 rounded-xl text-sm placeholder-stone-400 text-stone-800 font-medium outline-none shadow-sm focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all"
+            className="w-full rounded-xl border border-stone-200/80 bg-white py-2 pl-9 pr-8 text-xs font-medium text-stone-800 placeholder-stone-400 shadow-sm transition-all duration-200 hover:border-stone-300 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600"
+              className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-stone-400 hover:text-stone-600"
             >
               <X size={14} />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-x-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
+            type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-orange-500 text-white hover:bg-orange-600 px-3.5 text-xs font-bold  shadow-sm transition-all duration-200  active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-stone-900/10 cursor-pointer"
           >
+            <Plus size={15} />
             Add player
           </button>
 
           <button
+            type="button"
             onClick={() => handleSortToggle("games")}
-            className={`flex items-center gap-x-1.5 border px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-all shadow-sm outline-none ${
+            className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold shadow-sm transition-all duration-200 active:scale-[0.99] cursor-pointer ${
               sortConfig.key === "games"
                 ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-200 bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-50"
+                : "border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:border-stone-300"
             }`}
           >
             Games
@@ -297,11 +305,12 @@ const AllPlayers = () => {
           </button>
 
           <button
+            type="button"
             onClick={() => handleSortToggle("wins")}
-            className={`flex items-center gap-x-1.5 border px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-all shadow-sm outline-none ${
+            className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold shadow-sm transition-all duration-200 active:scale-[0.99] cursor-pointer ${
               sortConfig.key === "wins"
                 ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-200 bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-50"
+                : "border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-900 hover:border-stone-300"
             }`}
           >
             Wins
@@ -322,7 +331,7 @@ const AllPlayers = () => {
       {/* MAIN DIRECTORY INTERFACE */}
       <main className="flex flex-col gap-y-6">
         {players.length > 0 && processedPlayers.length === 0 && (
-          <div className="border border-stone-200 rounded-xl bg-stone-50/50 p-8 text-center text-sm font-medium text-stone-400 italic">
+          <div className="rounded-2xl border border-stone-200/80 bg-stone-50/50 p-8 text-center text-xs font-medium italic text-stone-500 shadow-sm">
             No matching players found for "{searchQuery}"
           </div>
         )}
@@ -330,20 +339,20 @@ const AllPlayers = () => {
         {adminGroup.length > 0 && (
           <div className="flex flex-col gap-y-3">
             <div className="flex items-center gap-x-2 px-1">
-              <ShieldAlert size={15} className="text-stone-500" />
-              <h4 className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+              <ShieldAlert size={15} className="text-orange-500" />
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 Creator, Admins, & Hosts
               </h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {adminGroup.map((player) => (
                 <article
                   key={player.id}
-                  className={`relative rounded-xl border bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md ${
+                  className={`relative rounded-2xl border bg-white p-4 shadow-sm shadow-stone-200/40 transition-all duration-200 hover:border-stone-300 hover:shadow-md ${
                     player?.isHide
                       ? "border-red-200 bg-red-50/30"
-                      : "border-stone-200"
+                      : "border-stone-200/80"
                   }`}
                 >
                   <PlayerCard
@@ -359,20 +368,20 @@ const AllPlayers = () => {
         {regularGroup.length > 0 && (
           <div className="flex flex-col gap-y-3">
             <div className="flex items-center gap-x-2 px-1">
-              <Users size={15} className="text-stone-500" />
-              <h4 className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+              <Users size={15} className="text-stone-400" />
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 Players & Statics
               </h4>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {regularGroup.map((player) => (
                 <article
                   key={player.id}
-                  className={`relative rounded-xl border bg-white p-4 shadow-sm transition-all duration-150 hover:border-stone-300 hover:shadow-md ${
+                  className={`relative rounded-2xl border bg-white p-4 shadow-sm shadow-stone-200/40 transition-all duration-200 hover:border-stone-300 hover:shadow-md ${
                     player?.isHide
                       ? "border-red-200 bg-red-50/30"
-                      : "border-stone-200"
+                      : "border-stone-200/80"
                   }`}
                 >
                   <PlayerCard
@@ -386,7 +395,7 @@ const AllPlayers = () => {
         )}
 
         {players.length === 0 && (
-          <div className="border border-stone-200 border-dashed rounded-xl p-10 text-center text-sm text-stone-400 italic bg-white fshadow-sm">
+          <div className="rounded-2xl border border-dashed border-stone-200 bg-white p-10 text-center text-xs font-medium italic text-stone-400 shadow-sm">
             No registered players found in this session.
           </div>
         )}

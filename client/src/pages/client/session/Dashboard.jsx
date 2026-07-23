@@ -1,9 +1,11 @@
+import React, { useMemo, useState } from "react";
 import {
   Banknote,
   CalendarDays,
   CircleDollarSign,
   Clock3,
   Gamepad2,
+  Loader2,
   MapPin,
   Medal,
   RefreshCcw,
@@ -11,7 +13,6 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
-import { useMemo, useState } from "react";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { useSession } from "../../../hooks/useSession";
 
@@ -44,19 +45,19 @@ const getUsername = (player) =>
 const getPlayerMetric = (player, key) =>
   Number(player?.stats?.[key] ?? player?.[key] ?? 0) || 0;
 
-const StatCard = ({ label, value, detail, icon: Icon, tone = "stone" }) => {
+const StatCard = ({ label, value, detail, icon: Icon, tone = "orange" }) => {
   const toneClasses = {
-    stone: "bg-stone-50 text-stone-600 border-stone-100",
-    green: "bg-green-50 text-green-700 border-green-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-100",
-    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    stone: "bg-stone-100 text-stone-700 border-stone-200",
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+    amber: "bg-amber-50 text-amber-700 border-amber-200/80",
+    orange: "bg-orange-50 text-orange-600 border-orange-200/80",
   };
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-stone-200/80 bg-white p-4.5 shadow-sm shadow-stone-200/40 transition-all duration-200 hover:shadow-md hover:border-stone-300">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
             {label}
           </p>
           <h3 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
@@ -69,8 +70,8 @@ const StatCard = ({ label, value, detail, icon: Icon, tone = "stone" }) => {
           )}
         </div>
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
-            toneClasses[tone] || toneClasses.stone
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+            toneClasses[tone] || toneClasses.orange
           }`}
         >
           <Icon size={18} />
@@ -80,13 +81,13 @@ const StatCard = ({ label, value, detail, icon: Icon, tone = "stone" }) => {
   );
 };
 
-const ProgressBar = ({ value, total, tone = "bg-stone-900" }) => {
+const ProgressBar = ({ value, total, tone = "bg-orange-500" }) => {
   const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
 
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-stone-100">
       <div
-        className={`h-full rounded-full ${tone}`}
+        className={`h-full rounded-full transition-all duration-300 ${tone}`}
         style={{ width: `${Math.min(percentage, 100)}%` }}
       />
     </div>
@@ -150,7 +151,6 @@ const SessionDashboard = () => {
       return counts;
     }, {});
 
-    // Guard against undefined elements inside our arrays using safe fallbacks
     const validMatchCourts = Array.isArray(matchCourts?.courts)
       ? matchCourts.courts
       : [];
@@ -226,7 +226,8 @@ const SessionDashboard = () => {
   if (isLoading) {
     return (
       <div className="flex min-h-[320px] items-center justify-center p-6">
-        <div className="rounded-xl border border-stone-200 bg-white px-5 py-4 text-sm font-medium text-stone-500 shadow-sm">
+        <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-white px-5 py-4 text-xs font-bold text-stone-600 shadow-sm">
+          <Loader2 className="animate-spin text-orange-500" size={16} />
           Loading session dashboard...
         </div>
       </div>
@@ -236,7 +237,7 @@ const SessionDashboard = () => {
   if (errorMessage) {
     return (
       <div className="p-6">
-        <div className="mx-auto max-w-[980px] rounded-xl border border-red-200 bg-red-50 p-5 text-sm font-medium text-red-700">
+        <div className="mx-auto max-w-[980px] rounded-2xl border border-red-200 bg-red-50 p-5 text-xs font-semibold text-red-700">
           {errorMessage}
         </div>
       </div>
@@ -244,26 +245,27 @@ const SessionDashboard = () => {
   }
 
   return (
-    <div className="w-full px-4 py-5 sm:px-6">
+    <div className="w-full px-4 py-5 sm:px-6 selection:bg-orange-500/10 selection:text-orange-950">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-5">
-        <header className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        {/* HEADER */}
+        <header className="rounded-2xl border border-stone-200/80 bg-white p-5.5 shadow-sm shadow-stone-200/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="truncate text-2xl font-bold tracking-tight text-stone-900">
                   {dashboard?.name || "Session Dashboard"}
                 </h1>
                 <span
-                  className={`rounded-full border px-2.5 py-1 text-xs font-bold ${
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
                     dashboard?.isAvailable
-                      ? "border-green-200 bg-green-50 text-green-700"
+                      ? "border-emerald-200/80 bg-emerald-50 text-emerald-700"
                       : "border-stone-200 bg-stone-100 text-stone-600"
                   }`}
                 >
                   {dashboard?.isAvailable ? "Open" : "Closed"}
                 </span>
               </div>
-              <p className="mt-2 max-w-2xl text-sm font-medium text-stone-500">
+              <p className="mt-1.5 max-w-2xl text-xs font-medium text-stone-500">
                 {dashboard?.description || "Live overview for this session."}
               </p>
             </div>
@@ -272,48 +274,57 @@ const SessionDashboard = () => {
               type="button"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 shadow-sm transition-colors hover:bg-stone-50 hover:text-stone-900 cursor-pointer"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 text-xs font-bold text-stone-700 shadow-sm transition-all duration-200 hover:bg-white hover:border-stone-300 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-orange-500/10 cursor-pointer disabled:opacity-60"
             >
-              <RefreshCcw size={14} />
-              {isRefreshing ? "Refreshing" : "Refresh"}
+              <RefreshCcw
+                size={14}
+                className={
+                  isRefreshing
+                    ? "animate-spin text-orange-500"
+                    : "text-stone-500"
+                }
+              />
+              {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-            <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 text-stone-600">
-              <CalendarDays size={16} />
-              <span className="font-medium">
+          <div className="mt-5 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+            <div className="flex items-center gap-2.5 rounded-xl border border-stone-100 bg-stone-50/60 px-3.5 py-2.5 text-stone-600">
+              <CalendarDays size={16} className="text-stone-400" />
+              <span className="font-semibold text-stone-800">
                 {formatDateTime(dashboard?.startAt)}
               </span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 text-stone-600">
-              <Clock3 size={16} />
-              <span className="font-medium">
+            <div className="flex items-center gap-2.5 rounded-xl border border-stone-100 bg-stone-50/60 px-3.5 py-2.5 text-stone-600">
+              <Clock3 size={16} className="text-stone-400" />
+              <span className="font-semibold text-stone-800">
                 {formatDateTime(dashboard?.endAt)}
               </span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 text-stone-600">
-              <MapPin size={16} />
-              <span className="truncate font-medium">
+            <div className="flex items-center gap-2.5 rounded-xl border border-stone-100 bg-stone-50/60 px-3.5 py-2.5 text-stone-600">
+              <MapPin size={16} className="text-stone-400" />
+              <span className="truncate font-semibold text-stone-800">
                 {dashboard?.location || "No location set"}
               </span>
             </div>
           </div>
         </header>
 
+        {/* METRICS METRICS STATS */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Players"
             value={metrics.totalPlayers}
             detail={`${metrics.statusCounts.playing} playing, ${metrics.statusCounts.queued} queued`}
             icon={UsersRound}
-            tone="blue"
+            tone="orange"
           />
           <StatCard
             label="Player Games"
             value={metrics.totalGames}
             detail={`${metrics.totalWins} wins logged`}
             icon={Gamepad2}
+            tone="stone"
           />
           <StatCard
             label="Win Rate"
@@ -331,18 +342,19 @@ const SessionDashboard = () => {
           />
         </section>
 
+        {/* SESSION FLOW & PAYMENT SNAPSHOT */}
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_360px]">
-          <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm shadow-stone-200/40">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold text-stone-900">
+                <h2 className="text-sm font-bold text-stone-900">
                   Session Flow
                 </h2>
                 <p className="text-xs font-medium text-stone-500">
                   Current roster status and court usage
                 </p>
               </div>
-              <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600">
+              <span className="rounded-xl border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-bold text-stone-600">
                 {metrics.matchCourtCount + metrics.queueCourtCount} courts
               </span>
             </div>
@@ -352,12 +364,12 @@ const SessionDashboard = () => {
                 {
                   label: "Waiting",
                   value: metrics.statusCounts.waiting,
-                  tone: "bg-stone-900",
+                  tone: "bg-stone-800",
                 },
                 {
                   label: "Queued",
                   value: metrics.statusCounts.queued,
-                  tone: "bg-blue-600",
+                  tone: "bg-orange-500",
                 },
                 {
                   label: "Playing",
@@ -367,14 +379,14 @@ const SessionDashboard = () => {
                 {
                   label: "Paid",
                   value: metrics.statusCounts.paid,
-                  tone: "bg-green-600",
+                  tone: "bg-emerald-600",
                 },
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-lg border border-stone-100 bg-stone-50/60 p-3"
+                  className="rounded-xl border border-stone-100 bg-stone-50/60 p-3"
                 >
-                  <div className="mb-2 flex items-center justify-between text-sm">
+                  <div className="mb-2 flex items-center justify-between text-xs">
                     <span className="font-bold text-stone-700">
                       {item.label}
                     </span>
@@ -386,44 +398,43 @@ const SessionDashboard = () => {
                     value={item.value}
                     total={Math.max(metrics.totalPlayers, 1)}
                     tone={item.tone}
-                  />{" "}
-                  {/* <-- The missing closing bracket tag is now restored here */}
+                  />
                 </div>
               ))}
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-stone-100 p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+              <div className="rounded-xl border border-stone-100 bg-stone-50/40 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                   Match Courts
                 </p>
-                <p className="mt-1 text-xl font-bold text-stone-900">
+                <p className="mt-1 text-lg font-bold text-stone-900">
                   {metrics.matchCourtCount}
                 </p>
               </div>
-              <div className="rounded-lg border border-stone-100 p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+              <div className="rounded-xl border border-stone-100 bg-stone-50/40 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                   Queue Courts
                 </p>
-                <p className="mt-1 text-xl font-bold text-stone-900">
+                <p className="mt-1 text-lg font-bold text-stone-900">
                   {metrics.queueCourtCount}
                 </p>
               </div>
-              <div className="rounded-lg border border-stone-100 p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+              <div className="rounded-xl border border-stone-100 bg-stone-50/40 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                   Occupied Slots
                 </p>
-                <p className="mt-1 text-xl font-bold text-stone-900">
+                <p className="mt-1 text-lg font-bold text-stone-900">
                   {metrics.occupiedSlots}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm shadow-stone-200/40">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold text-stone-900">
+                <h2 className="text-sm font-bold text-stone-900">
                   Payment Snapshot
                 </h2>
                 <p className="text-xs font-medium text-stone-500">
@@ -435,7 +446,7 @@ const SessionDashboard = () => {
 
             <div className="space-y-4">
               <div>
-                <div className="mb-2 flex items-center justify-between text-sm">
+                <div className="mb-2 flex items-center justify-between text-xs">
                   <span className="font-bold text-stone-700">Collected</span>
                   <span className="font-bold text-stone-900">
                     {formatMoney(metrics.collected, currency)}
@@ -444,26 +455,26 @@ const SessionDashboard = () => {
                 <ProgressBar
                   value={metrics.collected}
                   total={Math.max(metrics.totalFee, 1)}
-                  tone="bg-green-600"
+                  tone="bg-emerald-600"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-stone-50 p-3">
-                  <Banknote size={16} className="mb-2 text-stone-500" />
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                <div className="rounded-xl border border-stone-100 bg-stone-50/60 p-3">
+                  <Banknote size={16} className="mb-2 text-stone-400" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                     Total Due
                   </p>
-                  <p className="mt-1 text-sm font-bold text-stone-900">
+                  <p className="mt-1 text-xs font-bold text-stone-900">
                     {formatMoney(metrics.totalFee, currency)}
                   </p>
                 </div>
-                <div className="rounded-lg bg-amber-50 p-3">
-                  <Wallet size={16} className="mb-2 text-amber-700" />
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                <div className="rounded-xl border border-amber-200/60 bg-amber-50/60 p-3">
+                  <Wallet size={16} className="mb-2 text-amber-600" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
                     Remaining
                   </p>
-                  <p className="mt-1 text-sm font-bold text-amber-700">
+                  <p className="mt-1 text-xs font-bold text-amber-800">
                     {formatMoney(metrics.outstanding, currency)}
                   </p>
                 </div>
@@ -472,20 +483,19 @@ const SessionDashboard = () => {
           </div>
         </section>
 
+        {/* TOP PLAYERS & ROSTER OVERVIEW */}
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {/* TOP PLAYERS SECTION */}
-          <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
+          {/* TOP PLAYERS */}
+          <div className="rounded-2xl border border-stone-200/80 bg-white shadow-sm shadow-stone-200/40">
             <div className="border-b border-stone-100 p-4">
-              <h2 className="text-base font-bold text-stone-900">
-                Top Players
-              </h2>
+              <h2 className="text-sm font-bold text-stone-900">Top Players</h2>
               <p className="text-xs font-medium text-stone-500">
                 Sorted by wins, then total games
               </p>
             </div>
             <div className="divide-y divide-stone-100">
               {topPlayers.length === 0 ? (
-                <p className="p-6 text-center text-sm font-medium italic text-stone-400">
+                <p className="p-6 text-center text-xs font-medium italic text-stone-400">
                   No player stats yet.
                 </p>
               ) : (
@@ -495,10 +505,10 @@ const SessionDashboard = () => {
                   return (
                     <div
                       key={player.id}
-                      className="flex items-center justify-between gap-3 p-4"
+                      className="flex items-center justify-between gap-3 p-3.5 transition-colors hover:bg-stone-50/50"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[11px] font-bold text-stone-600">
                           {index + 1}
                         </div>
                         <PlayerAvatar
@@ -506,24 +516,23 @@ const SessionDashboard = () => {
                           size="md"
                         />
 
-                        {/* ENHANCED UX FOR TOP PLAYERS TEXT */}
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm text-stone-900 truncate">
+                          <span className="font-bold text-xs text-stone-900 truncate">
                             {getUsername(player)}
                           </span>
                           <div className="flex items-center gap-x-1.5 mt-0.5">
-                            <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider">
+                            <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider">
                               {player?.sessionPlayer?.role || "Player"}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="rounded-md bg-amber-50 px-2 py-1 font-bold text-amber-700">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="rounded-lg bg-amber-50 border border-amber-200/60 px-2 py-0.5 font-bold text-amber-700">
                           {wins}W
                         </span>
-                        <span className="rounded-md bg-stone-50 px-2 py-1 font-bold text-stone-600">
+                        <span className="rounded-lg bg-stone-100 px-2 py-0.5 font-bold text-stone-600">
                           {games}G
                         </span>
                       </div>
@@ -534,10 +543,10 @@ const SessionDashboard = () => {
             </div>
           </div>
 
-          {/* ROSTER OVERVIEW SECTION */}
-          <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
+          {/* ROSTER OVERVIEW */}
+          <div className="rounded-2xl border border-stone-200/80 bg-white shadow-sm shadow-stone-200/40">
             <div className="border-b border-stone-100 p-4">
-              <h2 className="text-base font-bold text-stone-900">
+              <h2 className="text-sm font-bold text-stone-900">
                 Roster Overview
               </h2>
               <p className="text-xs font-medium text-stone-500">
@@ -549,39 +558,38 @@ const SessionDashboard = () => {
               {Object.entries(metrics.roleCounts).map(([role, count]) => (
                 <div
                   key={role}
-                  className="rounded-lg border border-stone-100 bg-stone-50/60 p-3"
+                  className="rounded-xl border border-stone-100 bg-stone-50/60 p-3"
                 >
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                     {role}
                   </p>
-                  <p className="mt-1 text-xl font-bold text-stone-900">
+                  <p className="mt-1 text-lg font-bold text-stone-900">
                     {count}
                   </p>
                 </div>
               ))}
             </div>
 
-            <div className="border-t border-stone-100">
+            <div className="border-t border-stone-100 divide-y divide-stone-100">
               {recentPlayers.length === 0 ? (
-                <p className="p-6 text-center text-sm font-medium italic text-stone-400">
+                <p className="p-6 text-center text-xs font-medium italic text-stone-400">
                   No accepted players yet.
                 </p>
               ) : (
                 recentPlayers.map((player) => (
                   <div
                     key={player.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3"
+                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-stone-50/50"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <PlayerAvatar username={getUsername(player)} size="sm" />
 
-                      {/* ENHANCED UX FOR ROSTER OVERVIEW TEXT */}
                       <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-sm text-stone-900 truncate">
+                        <span className="font-bold text-xs text-stone-900 truncate">
                           {getUsername(player)}
                         </span>
                         <div className="flex items-center gap-x-1.5 mt-0.5">
-                          <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider">
+                          <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider">
                             {player?.sessionPlayer?.role || "Player"}
                           </span>
                         </div>
