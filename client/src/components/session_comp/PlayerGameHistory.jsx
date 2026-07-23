@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
-import { X, Trophy, Frown, Calendar, Clock } from "lucide-react";
+import { X, Trophy, Frown, Calendar, Clock, Trash2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { API_URL } from "../../contexts/AuthContext";
 
@@ -11,6 +11,7 @@ const PlayerGameHistory = ({ player, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Ref to track the inner modal card container
   const modalRef = useRef(null);
@@ -44,7 +45,67 @@ const PlayerGameHistory = ({ player, onClose }) => {
     fetchHistory();
   }, [communityId, sessionId, sessionPlayerId]);
 
-  // 🌟 Clean global click handler to detect true "clicks outside"
+  // Handle Match Deletion
+  const handleDeleteMatch = async (matchHistoryId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this match history entry?",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingId(matchHistoryId);
+
+      // ✅ Updated URL with sessionPlayerId inserted
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/${sessionPlayerId}/history/${matchHistoryId}`,
+        { method: "DELETE" },
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete match history");
+      }
+
+      // Dynamically filter out the deleted match & update state summary
+      setData((prevData) => {
+        if (!prevData) return prevData;
+
+        const updatedHistory = prevData.history.filter(
+          (item) => item.matchHistoryId !== matchHistoryId,
+        );
+
+        const totalGames = updatedHistory.length;
+        const totalWins = updatedHistory.filter(
+          (g) => g.playerPersonalResult === "win",
+        ).length;
+        const totalLosses = totalGames - totalWins;
+        const winRate =
+          totalGames > 0
+            ? `${Math.round((totalWins / totalGames) * 100)}%`
+            : "0%";
+
+        return {
+          ...prevData,
+          summary: {
+            totalGames,
+            totalWins,
+            totalLosses,
+            winRate,
+          },
+          history: updatedHistory,
+        };
+      });
+    } catch (err) {
+      alert(err.message || "An error occurred while deleting.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Clean global click handler to detect true "clicks outside"
   useEffect(() => {
     const handleOutsideClick = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -52,7 +113,6 @@ const PlayerGameHistory = ({ player, onClose }) => {
       }
     };
 
-    // Listen on document mousedown or click
     document.addEventListener("mousedown", handleOutsideClick);
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
@@ -173,6 +233,7 @@ const PlayerGameHistory = ({ player, onClose }) => {
                 ) : (
                   data.history.map((match) => {
                     const isWin = match.playerPersonalResult === "win";
+                    const isDeleting = deletingId === match.matchHistoryId;
 
                     return (
                       <div
@@ -214,6 +275,22 @@ const PlayerGameHistory = ({ player, onClose }) => {
                               <Clock size={11} />{" "}
                               {formatDuration(match.startedAt, match.endedAt)}
                             </span>
+
+                            {/* 🗑️ Remove Match History Button */}
+                            <button
+                              onClick={() =>
+                                handleDeleteMatch(match.matchHistoryId)
+                              }
+                              disabled={isDeleting}
+                              title="Delete match entry"
+                              className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 cursor-pointer transition-colors disabled:opacity-50 ml-1"
+                            >
+                              {isDeleting ? (
+                                <div className="w-3 h-3 border border-red-500 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Trash2 size={12} />
+                              )}
+                            </button>
                           </div>
                         </div>
 

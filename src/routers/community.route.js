@@ -276,7 +276,7 @@ router.get(
 );
 
 router.delete(
-  "/:communityId/sessions/:sessionId/players/history/:matchHistoryId",
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/history/:matchHistoryId",
   deleteMatchHistoryController,
 );
 

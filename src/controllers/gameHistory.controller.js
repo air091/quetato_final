@@ -73,8 +73,17 @@ export const getPlayerTotalCommunityGamesController = async (
 
 export const deleteMatchHistoryController = async (request, response) => {
   try {
-    const { matchHistoryId } = request.params;
-    const results = await deleteMatchHistory(communityId);
+    const { communityId, sessionId, sessionPlayerId, matchHistoryId } =
+      request.params;
+
+    const results = await deleteMatchHistory(
+      communityId,
+      sessionId,
+      sessionPlayerId,
+      matchHistoryId,
+      request.user?.sub,
+    );
+
     return response.status(200).json({ success: true, data: results });
   } catch (error) {
     console.error("Delete match history failed", error);
