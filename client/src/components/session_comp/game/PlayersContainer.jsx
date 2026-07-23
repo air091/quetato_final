@@ -314,7 +314,7 @@ const DraggablePlayer = ({
 
   return (
     <div
-      className={`w-[172px] h-[41px] relative shrink-0 ${isSettingsOpen ? "z-40" : "z-10"}`}
+      className={`w-[170px] h-[41px] relative shrink-0 ${isSettingsOpen ? "z-40" : "z-10"}`}
     >
       <div className="absolute inset-0 z-100">
         <DraggableSlotPlayer
