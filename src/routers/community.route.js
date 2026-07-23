@@ -58,6 +58,7 @@ import {
   unhideAuthorizedPlayerInSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import {
+  deleteMatchHistoryController,
   getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
@@ -272,6 +273,11 @@ router.get(
 router.get(
   "/:communityId/sessions/:sessionId/players/history",
   getPlayerTotalCommunityGamesController,
+);
+
+router.delete(
+  "/:communityId/sessions/:sessionId/players/history/:matchHistoryId",
+  deleteMatchHistoryController,
 );
 
 // PRICING

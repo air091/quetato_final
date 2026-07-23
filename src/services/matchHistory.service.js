@@ -171,8 +171,8 @@ export const getCommunityPlayerHistory = async (
       const playerInfo = {
         sessionPlayerId: matchPlayer.sessionPlayerId,
         username:
-          matchPlayer.sessionPlayer?.sessionPlayer?.communityPlayer
-            ?.username || "Unknown Player",
+          matchPlayer.sessionPlayer?.sessionPlayer?.communityPlayer?.username ||
+          "Unknown Player",
       };
 
       if (matchPlayer.team === "a") teamA.push(playerInfo);
@@ -342,10 +342,87 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
     totalCommunityWins: statsByPlayerId.get(player.id)?.totalCommunityWins || 0,
     totalCommunityLosses:
       statsByPlayerId.get(player.id)?.totalCommunityLosses || 0,
-    totalCommunityGames: statsByPlayerId.get(player.id)?.totalCommunityGames || 0,
+    totalCommunityGames:
+      statsByPlayerId.get(player.id)?.totalCommunityGames || 0,
     totalCommunityPoints:
       (statsByPlayerId.get(player.id)?.totalCommunityPoints || 0) +
       (paidSessionCountsByPlayerId.get(player.id) || 0) * 3,
     paidSessionCount: paidSessionCountsByPlayerId.get(player.id) || 0,
   }));
+};
+
+export const deleteMatchHistory = async (matchHistoryId, authorizedUserId) => {
+  if (!matchHistoryId) {
+    throw new AppError("Match History ID is required", 400);
+  }
+  if (!authorizedUserId) {
+    throw new AppError("Authorization User ID is required", 400);
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch the match history record along with session/community info for auth check
+    const existingMatch = await tx.matchHistory.findUnique({
+      where: { id: matchHistoryId },
+      select: {
+        id: true,
+        session: {
+          select: {
+            communityId: true,
+          },
+        },
+      },
+    });
+
+    if (!existingMatch) {
+      throw new AppError("Match history record not found", 404);
+    }
+
+    if (!existingMatch.session?.communityId) {
+      throw new AppError(
+        "Unable to authorize deletion: Match is not associated with a community",
+        400,
+      );
+    }
+
+    const communityId = existingMatch.session.communityId;
+
+    // 2. Fetch the operator's CommunityPlayer record to verify role
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: communityId,
+          userId: authorizedUserId,
+        },
+      },
+      select: {
+        role: true,
+      },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError(
+        "Forbidden: You are not a member of this community",
+        403,
+      );
+    }
+
+    // 3. Enforce role authorization (owner, admin, host only)
+    const allowedRoles = ["owner", "admin", "host"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Unauthorized: Only community owners, admins, or hosts can delete match histories",
+        403,
+      );
+    }
+
+    // 4. Delete the match history record
+    const deletedMatch = await tx.matchHistory.delete({
+      where: { id: matchHistoryId },
+    });
+
+    return {
+      message: "Match history deleted successfully",
+      deletedMatch,
+    };
+  });
 };
