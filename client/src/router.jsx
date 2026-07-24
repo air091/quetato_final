@@ -114,7 +114,7 @@ const router = createBrowserRouter([
                     element: <All />,
                   },
                   {
-                    path: "dashboard",
+                    path: "rankings",
                     element: <Dashboard />,
                   },
                 ],

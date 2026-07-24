@@ -22,7 +22,7 @@ const Navbar = () => {
         </li>
         <li>
           <NavLink
-            to="dashboard"
+            to="rankings"
             className={({ isActive }) =>
               `block py-1 px-2 hover:bg-orange-200 hover:text-stone-800 rounded transition-colors ${
                 isActive
@@ -31,7 +31,7 @@ const Navbar = () => {
               }`
             }
           >
-            Dashboard
+            Rankings
           </NavLink>
         </li>
       </ul>
