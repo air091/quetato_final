@@ -10,7 +10,11 @@ const Navbar = () => {
             to="all"
             end
             className={({ isActive }) =>
-              `block py-1 px-2 bg-stone-100 hover:bg-stone-200 hover:text-stone-800 rounded ${isActive ? "bg-stone-800 text-stone-100" : null}`
+              `block py-1 px-2 hover:bg-orange-200 hover:text-stone-800 rounded transition-colors ${
+                isActive
+                  ? "bg-orange-500 text-white font-medium"
+                  : "bg-stone-100 text-stone-700"
+              }`
             }
           >
             All
@@ -20,7 +24,11 @@ const Navbar = () => {
           <NavLink
             to="dashboard"
             className={({ isActive }) =>
-              `block py-1 px-2 bg-stone-100 hover:bg-stone-200 hover:text-stone-800 rounded ${isActive ? "bg-stone-800 text-stone-100" : null}`
+              `block py-1 px-2 hover:bg-orange-200 hover:text-stone-800 rounded transition-colors ${
+                isActive
+                  ? "bg-orange-500 text-white font-medium"
+                  : "bg-stone-100 text-stone-700"
+              }`
             }
           >
             Dashboard

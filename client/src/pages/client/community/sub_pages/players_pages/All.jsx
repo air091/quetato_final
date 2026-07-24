@@ -123,7 +123,7 @@ const All = () => {
             <>
               <button
                 onClick={() => setIsAddStaticPlayerModalOpen(true)}
-                className="px-3 py-1.5 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm"
+                className="px-3 py-1.5 text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-sm"
               >
                 Add Static Player
               </button>
