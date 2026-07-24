@@ -223,7 +223,10 @@ export const getCommunityPlayerHistory = async (
   };
 };
 
-export const getPlayerTotalCommunityGames = async (communityId) => {
+export const getPlayerTotalCommunityGames = async (
+  communityId,
+  queryFilters = {},
+) => {
   if (!communityId) {
     throw new AppError("Community ID is required", 400);
   }
@@ -237,6 +240,7 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
     throw new AppError("Community not found", 404);
   }
 
+  // 1. Fetch all active community players
   const players = await prisma.communityPlayer.findMany({
     where: { communityId },
     include: {
@@ -258,97 +262,117 @@ export const getPlayerTotalCommunityGames = async (communityId) => {
     return [];
   }
 
-  const sessionPlayers = await prisma.sessionPlayer.findMany({
-    where: {
-      session: {
-        communityId,
-      },
-      playerId: {
-        in: players.map((player) => player.id),
-      },
-    },
-    select: {
-      id: true,
-      playerId: true,
-      gameStatus: true,
-    },
-  });
+  // 2. Map query parameters
+  const { month, day, dayOfWeek } = queryFilters;
 
-  if (sessionPlayers.length === 0) {
-    return players.map((player) => ({
-      ...player,
-      totalCommunityWins: 0,
-      totalCommunityLosses: 0,
-      totalCommunityGames: 0,
-      totalCommunityPoints: 0,
-    }));
+  const weekdayMap = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+  };
+
+  // 3. Construct dynamic SQL filter conditions for dates
+  const matchDateFilters = [];
+  const paymentDateFilters = [];
+
+  if (month) {
+    const parsedMonth = parseInt(month, 10);
+    matchDateFilters.push(
+      `EXTRACT(MONTH FROM mh."startedAt") = ${parsedMonth}`,
+    );
+    paymentDateFilters.push(
+      `EXTRACT(MONTH FROM sp."updateStatus") = ${parsedMonth}`,
+    );
   }
 
-  const sessionPlayerOwnerById = new Map(
-    sessionPlayers.map((sessionPlayer) => [
-      sessionPlayer.id,
-      sessionPlayer.playerId,
-    ]),
-  );
-  const paidSessionCountsByPlayerId = new Map();
-
-  sessionPlayers.forEach((sessionPlayer) => {
-    if (sessionPlayer.gameStatus !== "paid") return;
-
-    paidSessionCountsByPlayerId.set(
-      sessionPlayer.playerId,
-      (paidSessionCountsByPlayerId.get(sessionPlayer.playerId) || 0) + 1,
+  if (day) {
+    const parsedDay = parseInt(day, 10);
+    matchDateFilters.push(`EXTRACT(DAY FROM mh."startedAt") = ${parsedDay}`);
+    paymentDateFilters.push(
+      `EXTRACT(DAY FROM sp."updateStatus") = ${parsedDay}`,
     );
-  });
+  }
 
-  const gameCounts = await prisma.matchHistoryPlayer.groupBy({
-    by: ["sessionPlayerId", "iswin"],
-    where: {
-      sessionPlayerId: {
-        in: sessionPlayers.map((sessionPlayer) => sessionPlayer.id),
-      },
-    },
-    _count: {
-      _all: true,
-    },
-  });
+  if (dayOfWeek && weekdayMap[dayOfWeek.toLowerCase()] !== undefined) {
+    const dow = weekdayMap[dayOfWeek.toLowerCase()];
+    matchDateFilters.push(`EXTRACT(DOW FROM mh."startedAt") = ${dow}`);
+    paymentDateFilters.push(`EXTRACT(DOW FROM sp."updateStatus") = ${dow}`);
+  }
 
-  const statsByPlayerId = new Map();
+  const matchDateWhere =
+    matchDateFilters.length > 0 ? `AND ${matchDateFilters.join(" AND ")}` : "";
 
-  gameCounts.forEach((gameCount) => {
-    const playerId = sessionPlayerOwnerById.get(gameCount.sessionPlayerId);
-    if (!playerId) return;
+  const paymentDateWhere =
+    paymentDateFilters.length > 0
+      ? `AND ${paymentDateFilters.join(" AND ")}`
+      : "";
 
-    const currentStats = statsByPlayerId.get(playerId) || {
-      totalCommunityWins: 0,
-      totalCommunityLosses: 0,
-      totalCommunityGames: 0,
-      totalCommunityPoints: 0,
+  // 4. Query Match History Stats grouped by community player
+  const matchStatsQuery = `
+    SELECT 
+      cp.id AS "communityPlayerId",
+      COALESCE(COUNT(mhp.id), 0)::INT AS "totalCommunityGames",
+      COALESCE(SUM(CASE WHEN mhp.iswin = true THEN 1 ELSE 0 END), 0)::INT AS "totalCommunityWins",
+      COALESCE(SUM(CASE WHEN mhp.iswin = false THEN 1 ELSE 0 END), 0)::INT AS "totalCommunityLosses"
+    FROM "CommunityPlayer" cp
+    JOIN "SessionPlayer" sp ON sp."playerId" = cp.id
+    JOIN "MatchHistoryPlayer" mhp ON mhp."sessionPlayerId" = sp.id
+    JOIN "MatchHistory" mh ON mh.id = mhp."matchHistoryId"
+    WHERE cp."communityId" = $1
+    ${matchDateWhere}
+    GROUP BY cp.id;
+  `;
+
+  // 5. Query Paid Sessions Stats grouped by community player
+  const paymentStatsQuery = `
+    SELECT 
+      cp.id AS "communityPlayerId",
+      COALESCE(COUNT(sp.id), 0)::INT AS "paidSessionCount"
+    FROM "CommunityPlayer" cp
+    JOIN "SessionPlayer" sp ON sp."playerId" = cp.id
+    WHERE cp."communityId" = $1
+      AND sp."gameStatus" = 'paid'
+      ${paymentDateWhere}
+    GROUP BY cp.id;
+  `;
+
+  // Execute queries in parallel
+  const [matchStatsResults, paymentStatsResults] = await Promise.all([
+    prisma.$queryRawUnsafe(matchStatsQuery, communityId),
+    prisma.$queryRawUnsafe(paymentStatsQuery, communityId),
+  ]);
+
+  // Convert results into lookup maps
+  const statsMap = new Map(
+    matchStatsResults.map((stat) => [stat.communityPlayerId, stat]),
+  );
+  const paidMap = new Map(
+    paymentStatsResults.map((p) => [p.communityPlayerId, p.paidSessionCount]),
+  );
+
+  // 6. Merge filtered aggregated stats back onto the roster list
+  return players.map((player) => {
+    const matchStat = statsMap.get(player.id);
+    const paidCount = paidMap.get(player.id) || 0;
+
+    const totalWins = matchStat?.totalCommunityWins || 0;
+    const totalLosses = matchStat?.totalCommunityLosses || 0;
+    const totalGames = matchStat?.totalCommunityGames || 0;
+    const totalPoints = totalWins + paidCount * 3;
+
+    return {
+      ...player,
+      totalCommunityWins: totalWins,
+      totalCommunityLosses: totalLosses,
+      totalCommunityGames: totalGames,
+      totalCommunityPoints: totalPoints,
+      paidSessionCount: paidCount,
     };
-
-    if (gameCount.iswin) {
-      currentStats.totalCommunityWins += gameCount._count._all;
-      currentStats.totalCommunityPoints += gameCount._count._all;
-    } else {
-      currentStats.totalCommunityLosses += gameCount._count._all;
-    }
-
-    currentStats.totalCommunityGames += gameCount._count._all;
-    statsByPlayerId.set(playerId, currentStats);
   });
-
-  return players.map((player) => ({
-    ...player,
-    totalCommunityWins: statsByPlayerId.get(player.id)?.totalCommunityWins || 0,
-    totalCommunityLosses:
-      statsByPlayerId.get(player.id)?.totalCommunityLosses || 0,
-    totalCommunityGames:
-      statsByPlayerId.get(player.id)?.totalCommunityGames || 0,
-    totalCommunityPoints:
-      (statsByPlayerId.get(player.id)?.totalCommunityPoints || 0) +
-      (paidSessionCountsByPlayerId.get(player.id) || 0) * 3,
-    paidSessionCount: paidSessionCountsByPlayerId.get(player.id) || 0,
-  }));
 };
 
 export const deleteMatchHistory = async (

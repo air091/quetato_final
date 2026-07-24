@@ -1,10 +1,43 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../../../hooks/useAuth";
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUpDown, Calendar, RotateCcw } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import { API_URL } from "../../../../../contexts/AuthContext";
-import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings"; // Adjust path if needed
+import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
+
+const MONTHS = [
+  { value: "01", label: "January" },
+  { value: "02", label: "February" },
+  { value: "03", label: "March" },
+  { value: "04", label: "April" },
+  { value: "05", label: "May" },
+  { value: "06", label: "June" },
+  { value: "07", label: "July" },
+  { value: "08", label: "August" },
+  { value: "09", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+const DAYS_OF_WEEK = [
+  { value: "monday", label: "All Mondays" },
+  { value: "tuesday", label: "All Tuesdays" },
+  { value: "wednesday", label: "All Wednesdays" },
+  { value: "thursday", label: "All Thursdays" },
+  { value: "friday", label: "All Fridays" },
+  { value: "saturday", label: "All Saturdays" },
+  { value: "sunday", label: "All Sundays" },
+];
+
+const NUMERIC_DAYS = Array.from({ length: 31 }, (_, i) => {
+  const dayNum = i + 1;
+  return {
+    value: dayNum < 10 ? `0${dayNum}` : `${dayNum}`,
+    label: `Day ${dayNum}`,
+  };
+});
 
 const Dashboard = () => {
   const { fetchWithAuth, user } = useAuth();
@@ -15,6 +48,12 @@ const Dashboard = () => {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const toggleButtonRef = useRef(null);
 
+  // Date Filter States
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [dayFilterType, setDayFilterType] = useState("all"); // 'all' | 'specific' | 'weekday'
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
+
   // State configurations for interactive table sorting
   const [sortBy, setSortBy] = useState("points"); // Default column key to sort by
   const [order, setOrder] = useState("desc"); // Default sorting order ('desc' or 'asc')
@@ -22,8 +61,22 @@ const Dashboard = () => {
   const getPlayers = useCallback(async () => {
     if (!communityId) return;
     try {
+      // Build date query params dynamically
+      const queryParams = new URLSearchParams();
+      if (selectedMonth) queryParams.append("month", selectedMonth);
+
+      if (dayFilterType === "specific" && selectedDay) {
+        queryParams.append("day", selectedDay);
+      } else if (dayFilterType === "weekday" && selectedDayOfWeek) {
+        queryParams.append("dayOfWeek", selectedDayOfWeek);
+      }
+
+      const queryString = queryParams.toString()
+        ? `?${queryParams.toString()}`
+        : "";
+
       const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players/total-community-games`,
+        `${API_URL}/api/communities/${communityId}/players/total-community-games${queryString}`,
         { method: "GET" },
       );
       if (!response.ok) throw new Error("Http error", response.status);
@@ -41,11 +94,25 @@ const Dashboard = () => {
     } catch (error) {
       console.error(error);
     }
-  }, [communityId, fetchWithAuth]);
+  }, [
+    communityId,
+    fetchWithAuth,
+    selectedMonth,
+    dayFilterType,
+    selectedDay,
+    selectedDayOfWeek,
+  ]);
 
   useEffect(() => {
     getPlayers();
   }, [getPlayers]);
+
+  const handleResetFilters = () => {
+    setSelectedMonth("");
+    setDayFilterType("all");
+    setSelectedDay("");
+    setSelectedDayOfWeek("");
+  };
 
   // Click handler to toggle sort column and direction
   const handleSort = (columnKey) => {
@@ -124,13 +191,101 @@ const Dashboard = () => {
   };
 
   const sortedPlayers = getSortedPlayers();
+  const isFiltered = Boolean(
+    selectedMonth ||
+    (dayFilterType === "specific" && selectedDay) ||
+    (dayFilterType === "weekday" && selectedDayOfWeek),
+  );
 
   return (
     <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
+      {/* Top Controls Header: Filters */}
+      <div className="p-3 bg-stone-50/70 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-x-2 text-xs font-semibold text-stone-600">
+          <Calendar size={15} className="text-stone-400" />
+          <span>Filter Stats:</span>
+        </div>
+
+        <div className="flex items-center gap-x-2 flex-wrap">
+          {/* Month Filter */}
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+          >
+            <option value="">All Months</option>
+            {MONTHS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Day Filter Mode */}
+          <select
+            value={dayFilterType}
+            onChange={(e) => {
+              setDayFilterType(e.target.value);
+              setSelectedDay("");
+              setSelectedDayOfWeek("");
+            }}
+            className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+          >
+            <option value="all">All Days</option>
+            <option value="specific">Single Day</option>
+            <option value="weekday">Day of Week</option>
+          </select>
+
+          {/* Conditional Dropdown for Single Day Selection */}
+          {dayFilterType === "specific" && (
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+            >
+              <option value="">Select Day</option>
+              {NUMERIC_DAYS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Conditional Dropdown for Day of Week Selection */}
+          {dayFilterType === "weekday" && (
+            <select
+              value={selectedDayOfWeek}
+              onChange={(e) => setSelectedDayOfWeek(e.target.value)}
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+            >
+              <option value="">Select Weekday</option>
+              {DAYS_OF_WEEK.map((w) => (
+                <option key={w.value} value={w.value}>
+                  {w.label}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Reset Filters Button */}
+          {isFiltered && (
+            <button
+              onClick={handleResetFilters}
+              title="Reset Filters"
+              className="flex items-center gap-x-1 px-2 py-1.5 text-xs text-stone-500 hover:text-stone-800 bg-white border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+            >
+              <RotateCcw size={12} />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="bg-stone-50/70 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
+            <tr className="bg-stone-50/40 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
               <th className="p-4 text-stone-700 normal-case text-sm font-bold">
                 Player
               </th>
@@ -198,7 +353,7 @@ const Dashboard = () => {
                   className={`cursor-pointer transition-colors duration-150 ${
                     isCurrentUser
                       ? "bg-amber-50/60 hover:bg-amber-100"
-                      : "hover:bg-stone-200"
+                      : "hover:bg-stone-100/80"
                   }`}
                 >
                   {/* Primary Identifier */}
@@ -268,7 +423,7 @@ const Dashboard = () => {
                   colSpan={5}
                   className="p-12 text-center text-sm text-stone-400 italic bg-stone-50/20"
                 >
-                  No statistical roster data available yet
+                  No statistical roster data available for selected period
                 </td>
               </tr>
             )}

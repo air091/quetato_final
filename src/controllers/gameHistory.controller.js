@@ -55,7 +55,13 @@ export const getPlayerTotalCommunityGamesController = async (
 ) => {
   try {
     const { communityId } = request.params;
-    const results = await getPlayerTotalCommunityGames(communityId);
+
+    // Pass request.query (contains month, day, dayOfWeek) to the service
+    const results = await getPlayerTotalCommunityGames(
+      communityId,
+      request.query,
+    );
+
     return response.status(200).json({ success: true, results });
   } catch (error) {
     console.error("Get player total community games failed", error);
