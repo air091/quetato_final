@@ -150,6 +150,7 @@ model CommunityPlayer {
   sessionPlayers    SessionPlayer[] @relation("Player")
   adminAccept       SessionPlayer[] @relation("AdminAccept")
   adminUpdate       SessionPlayer[] @relation("AdminUpdate")
+  manualPoints      ManualPoint[]
 
   @@unique([communityId, userId])
   @@index([userId])
@@ -287,4 +288,18 @@ model Pricing {
   session             Session @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([sessionId])
+}
+
+model ManualPoint {
+  id                String          @id @default(cuid())
+  communityPlayerId String
+  points            Int
+  description       String
+  createdBy         String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  communityPlayer   CommunityPlayer @relation(fields: [communityPlayerId], references: [id], onDelete: Cascade)
+
+  @@index([communityPlayerId])
 }

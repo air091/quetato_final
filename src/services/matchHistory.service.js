@@ -825,3 +825,60 @@ export const transferCommunityPlayerGames = async ({
     };
   });
 };
+
+export const addManualPoints = async ({
+  communityId,
+  communityPlayerId,
+  points,
+  description,
+  authorizedUserId,
+}) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!communityPlayerId)
+    throw new AppError("Community Player ID is required", 400);
+  if (points === undefined || typeof points !== "number") {
+    throw new AppError("Valid points value is required", 400);
+  }
+  if (!description) throw new AppError("Description is required", 400);
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Authorization check
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: { communityId, userId: authorizedUserId },
+      },
+      select: { role: true },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden: Not a member of this community", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Insufficient permissions to add points",
+        403,
+      );
+    }
+
+    // 2. Validate target community player
+    const targetPlayer = await tx.communityPlayer.findFirst({
+      where: { id: communityPlayerId, communityId },
+    });
+
+    if (!targetPlayer) {
+      throw new AppError("Target community player not found", 404);
+    }
+
+    // 3. Create point entry linked only to communityPlayerId
+    return await tx.manualPoint.create({
+      data: {
+        communityPlayerId,
+        points,
+        description,
+        createdBy: authorizedUserId,
+      },
+    });
+  });
+};

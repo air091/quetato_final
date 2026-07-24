@@ -1,5 +1,6 @@
 import { AppError } from "../libs/errorHandle.js";
 import {
+  addManualPoints,
   deleteMatchHistory,
   getCommunityPlayerHistory,
   getPlayerGameHistory,
@@ -178,5 +179,32 @@ export const transferCommunityPlayerGamesController = async (
     return response
       .status(statusCode)
       .json({ success: false, message: errMessage });
+  }
+};
+
+export const addManualPointsController = async (request, response) => {
+  try {
+    const { communityId, communityPlayerId } = request.params;
+    const { points, description } = request.body;
+    const authorizedUserId = request.user?.sub;
+
+    const result = await addManualPoints({
+      communityId,
+      communityPlayerId,
+      points,
+      description,
+      authorizedUserId,
+    });
+
+    return response.status(201).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Add manual points failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message =
+      error instanceof AppError ? error.message : "Internal server error";
+    return response.status(statusCode).json({ success: false, message });
   }
 };

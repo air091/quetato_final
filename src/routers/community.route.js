@@ -58,6 +58,7 @@ import {
   unhideAuthorizedPlayerInSessionController,
 } from "../controllers/sessionPlayer.controller.js";
 import {
+  addManualPointsController,
   deleteMatchHistoryController,
   getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
@@ -101,6 +102,11 @@ router.get(
 router.post(
   "/:communityId/players/:communityPlayerId/transfer-games",
   transferCommunityPlayerGamesController,
+);
+
+router.post(
+  "/:communityId/players/:communityPlayerId/manual-points",
+  addManualPointsController,
 );
 
 router.get("/:communityId/players/requests", getAllRequestPlayersController);
