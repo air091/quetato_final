@@ -81,7 +81,6 @@ const Dashboard = () => {
       );
       if (!response.ok) throw new Error("Http error", response.status);
       const data = await response.json();
-      console.log(data);
       if (!data.success) throw new Error(data?.message);
 
       // Filter results to only keep players with status "accepted"
