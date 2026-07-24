@@ -62,6 +62,7 @@ import {
   getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
+  transferCommunityPlayerGamesController,
   transferPlayerGamesController,
 } from "../controllers/gameHistory.controller.js";
 import {
@@ -95,6 +96,11 @@ router.get(
 router.get(
   "/:communityId/players/:communityPlayerId/history",
   getCommunityPlayerHistoryController,
+);
+
+router.post(
+  "/:communityId/players/:communityPlayerId/transfer-games",
+  transferCommunityPlayerGamesController,
 );
 
 router.get("/:communityId/players/requests", getAllRequestPlayersController);

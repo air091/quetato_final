@@ -14,6 +14,7 @@ import {
   ArrowRightLeft,
   Check,
   UserCheck,
+  Search,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { API_URL } from "../../contexts/AuthContext";
@@ -34,6 +35,7 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
   const [targetCommunityPlayerId, setTargetCommunityPlayerId] = useState("");
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Ref to track the inner modal card container
   const modalRef = useRef(null);
@@ -44,6 +46,14 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
     player?.communityPlayer?.username ||
     player?.username ||
     "Player";
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Compute filtered players dynamically
+  const filteredCommunityPlayers = communityPlayers.filter((cp) => {
+    const name = cp.communityPlayer?.username || cp.username || "";
+    return name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+  });
 
   useEffect(() => {
     if (!sessionPlayerId) return;
@@ -78,12 +88,29 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
       if (!res.ok) throw new Error("Failed to load community players");
       const playersData = await res.json();
 
-      // Filter out the current source player
-      const availablePlayers = (playersData.results || []).filter(
-        (cp) =>
+      // Extract list based on structure
+      const rawList = Array.isArray(playersData.player)
+        ? playersData.player
+        : Array.isArray(playersData.results)
+          ? playersData.results
+          : Array.isArray(playersData)
+            ? playersData
+            : [];
+
+      // Filter out:
+      // 1. Current source player
+      // 2. Players whose status is NOT "accepted"
+      const availablePlayers = rawList.filter((cp) => {
+        const isNotCurrentPlayer =
           cp.id !== player?.playerId &&
-          cp.id !== player?.sessionPlayer?.playerId,
-      );
+          cp.id !== player?.sessionPlayer?.playerId;
+
+        const isAccepted =
+          cp.status === "accepted" || cp.communityPlayer?.status === "accepted";
+
+        return isNotCurrentPlayer && isAccepted;
+      });
+
       setCommunityPlayers(availablePlayers);
     } catch (err) {
       setTransferError(err.message);
@@ -94,6 +121,8 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
 
   const handleOpenTransferModal = () => {
     setIsTransferOpen(true);
+    setIsDropdownOpen(false); // 👈 Ensures menu is hidden on start
+    setSearchQuery("");
     setTransferError(null);
     fetchCommunityPlayers();
   };
@@ -266,7 +295,7 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [onClose]);
+  }, [onClose, isTransferOpen]);
 
   // Helper formatting utility for game durations
   const formatDuration = (start, end) => {
@@ -571,8 +600,12 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
 
       {/* Transfer Games Modal Overlay */}
       {isTransferOpen && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center z-60 p-4 font-sans animate-in fade-in duration-150">
+        <div
+          className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center z-60 p-4 font-sans animate-in fade-in duration-150"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-stone-200/80 p-5 space-y-4">
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-x-2">
                 <ArrowRightLeft className="text-orange-500" size={18} />
@@ -608,35 +641,113 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
               </div>
             )}
 
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">
+            {/* Target Player Selection & Search */}
+            <div className="space-y-1.5 relative">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 Target Player
               </label>
+
               {loadingPlayers ? (
                 <div className="flex items-center gap-x-2 py-2 text-xs text-stone-500">
                   <Loader2 className="animate-spin h-3.5 w-3.5 text-orange-500" />
                   Loading players...
                 </div>
               ) : (
-                <select
-                  value={targetCommunityPlayerId}
-                  onChange={(e) => setTargetCommunityPlayerId(e.target.value)}
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-medium text-stone-850 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10 bg-stone-50/50"
-                >
-                  <option value="">Select target player...</option>
-                  {communityPlayers.map((cp) => (
-                    <option key={cp.id} value={cp.id}>
-                      {cp.communityPlayer?.username || "Unknown"} (
-                      {cp.communityPlayer?.type === "static"
-                        ? "Static"
-                        : "User"}
-                      )
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  {/* Search Input Box */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search and select target player..."
+                      value={searchQuery}
+                      onFocus={() => setIsDropdownOpen(true)} // 💡 Show dropdown on focus
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setTargetCommunityPlayerId(""); // Clear selection on typing
+                        setIsDropdownOpen(true); // 💡 Keep open while typing
+                      }}
+                      className="w-full rounded-xl border border-stone-200 pl-8 pr-8 py-2 text-xs font-medium text-stone-850 placeholder-stone-400 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10 bg-stone-50/50 transition-all"
+                    />
+                    <Search
+                      size={14}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setTargetCommunityPlayerId("");
+                          setIsDropdownOpen(true);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 rounded-full hover:bg-stone-200/60"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Floating Options Dropdown (Only renders when active) */}
+                  {isDropdownOpen && (
+                    <div
+                      className="absolute left-0 right-0 top-full mt-1.5 max-h-40 overflow-y-auto rounded-xl border border-stone-200/80 bg-white shadow-xl z-30 p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150"
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      {filteredCommunityPlayers.length === 0 ? (
+                        <div className="py-3 text-center text-xs text-stone-400 italic">
+                          No players found
+                        </div>
+                      ) : (
+                        filteredCommunityPlayers.map((cp) => {
+                          const pName =
+                            cp.communityPlayer?.username ||
+                            cp.username ||
+                            "Unknown";
+                          const pType =
+                            cp.communityPlayer?.type || cp.type || "user";
+                          const isSelected = targetCommunityPlayerId === cp.id;
+
+                          return (
+                            <button
+                              key={cp.id}
+                              type="button"
+                              onClick={() => {
+                                setTargetCommunityPlayerId(cp.id);
+                                setSearchQuery(pName); // Fill input with chosen name
+                                setIsDropdownOpen(false); // 💡 Hide menu on selection!
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                                isSelected
+                                  ? "bg-orange-500 text-white font-bold"
+                                  : "hover:bg-stone-100 text-stone-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-x-2 truncate">
+                                <span className="truncate">{pName}</span>
+                                <span
+                                  className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                                    isSelected
+                                      ? "bg-orange-600 text-white"
+                                      : "bg-stone-100 text-stone-500"
+                                  }`}
+                                >
+                                  {pType === "static" ? "Static" : "User"}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <Check size={14} className="shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
+            {/* Action Buttons */}
             <div className="flex items-center gap-x-2 pt-2 border-t border-stone-100">
               <button
                 type="button"

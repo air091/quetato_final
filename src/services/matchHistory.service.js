@@ -602,3 +602,185 @@ export const transferPlayerGames = async ({
     };
   });
 };
+
+export const transferCommunityPlayerGames = async ({
+  communityId,
+  sourceCommunityPlayerId,
+  targetCommunityPlayerId,
+  matchHistoryIds = [], // Array of match history IDs (Empty = transfer ALL)
+  authorizedUserId,
+}) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!sourceCommunityPlayerId)
+    throw new AppError("Source Community Player ID is required", 400);
+  if (!targetCommunityPlayerId)
+    throw new AppError("Target Community Player ID is required", 400);
+  if (!authorizedUserId)
+    throw new AppError("Authorization User ID is required", 400);
+
+  if (sourceCommunityPlayerId === targetCommunityPlayerId) {
+    throw new AppError("Cannot transfer games to the same player", 400);
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Authorization Check (admin, owner, host)
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: authorizedUserId,
+        },
+      },
+      select: { role: true },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden: Not a member of this community", 403);
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Insufficient permissions to transfer games",
+        403,
+      );
+    }
+
+    // 2. Validate Source & Target Community Players
+    const sourceCommunityPlayer = await tx.communityPlayer.findFirst({
+      where: { id: sourceCommunityPlayerId, communityId },
+      include: {
+        sessionPlayers: {
+          where: { session: { communityId } },
+          select: { id: true, sessionId: true, gameStatus: true },
+        },
+      },
+    });
+
+    if (!sourceCommunityPlayer) {
+      throw new AppError("Source community player not found", 404);
+    }
+
+    const targetCommunityPlayer = await tx.communityPlayer.findFirst({
+      where: { id: targetCommunityPlayerId, communityId },
+      include: {
+        sessionPlayers: {
+          where: { session: { communityId } },
+          select: { id: true, sessionId: true, gameStatus: true },
+        },
+      },
+    });
+
+    if (!targetCommunityPlayer) {
+      throw new AppError(
+        "Target player does not belong to this community",
+        404,
+      );
+    }
+
+    const sourceSessionPlayerIds = sourceCommunityPlayer.sessionPlayers.map(
+      (sp) => sp.id,
+    );
+
+    if (sourceSessionPlayerIds.length === 0) {
+      throw new AppError(
+        "Source player has no session records in this community",
+        400,
+      );
+    }
+
+    // Map existing target session players by sessionId
+    const targetSessionPlayerBySessionId = new Map(
+      targetCommunityPlayer.sessionPlayers.map((sp) => [sp.sessionId, sp]),
+    );
+
+    // Map source session players by id to easily access their sessionId & gameStatus
+    const sourceSessionPlayerById = new Map(
+      sourceCommunityPlayer.sessionPlayers.map((sp) => [sp.id, sp]),
+    );
+
+    // 3. Find source matches to transfer across all sessions of this community
+    const matchWhereClause = {
+      sessionPlayerId: { in: sourceSessionPlayerIds },
+      matchHistory: { session: { communityId } },
+    };
+
+    if (Array.isArray(matchHistoryIds) && matchHistoryIds.length > 0) {
+      matchWhereClause.matchHistoryId = { in: matchHistoryIds };
+    }
+
+    const sourceMatchPlayers = await tx.matchHistoryPlayer.findMany({
+      where: matchWhereClause,
+      include: {
+        matchHistory: {
+          select: { id: true, sessionId: true },
+        },
+      },
+    });
+
+    if (sourceMatchPlayers.length === 0) {
+      throw new AppError(
+        "No eligible match history entries found to transfer",
+        400,
+      );
+    }
+
+    // 4. Perform session-by-session transfer
+    let totalTransferredCount = 0;
+
+    for (const matchPlayerRecord of sourceMatchPlayers) {
+      const sessionId = matchPlayerRecord.matchHistory.sessionId;
+      const sourceSessionPlayer = sourceSessionPlayerById.get(
+        matchPlayerRecord.sessionPlayerId,
+      );
+
+      let targetSessionPlayer = targetSessionPlayerBySessionId.get(sessionId);
+
+      // Ensure Target SessionPlayer exists for this session
+      if (!targetSessionPlayer) {
+        targetSessionPlayer = await tx.sessionPlayer.create({
+          data: {
+            sessionId,
+            playerId: targetCommunityPlayer.id,
+            status: "accepted",
+            gameStatus: "waiting",
+            acceptedBy: authorizedPlayer.id,
+            acceptedAt: new Date(),
+          },
+        });
+        targetSessionPlayerBySessionId.set(sessionId, targetSessionPlayer);
+      }
+
+      // Re-assign match record
+      await tx.matchHistoryPlayer.update({
+        where: { id: matchPlayerRecord.id },
+        data: { sessionPlayerId: targetSessionPlayer.id },
+      });
+
+      // Pass paid status to target session player if applicable
+      if (
+        sourceSessionPlayer?.gameStatus === "paid" &&
+        targetSessionPlayer.gameStatus !== "paid"
+      ) {
+        await tx.sessionPlayer.update({
+          where: { id: targetSessionPlayer.id },
+          data: {
+            gameStatus: "paid",
+            updateStatus: new Date(),
+            updatedBy: authorizedPlayer.id,
+          },
+        });
+        targetSessionPlayer.gameStatus = "paid";
+      }
+
+      totalTransferredCount++;
+    }
+
+    return {
+      message: `Successfully transferred ${totalTransferredCount} match(es) across community sessions`,
+      transferredCount: totalTransferredCount,
+      sourceCommunityPlayerId,
+      targetCommunityPlayerId,
+    };
+  });
+};
