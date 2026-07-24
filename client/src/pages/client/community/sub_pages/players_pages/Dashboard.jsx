@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../../../hooks/useAuth";
-import { ArrowDown, ArrowUpDown, Calendar, RotateCcw } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUpDown,
+  Calendar,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import { API_URL } from "../../../../../contexts/AuthContext";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
@@ -48,7 +54,8 @@ const Dashboard = () => {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const toggleButtonRef = useRef(null);
 
-  // Date Filter States
+  // Search & Date Filter States
+  const [searchQuery, setSearchQuery] = useState(""); // 🌟 Search Player State
   const [selectedMonth, setSelectedMonth] = useState("");
   const [dayFilterType, setDayFilterType] = useState("all"); // 'all' | 'specific' | 'weekday'
   const [selectedDay, setSelectedDay] = useState("");
@@ -108,6 +115,7 @@ const Dashboard = () => {
   }, [getPlayers]);
 
   const handleResetFilters = () => {
+    setSearchQuery(""); // 🌟 Reset search query as well
     setSelectedMonth("");
     setDayFilterType("all");
     setSelectedDay("");
@@ -124,11 +132,17 @@ const Dashboard = () => {
     }
   };
 
-  // Helper function to dynamically sort data locally
+  // Helper function to dynamically filter by search and sort data locally
   const getSortedPlayers = () => {
     if (!players) return [];
 
-    return [...players].sort((a, b) => {
+    // 🌟 Filter players based on search query match against username
+    const filteredBySearch = players.filter((player) => {
+      const username = player?.communityPlayer?.username || "";
+      return username.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    });
+
+    return filteredBySearch.sort((a, b) => {
       const aWins = a?.totalCommunityWins ?? 0;
       const bWins = b?.totalCommunityWins ?? 0;
       const aLosses = a?.totalCommunityLosses ?? 0;
@@ -136,7 +150,7 @@ const Dashboard = () => {
       const aGames = a?.totalCommunityGames ?? 0;
       const bGames = b?.totalCommunityGames ?? 0;
 
-      // 🌟 Explicitly integrate totalCommunityPoints (which encapsulates wins, payments, and manual points)
+      // Total Community Points (includes wins, payments, and manual points from backend)
       const aPoints = a?.totalCommunityPoints ?? aWins;
       const bPoints = b?.totalCommunityPoints ?? bWins;
 
@@ -194,6 +208,7 @@ const Dashboard = () => {
 
   const sortedPlayers = getSortedPlayers();
   const isFiltered = Boolean(
+    searchQuery ||
     selectedMonth ||
     (dayFilterType === "specific" && selectedDay) ||
     (dayFilterType === "weekday" && selectedDayOfWeek),
@@ -201,7 +216,7 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
-      {/* Top Controls Header: Filters */}
+      {/* Top Controls Header: Search & Filters */}
       <div className="p-3 bg-stone-50/70 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-x-2 text-xs font-semibold text-stone-600">
           <Calendar size={15} className="text-stone-400" />
@@ -209,6 +224,21 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-x-2 flex-wrap">
+          {/* 🌟 Search Input Field */}
+          <div className="relative flex items-center">
+            <Search
+              size={14}
+              className="absolute left-2.5 text-stone-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Search player..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg pl-8 pr-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors w-[140px]"
+            />
+          </div>
+
           {/* Month Filter */}
           <select
             value={selectedMonth}
@@ -343,8 +373,6 @@ const Dashboard = () => {
               const totalWins = player?.totalCommunityWins ?? 0;
               const totalLosses = player?.totalCommunityLosses ?? 0;
               const totalGames = player?.totalCommunityGames ?? 0;
-
-              // 🌟 Total Points includes wins + payments + manual points returned by backend API
               const totalPoints = player?.totalCommunityPoints ?? totalWins;
 
               const isCurrentUser =
