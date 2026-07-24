@@ -1,12 +1,16 @@
 import { AppError } from "../libs/errorHandle.js";
 import {
   addManualPoints,
+  deleteAllManualPoints,
+  deleteManualPoint,
   deleteMatchHistory,
+  getAllManualPoints,
   getCommunityPlayerHistory,
   getPlayerGameHistory,
   getPlayerTotalCommunityGames,
   transferCommunityPlayerGames,
   transferPlayerGames,
+  updateManualPoint,
 } from "../services/matchHistory.service.js";
 
 export const getPlayerGameHistoryController = async (request, response) => {
@@ -202,6 +206,102 @@ export const addManualPointsController = async (request, response) => {
     });
   } catch (error) {
     console.error("Add manual points failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message =
+      error instanceof AppError ? error.message : "Internal server error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const getAllManualPointsController = async (request, response) => {
+  try {
+    const { communityId, communityPlayerId } = request.params;
+
+    const results = await getAllManualPoints(communityId, communityPlayerId);
+
+    return response.status(200).json({
+      success: true,
+      results,
+    });
+  } catch (error) {
+    console.error("Get all manual points failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message =
+      error instanceof AppError ? error.message : "Internal server error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const updateManualPointController = async (request, response) => {
+  try {
+    const { communityId, communityPlayerId, manualPointId } = request.params;
+    const { points, description } = request.body;
+    const authorizedUserId = request.user?.sub;
+
+    const result = await updateManualPoint({
+      communityId,
+      communityPlayerId,
+      manualPointId,
+      points,
+      description,
+      authorizedUserId,
+    });
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Update manual point failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message =
+      error instanceof AppError ? error.message : "Internal server error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const deleteManualPointController = async (request, response) => {
+  try {
+    const { communityId, communityPlayerId, manualPointId } = request.params;
+    const authorizedUserId = request.user?.sub;
+
+    const result = await deleteManualPoint({
+      communityId,
+      communityPlayerId,
+      manualPointId,
+      authorizedUserId,
+    });
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Delete manual point failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message =
+      error instanceof AppError ? error.message : "Internal server error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const deleteAllManualPointsController = async (request, response) => {
+  try {
+    const { communityId, communityPlayerId } = request.params;
+    const authorizedUserId = request.user?.sub;
+
+    const result = await deleteAllManualPoints({
+      communityId,
+      communityPlayerId,
+      authorizedUserId,
+    });
+
+    return response.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Delete all manual points failed", error);
     const statusCode = error instanceof AppError ? error.statusCode : 500;
     const message =
       error instanceof AppError ? error.message : "Internal server error";

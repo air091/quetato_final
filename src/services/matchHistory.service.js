@@ -115,6 +115,15 @@ export const getCommunityPlayerHistory = async (
     select: {
       id: true,
       communityPlayer: { select: { username: true } },
+      manualPoints: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          points: true,
+          description: true,
+          createdAt: true,
+        },
+      },
       sessionPlayers: {
         where: { session: { communityId } },
         select: {
@@ -203,6 +212,12 @@ export const getCommunityPlayerHistory = async (
     }))
     .sort((left, right) => new Date(right.paidAt) - new Date(left.paidAt));
 
+  const manualPoints = communityPlayer.manualPoints || [];
+  const totalManualPoints = manualPoints.reduce(
+    (sum, entry) => sum + entry.points,
+    0,
+  );
+
   const totalWins = history.filter((match) => match.result === "win").length;
 
   return {
@@ -216,10 +231,12 @@ export const getCommunityPlayerHistory = async (
       totalLosses: history.length - totalWins,
       winPoints: totalWins,
       paymentPoints: payments.length * 3,
-      totalPoints: totalWins + payments.length * 3,
+      manualPoints: totalManualPoints,
+      totalPoints: totalWins + payments.length * 3 + totalManualPoints,
     },
     history,
     payments,
+    manualPoints,
   };
 };
 
@@ -871,7 +888,7 @@ export const addManualPoints = async ({
       throw new AppError("Target community player not found", 404);
     }
 
-    // 3. Create point entry linked only to communityPlayerId
+    // 3. Create point entry linked to communityPlayerId
     return await tx.manualPoint.create({
       data: {
         communityPlayerId,
@@ -879,6 +896,161 @@ export const addManualPoints = async ({
         description,
         createdBy: authorizedUserId,
       },
+    });
+  });
+};
+
+export const getAllManualPoints = async (communityId, communityPlayerId) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!communityPlayerId)
+    throw new AppError("Community Player ID is required", 400);
+
+  const targetPlayer = await prisma.communityPlayer.findFirst({
+    where: { id: communityPlayerId, communityId },
+  });
+
+  if (!targetPlayer) {
+    throw new AppError("Target community player not found", 404);
+  }
+
+  return await prisma.manualPoint.findMany({
+    where: { communityPlayerId },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const updateManualPoint = async ({
+  communityId,
+  communityPlayerId,
+  manualPointId,
+  points,
+  description,
+  authorizedUserId,
+}) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!communityPlayerId)
+    throw new AppError("Community Player ID is required", 400);
+  if (!manualPointId) throw new AppError("Manual Point ID is required", 400);
+
+  return await prisma.$transaction(async (tx) => {
+    // Authorization check
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: { communityId, userId: authorizedUserId },
+      },
+      select: { role: true },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden: Not a member of this community", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Insufficient permissions to update points",
+        403,
+      );
+    }
+
+    const existingPoint = await tx.manualPoint.findFirst({
+      where: { id: manualPointId, communityPlayerId },
+    });
+
+    if (!existingPoint) {
+      throw new AppError("Manual point entry not found", 404);
+    }
+
+    return await tx.manualPoint.update({
+      where: { id: manualPointId },
+      data: {
+        ...(points !== undefined && typeof points === "number"
+          ? { points }
+          : {}),
+        ...(description ? { description } : {}),
+      },
+    });
+  });
+};
+
+export const deleteManualPoint = async ({
+  communityId,
+  communityPlayerId,
+  manualPointId,
+  authorizedUserId,
+}) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!communityPlayerId)
+    throw new AppError("Community Player ID is required", 400);
+  if (!manualPointId) throw new AppError("Manual Point ID is required", 400);
+
+  return await prisma.$transaction(async (tx) => {
+    // Authorization check
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: { communityId, userId: authorizedUserId },
+      },
+      select: { role: true },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden: Not a member of this community", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Insufficient permissions to delete points",
+        403,
+      );
+    }
+
+    const existingPoint = await tx.manualPoint.findFirst({
+      where: { id: manualPointId, communityPlayerId },
+    });
+
+    if (!existingPoint) {
+      throw new AppError("Manual point entry not found", 404);
+    }
+
+    return await tx.manualPoint.delete({
+      where: { id: manualPointId },
+    });
+  });
+};
+
+export const deleteAllManualPoints = async ({
+  communityId,
+  communityPlayerId,
+  authorizedUserId,
+}) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!communityPlayerId)
+    throw new AppError("Community Player ID is required", 400);
+
+  return await prisma.$transaction(async (tx) => {
+    // Authorization check
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: { communityId, userId: authorizedUserId },
+      },
+      select: { role: true },
+    });
+
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden: Not a member of this community", 403);
+    }
+
+    const allowedRoles = ["admin", "owner"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError(
+        "Forbidden: Insufficient permissions to delete all points",
+        403,
+      );
+    }
+
+    return await tx.manualPoint.deleteMany({
+      where: { communityPlayerId },
     });
   });
 };

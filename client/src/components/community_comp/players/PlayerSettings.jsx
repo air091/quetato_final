@@ -31,7 +31,7 @@ const PlayerSettings = ({
   toggleButtonRef,
   onUpdatePlayerStatus,
   type, // "static" (guest) or "user" (registered user)
-  isRequest = false, // 🌟 New flag passed when mapping through requested players
+  isRequest = false, // 🌟 Flag passed when mapping through requested players
   onOptimisticTransfer,
   onGamesTransferred,
   isManagement = false,
@@ -42,6 +42,12 @@ const PlayerSettings = ({
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCommunityHistoryOpen, setIsCommunityHistoryOpen] = useState(false);
+
+  // 🌟 Manual Points Modal State
+  const [isAddPointsOpen, setIsAddPointsOpen] = useState(false);
+  const [pointsValue, setPointsValue] = useState("");
+  const [pointsDescription, setPointsDescription] = useState("");
+  const [isSubmittingPoints, setIsSubmittingPoints] = useState(false);
 
   // Fallbacks depending on your payload structure
   const initialUsername =
@@ -252,11 +258,52 @@ const PlayerSettings = ({
     }
   };
 
+  // 🌟 Action Handler: Add Manual Points
+  const handleAddManualPoints = async (e) => {
+    e.preventDefault();
+    const numPoints = parseInt(pointsValue, 10);
+    if (isNaN(numPoints) || !pointsDescription.trim() || isSubmittingPoints)
+      return;
+
+    try {
+      setIsSubmittingPoints(true);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/manual-points`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            points: numPoints,
+            description: pointsDescription.trim(),
+          }),
+        },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData?.message || "Failed to add manual points");
+      }
+
+      setPointsValue("");
+      setPointsDescription("");
+      setIsAddPointsOpen(false);
+
+      if (typeof onUpdatePlayerStatus === "function") {
+        onUpdatePlayerStatus();
+      }
+      onClose();
+    } catch (err) {
+      console.error("Add manual points error:", err);
+      alert(err.message || "Failed to add points.");
+    } finally {
+      setIsSubmittingPoints(false);
+    }
+  };
+
   if (!isReady) return null;
 
   return (
     <>
       {!isAssignModalOpen &&
+        !isAddPointsOpen &&
         createPortal(
           <div
             ref={containerRef}
@@ -383,6 +430,7 @@ const PlayerSettings = ({
                       Delete
                     </button>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => setIsCommunityHistoryOpen(true)}
@@ -390,10 +438,20 @@ const PlayerSettings = ({
                   >
                     Points & session history
                   </button>
+
+                  {isManagement && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddPointsOpen(true)}
+                      className="w-full rounded bg-amber-50 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 cursor-pointer"
+                    >
+                      + Add Manual Points
+                    </button>
+                  )}
                 </form>
               ) : (
                 /* REGISTERED USER PLAYER: Read-only data layout */
-                <div className="space-y-3 p-0.5">
+                <div className="space-y-2 p-0.5">
                   <div className="flex flex-col gap-y-0.5">
                     <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
                       Skill Level
@@ -410,6 +468,16 @@ const PlayerSettings = ({
                   >
                     Points & session history
                   </button>
+
+                  {isManagement && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddPointsOpen(true)}
+                      className="w-full rounded bg-amber-50 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 cursor-pointer"
+                    >
+                      + Add Manual Points
+                    </button>
+                  )}
 
                   {isManagement && player?.role !== "owner" && (
                     <div className="flex flex-col gap-y-2 pt-1 border-t border-stone-100">
@@ -451,6 +519,84 @@ const PlayerSettings = ({
                   )}
                 </div>
               )}
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* 🌟 ADD MANUAL POINTS MODAL */}
+      {isAddPointsOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="w-full max-w-xs bg-white rounded-lg shadow-xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <header className="bg-stone-800 p-3 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-stone-100">
+                    Add Points to {username}
+                  </h4>
+                  <p className="text-[10px] text-stone-400">
+                    Manual adjustment for community total
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddPointsOpen(false)}
+                  className="text-stone-400 hover:text-white text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </header>
+
+              <form onSubmit={handleAddManualPoints} className="p-3 space-y-3">
+                <div className="flex flex-col gap-y-1">
+                  <label className="text-[10px] font-semibold uppercase text-stone-500">
+                    Points
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="e.g. 5 or -2"
+                    value={pointsValue}
+                    onChange={(e) => setPointsValue(e.target.value)}
+                    className="w-full text-xs border border-stone-200 rounded px-2.5 py-1.5 outline-none focus:border-amber-500 bg-stone-50/50"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-y-1">
+                  <label className="text-[10px] font-semibold uppercase text-stone-500">
+                    Description
+                  </label>
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Reason (e.g. Tournament winner bonus)"
+                    value={pointsDescription}
+                    onChange={(e) => setPointsDescription(e.target.value)}
+                    className="w-full text-xs border border-stone-200 rounded px-2.5 py-1.5 outline-none focus:border-amber-500 bg-stone-50/50 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddPointsOpen(false)}
+                    className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs py-1.5 rounded font-medium cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPoints}
+                    className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-xs py-1.5 rounded font-semibold shadow-sm cursor-pointer"
+                  >
+                    {isSubmittingPoints ? "Adding..." : "Add Points"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>,
           document.body,

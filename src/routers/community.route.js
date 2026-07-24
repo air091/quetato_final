@@ -59,12 +59,16 @@ import {
 } from "../controllers/sessionPlayer.controller.js";
 import {
   addManualPointsController,
+  deleteAllManualPointsController,
+  deleteManualPointController,
   deleteMatchHistoryController,
+  getAllManualPointsController,
   getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
   transferCommunityPlayerGamesController,
   transferPlayerGamesController,
+  updateManualPointController,
 } from "../controllers/gameHistory.controller.js";
 import {
   addPricingController,
@@ -104,9 +108,29 @@ router.post(
   transferCommunityPlayerGamesController,
 );
 
+router.get(
+  "/:communityId/players/:communityPlayerId/manual-points",
+  getAllManualPointsController,
+);
+
 router.post(
   "/:communityId/players/:communityPlayerId/manual-points",
   addManualPointsController,
+);
+
+router.patch(
+  "/:communityId/players/:communityPlayerId/manual-points/:manualPointId",
+  updateManualPointController,
+);
+
+router.delete(
+  "/:communityId/players/:communityPlayerId/manual-points/:manualPointId",
+  deleteManualPointController,
+);
+
+router.delete(
+  "/:communityId/players/:communityPlayerId/manual-points",
+  deleteAllManualPointsController,
 );
 
 router.get("/:communityId/players/requests", getAllRequestPlayersController);

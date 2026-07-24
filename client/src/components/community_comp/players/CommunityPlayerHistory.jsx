@@ -14,6 +14,7 @@ import {
   Clock,
   Swords,
   AlertCircle,
+  Sliders,
 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { API_URL } from "../../../contexts/AuthContext";
@@ -229,6 +230,7 @@ const CommunityPlayerHistory = ({
           (g) => g.result === "win" || g.playerPersonalResult === "win",
         ).length;
         const paymentPoints = prevData.summary.paymentPoints || 0;
+        const manualPoints = prevData.summary.manualPoints || 0;
 
         return {
           ...prevData,
@@ -238,7 +240,7 @@ const CommunityPlayerHistory = ({
             totalWins,
             totalLosses: totalGames - totalWins,
             winPoints: totalWins,
-            totalPoints: totalWins + paymentPoints,
+            totalPoints: totalWins + paymentPoints + manualPoints,
           },
           history: updatedHistory,
         };
@@ -290,6 +292,7 @@ const CommunityPlayerHistory = ({
           (g) => g.result === "win" || g.playerPersonalResult === "win",
         ).length;
         const paymentPoints = prevData.summary.paymentPoints || 0;
+        const manualPoints = prevData.summary.manualPoints || 0;
 
         return {
           ...prevData,
@@ -299,7 +302,7 @@ const CommunityPlayerHistory = ({
             totalWins,
             totalLosses: totalGames - totalWins,
             winPoints: totalWins,
-            totalPoints: totalWins + paymentPoints,
+            totalPoints: totalWins + paymentPoints + manualPoints,
           },
           history: updatedHistory,
         };
@@ -314,6 +317,9 @@ const CommunityPlayerHistory = ({
       setDeletingId(null);
     }
   };
+
+  const manualPoints = data?.summary?.manualPoints || 0;
+  const manualPointsList = data?.manualPoints || [];
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 font-sans backdrop-blur-xs selection:bg-orange-500/20 selection:text-orange-900">
@@ -379,28 +385,36 @@ const CommunityPlayerHistory = ({
           {!isLoading && !error && data && (
             <>
               {/* Performance / Summary Metrics Cards */}
-              <div className="grid grid-cols-3 gap-2 rounded-xl border border-stone-200/60 bg-stone-50/70 p-3 text-center">
+              <div className="grid grid-cols-4 gap-1.5 rounded-xl border border-stone-200/60 bg-stone-50/70 p-3 text-center">
                 <div>
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-stone-400">
                     Matches
                   </span>
-                  <span className="text-sm font-bold text-stone-800">
+                  <span className="text-xs font-bold text-stone-800">
                     {data.summary.totalGames}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                    Wins · Points
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-600">
+                    Wins · Pts
                   </span>
-                  <span className="text-sm font-bold text-emerald-700">
+                  <span className="text-xs font-bold text-emerald-700">
                     {data.summary.totalWins} · +{data.summary.winPoints}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-blue-600">
-                    Total Points
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-amber-600">
+                    Manual
                   </span>
-                  <span className="text-sm font-bold text-blue-700">
+                  <span className="text-xs font-bold text-amber-700">
+                    {manualPoints >= 0 ? `+${manualPoints}` : manualPoints}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-blue-600">
+                    Total Pts
+                  </span>
+                  <span className="text-xs font-bold text-blue-700">
                     {data.summary.totalPoints}
                   </span>
                 </div>
@@ -409,10 +423,18 @@ const CommunityPlayerHistory = ({
               {/* Points breakdown notice */}
               <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900 leading-relaxed">
                 <span className="font-bold">Points breakdown:</span> +
-                {data.summary.winPoints} from wins and +
+                {data.summary.winPoints} from wins, +
                 {data.summary.paymentPoints} from {data.payments.length} paid
-                {data.payments.length === 1 ? " session" : " sessions"} (3
-                points each).
+                {data.payments.length === 1 ? " session" : " sessions"} (3 pts
+                each)
+                {manualPoints !== 0 && (
+                  <>
+                    , and{" "}
+                    {manualPoints >= 0 ? `+${manualPoints}` : manualPoints} from
+                    manual adjustments
+                  </>
+                )}
+                .
               </div>
 
               {/* Match Feed Header & Actions */}
@@ -606,6 +628,50 @@ const CommunityPlayerHistory = ({
                     );
                   })
                 )}
+              </div>
+
+              {/* Manual Points Section */}
+              <div className="space-y-2.5">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Manual Point Adjustments
+                </h4>
+                <div className="space-y-2">
+                  {manualPointsList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-200 bg-stone-50/30 p-4 text-center">
+                      <p className="text-xs font-medium italic text-stone-400">
+                        No manual point adjustments recorded.
+                      </p>
+                    </div>
+                  ) : (
+                    manualPointsList.map((entry) => (
+                      <article
+                        key={entry.id || entry.createdAt}
+                        className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-stone-800">
+                            {entry.description || "Manual adjustment"}
+                          </p>
+                          <p className="text-[11px] text-stone-400">
+                            {formatDate(entry.createdAt)}
+                          </p>
+                        </div>
+                        <span
+                          className={`font-bold ${
+                            entry.points >= 0
+                              ? "text-emerald-700"
+                              : "text-rose-700"
+                          }`}
+                        >
+                          {entry.points >= 0
+                            ? `+${entry.points}`
+                            : entry.points}{" "}
+                          pts
+                        </span>
+                      </article>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Paid Sessions Section */}
