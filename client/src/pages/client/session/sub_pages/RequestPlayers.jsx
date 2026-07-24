@@ -148,7 +148,9 @@ const RequestPlayers = () => {
       result = result.filter((request) => {
         const username =
           request?.sessionPlayer?.communityPlayer?.username || "";
-        return username.toLowerCase().includes(searchQuery.toLowerCase());
+        return username
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase().trim());
       });
     }
     return sortList(
@@ -163,7 +165,9 @@ const RequestPlayers = () => {
     if (searchQuery.trim()) {
       result = result.filter((wrapper) => {
         const username = wrapper?.communityPlayer?.username || "";
-        return username.toLowerCase().includes(searchQuery.toLowerCase());
+        return username
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase().trim());
       });
     }
     return sortList(result, (wrapper) => wrapper?.communityPlayer?.username);
@@ -194,13 +198,13 @@ const RequestPlayers = () => {
           </select>
         </div>
 
-        {/* Search Input */}
-        <div className="relative flex-1 max-w-full sm:max-w-[320px]">
+        {/* Search Input with Clear (X) Button */}
+        <div className="relative flex-1 max-w-full sm:max-w-[320px] flex items-center">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
             <Search size={15} />
           </div>
           <input
-            type="search"
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search players..."
@@ -210,7 +214,8 @@ const RequestPlayers = () => {
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
+              className="absolute right-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
+              title="Clear search"
             >
               <X size={14} />
             </button>

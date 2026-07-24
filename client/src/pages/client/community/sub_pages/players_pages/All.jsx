@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { useOutletContext, useParams } from "react-router-dom";
-import { ChevronDown, EllipsisVertical, Search } from "lucide-react";
+import { ChevronDown, EllipsisVertical, Search, X } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings";
 import AddStaticPlayer from "../../../../../components/community_comp/players/AddStaticPlayer";
@@ -186,19 +186,29 @@ const All = () => {
           </div>
         </div>
 
-        {/* Search Input Bar */}
-        <div className="relative w-full">
+        {/* Search Input Bar with Clear (X) Button */}
+        <div className="relative w-full flex items-center">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
+            className="absolute left-3 text-stone-400 pointer-events-none"
           />
           <input
             type="text"
             placeholder="Search players by name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-stone-400 focus:bg-white transition-colors"
+            className="w-full pl-9 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-stone-400 focus:bg-white transition-colors"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2.5 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -148,7 +148,7 @@ const AllPlayers = () => {
     let result = (players || []).filter((player) => {
       const username =
         player.sessionPlayer?.communityPlayer?.username || "Unknown";
-      return username.toLowerCase().includes(searchQuery.toLowerCase());
+      return username.toLowerCase().includes(searchQuery.toLowerCase().trim());
     });
 
     if (sortConfig.key !== null) {
@@ -251,12 +251,12 @@ const AllPlayers = () => {
     <div className="w-full flex flex-col gap-y-5 selection:bg-orange-500/10 selection:text-orange-950">
       {/* ACTIONS CONTROLS HEADER */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-full sm:max-w-[320px]">
+        <div className="relative flex-1 max-w-full sm:max-w-[320px] flex items-center">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400">
             <Search size={15} />
           </div>
           <input
-            type="search"
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search player..."
@@ -264,8 +264,10 @@ const AllPlayers = () => {
           />
           {searchQuery && (
             <button
+              type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-stone-400 hover:text-stone-600"
+              className="absolute right-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
+              title="Clear search"
             >
               <X size={14} />
             </button>
