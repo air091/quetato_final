@@ -295,6 +295,7 @@ export const getPlayerTotalCommunityGames = async (
   // 3. Construct dynamic SQL filter conditions for dates
   const matchDateFilters = [];
   const paymentDateFilters = [];
+  const manualDateFilters = []; // 🌟 Added manual point date filter tracking
 
   if (month) {
     const parsedMonth = parseInt(month, 10);
@@ -304,6 +305,9 @@ export const getPlayerTotalCommunityGames = async (
     paymentDateFilters.push(
       `EXTRACT(MONTH FROM sp."updateStatus") = ${parsedMonth}`,
     );
+    manualDateFilters.push(
+      `EXTRACT(MONTH FROM mp."createdAt") = ${parsedMonth}`,
+    ); // 🌟 Filter manual points by month if specified
   }
 
   if (day) {
@@ -312,12 +316,14 @@ export const getPlayerTotalCommunityGames = async (
     paymentDateFilters.push(
       `EXTRACT(DAY FROM sp."updateStatus") = ${parsedDay}`,
     );
+    manualDateFilters.push(`EXTRACT(DAY FROM mp."createdAt") = ${parsedDay}`); // 🌟 Filter manual points by day if specified
   }
 
   if (dayOfWeek && weekdayMap[dayOfWeek.toLowerCase()] !== undefined) {
     const dow = weekdayMap[dayOfWeek.toLowerCase()];
     matchDateFilters.push(`EXTRACT(DOW FROM mh."startedAt") = ${dow}`);
     paymentDateFilters.push(`EXTRACT(DOW FROM sp."updateStatus") = ${dow}`);
+    manualDateFilters.push(`EXTRACT(DOW FROM mp."createdAt") = ${dow}`); // 🌟 Filter manual points by weekday if specified
   }
 
   const matchDateWhere =
@@ -326,6 +332,11 @@ export const getPlayerTotalCommunityGames = async (
   const paymentDateWhere =
     paymentDateFilters.length > 0
       ? `AND ${paymentDateFilters.join(" AND ")}`
+      : "";
+
+  const manualDateWhere =
+    manualDateFilters.length > 0
+      ? `AND ${manualDateFilters.join(" AND ")}`
       : "";
 
   // 4. Query Match History Stats grouped by community player
@@ -357,11 +368,25 @@ export const getPlayerTotalCommunityGames = async (
     GROUP BY cp.id;
   `;
 
+  // 🌟 6. Query Manual Points Stats grouped by community player
+  const manualStatsQuery = `
+    SELECT 
+      cp.id AS "communityPlayerId",
+      COALESCE(SUM(mp.points), 0)::INT AS "totalManualPoints"
+    FROM "CommunityPlayer" cp
+    JOIN "ManualPoint" mp ON mp."communityPlayerId" = cp.id
+    WHERE cp."communityId" = $1
+      ${manualDateWhere}
+    GROUP BY cp.id;
+  `;
+
   // Execute queries in parallel
-  const [matchStatsResults, paymentStatsResults] = await Promise.all([
-    prisma.$queryRawUnsafe(matchStatsQuery, communityId),
-    prisma.$queryRawUnsafe(paymentStatsQuery, communityId),
-  ]);
+  const [matchStatsResults, paymentStatsResults, manualStatsResults] =
+    await Promise.all([
+      prisma.$queryRawUnsafe(matchStatsQuery, communityId),
+      prisma.$queryRawUnsafe(paymentStatsQuery, communityId),
+      prisma.$queryRawUnsafe(manualStatsQuery, communityId), // 🌟 Execute manual points query
+    ]);
 
   // Convert results into lookup maps
   const statsMap = new Map(
@@ -370,16 +395,22 @@ export const getPlayerTotalCommunityGames = async (
   const paidMap = new Map(
     paymentStatsResults.map((p) => [p.communityPlayerId, p.paidSessionCount]),
   );
+  const manualMap = new Map(
+    manualStatsResults.map((m) => [m.communityPlayerId, m.totalManualPoints]),
+  ); // 🌟 Manual points lookup map
 
-  // 6. Merge filtered aggregated stats back onto the roster list
+  // 7. Merge filtered aggregated stats back onto the roster list
   return players.map((player) => {
     const matchStat = statsMap.get(player.id);
     const paidCount = paidMap.get(player.id) || 0;
+    const manualPoints = manualMap.get(player.id) || 0; // 🌟 Fetch player manual points sum
 
     const totalWins = matchStat?.totalCommunityWins || 0;
     const totalLosses = matchStat?.totalCommunityLosses || 0;
     const totalGames = matchStat?.totalCommunityGames || 0;
-    const totalPoints = totalWins + paidCount * 3;
+
+    // 🌟 Aggregate total points (Wins + Payments (3 pts each) + Manual Points)
+    const totalPoints = totalWins + paidCount * 3 + manualPoints;
 
     return {
       ...player,
@@ -388,6 +419,7 @@ export const getPlayerTotalCommunityGames = async (
       totalCommunityGames: totalGames,
       totalCommunityPoints: totalPoints,
       paidSessionCount: paidCount,
+      totalManualPoints: manualPoints, // Optional: exposes individual manual points tally if needed
     };
   });
 };

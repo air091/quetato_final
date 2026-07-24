@@ -81,6 +81,7 @@ const Dashboard = () => {
       );
       if (!response.ok) throw new Error("Http error", response.status);
       const data = await response.json();
+      console.log(data);
       if (!data.success) throw new Error(data?.message);
 
       // Filter results to only keep players with status "accepted"
@@ -135,6 +136,8 @@ const Dashboard = () => {
       const bLosses = b?.totalCommunityLosses ?? 0;
       const aGames = a?.totalCommunityGames ?? 0;
       const bGames = b?.totalCommunityGames ?? 0;
+
+      // 🌟 Explicitly integrate totalCommunityPoints (which encapsulates wins, payments, and manual points)
       const aPoints = a?.totalCommunityPoints ?? aWins;
       const bPoints = b?.totalCommunityPoints ?? bWins;
 
@@ -341,6 +344,8 @@ const Dashboard = () => {
               const totalWins = player?.totalCommunityWins ?? 0;
               const totalLosses = player?.totalCommunityLosses ?? 0;
               const totalGames = player?.totalCommunityGames ?? 0;
+
+              // 🌟 Total Points includes wins + payments + manual points returned by backend API
               const totalPoints = player?.totalCommunityPoints ?? totalWins;
 
               const isCurrentUser =

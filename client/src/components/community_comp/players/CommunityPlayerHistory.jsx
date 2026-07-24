@@ -14,7 +14,7 @@ import {
   Clock,
   Swords,
   AlertCircle,
-  Sliders,
+  Edit3,
 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { API_URL } from "../../../contexts/AuthContext";
@@ -64,10 +64,16 @@ const CommunityPlayerHistory = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Manual Point Editing/Deleting State
+  const [editingPoint, setEditingPoint] = useState(null); // { id, points, description }
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [deletingPointId, setDeletingPointId] = useState(null);
+  const [isDeletingAllPoints, setIsDeletingAllPoints] = useState(false);
+
   // Prevent closing when clicking inside modal, trigger onClose on outside click
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      if (isTransferOpen) return;
+      if (isTransferOpen || editingPoint) return;
       if (modalRef.current && !modalRef.current.contains(event.target)) {
         onClose();
       }
@@ -77,7 +83,7 @@ const CommunityPlayerHistory = ({
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [onClose, isTransferOpen]);
+  }, [onClose, isTransferOpen, editingPoint]);
 
   // Filter accepted community players by search query
   const filteredCommunityPlayers = communityPlayers.filter((cp) => {
@@ -85,30 +91,30 @@ const CommunityPlayerHistory = ({
     return name.toLowerCase().includes(searchQuery.toLowerCase().trim());
   });
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      if (!communityPlayerId) return;
+  const loadHistory = async () => {
+    if (!communityPlayerId) return;
 
-      try {
-        setIsLoading(true);
-        setError("");
-        const response = await fetchWithAuth(
-          `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history`,
-        );
-        const result = await response.json().catch(() => ({}));
+    try {
+      setIsLoading(true);
+      setError("");
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history`,
+      );
+      const result = await response.json().catch(() => ({}));
 
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "Could not load player history");
-        }
-
-        setData(result.results);
-      } catch (loadError) {
-        setError(loadError.message || "Could not load player history");
-      } finally {
-        setIsLoading(false);
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Could not load player history");
       }
-    };
 
+      setData(result.results);
+    } catch (loadError) {
+      setError(loadError.message || "Could not load player history");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadHistory();
   }, [communityId, communityPlayerId, fetchWithAuth]);
 
@@ -194,7 +200,6 @@ const CommunityPlayerHistory = ({
         matchHistoryIds: selectedMatchIds,
       };
 
-      // Call Community-Scoped Transfer API endpoint
       const res = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/transfer-games`,
         {
@@ -209,12 +214,10 @@ const CommunityPlayerHistory = ({
         throw new Error(errData.message || "Failed to transfer games");
       }
 
-      // Optimistically update local parent roster component
       if (typeof onOptimisticTransfer === "function") {
         onOptimisticTransfer(communityPlayerId, targetCommunityPlayerId);
       }
 
-      // Locally update history modal UI
       setData((prevData) => {
         if (!prevData) return prevData;
 
@@ -250,7 +253,6 @@ const CommunityPlayerHistory = ({
       setSelectedMatchIds([]);
       setTargetCommunityPlayerId("");
 
-      // Re-fetch parent data from backend
       if (typeof onGamesTransferred === "function") {
         onGamesTransferred();
       }
@@ -315,6 +317,98 @@ const CommunityPlayerHistory = ({
       alert(err.message || "An error occurred while deleting.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  // 🌟 Handle Update Manual Point
+  const handleUpdateManualPointSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingPoint) return;
+
+    const numPoints = parseInt(editingPoint.points, 10);
+    if (isNaN(numPoints) || !editingPoint.description.trim()) return;
+
+    try {
+      setIsSubmittingEdit(true);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/manual-points/${editingPoint.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            points: numPoints,
+            description: editingPoint.description.trim(),
+          }),
+        },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData?.message || "Failed to update manual point");
+      }
+
+      setEditingPoint(null);
+      loadHistory(); // Reload latest breakdown summary
+      if (typeof onGamesTransferred === "function") onGamesTransferred();
+    } catch (err) {
+      alert(err.message || "Failed to update manual point.");
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  // 🌟 Handle Delete Single Manual Point
+  const handleDeleteManualPoint = async (manualPointId) => {
+    if (
+      !window.confirm("Are you sure you want to delete this manual adjustment?")
+    )
+      return;
+
+    try {
+      setDeletingPointId(manualPointId);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/manual-points/${manualPointId}`,
+        { method: "DELETE" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData?.message || "Failed to delete manual point");
+      }
+
+      loadHistory();
+      if (typeof onGamesTransferred === "function") onGamesTransferred();
+    } catch (err) {
+      alert(err.message || "Failed to delete manual point.");
+    } finally {
+      setDeletingPointId(null);
+    }
+  };
+
+  // 🌟 Handle Delete All Manual Points
+  const handleDeleteAllManualPoints = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to remove ALL manual point adjustments for this player?",
+      )
+    )
+      return;
+
+    try {
+      setIsDeletingAllPoints(true);
+      const res = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/manual-points`,
+        { method: "DELETE" },
+      );
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData?.message || "Failed to clear manual points");
+      }
+
+      loadHistory();
+      if (typeof onGamesTransferred === "function") onGamesTransferred();
+    } catch (err) {
+      alert(err.message || "Failed to clear manual points.");
+    } finally {
+      setIsDeletingAllPoints(false);
     }
   };
 
@@ -632,9 +726,21 @@ const CommunityPlayerHistory = ({
 
               {/* Manual Points Section */}
               <div className="space-y-2.5">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                  Manual Point Adjustments
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                    Manual Point Adjustments
+                  </h4>
+                  {manualPointsList.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={isDeletingAllPoints}
+                      onClick={handleDeleteAllManualPoints}
+                      className="text-[10px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer disabled:opacity-50"
+                    >
+                      {isDeletingAllPoints ? "Clearing..." : "Delete All"}
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {manualPointsList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-200 bg-stone-50/30 p-4 text-center">
@@ -643,33 +749,69 @@ const CommunityPlayerHistory = ({
                       </p>
                     </div>
                   ) : (
-                    manualPointsList.map((entry) => (
-                      <article
-                        key={entry.id || entry.createdAt}
-                        className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
-                      >
-                        <div className="space-y-0.5">
-                          <p className="font-semibold text-stone-800">
-                            {entry.description || "Manual adjustment"}
-                          </p>
-                          <p className="text-[11px] text-stone-400">
-                            {formatDate(entry.createdAt)}
-                          </p>
-                        </div>
-                        <span
-                          className={`font-bold ${
-                            entry.points >= 0
-                              ? "text-emerald-700"
-                              : "text-rose-700"
-                          }`}
+                    manualPointsList.map((entry) => {
+                      const isDeletingThis = deletingPointId === entry.id;
+                      return (
+                        <article
+                          key={entry.id || entry.createdAt}
+                          className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
                         >
-                          {entry.points >= 0
-                            ? `+${entry.points}`
-                            : entry.points}{" "}
-                          pts
-                        </span>
-                      </article>
-                    ))
+                          <div className="space-y-0.5">
+                            <p className="font-semibold text-stone-800">
+                              {entry.description || "Manual adjustment"}
+                            </p>
+                            <p className="text-[11px] text-stone-400">
+                              {formatDate(entry.createdAt)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-x-2">
+                            <span
+                              className={`font-bold ${
+                                entry.points >= 0
+                                  ? "text-emerald-700"
+                                  : "text-rose-700"
+                              }`}
+                            >
+                              {entry.points >= 0
+                                ? `+${entry.points}`
+                                : entry.points}{" "}
+                              pts
+                            </span>
+                            <div className="flex items-center gap-x-1 ml-1 border-l border-amber-200 pl-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingPoint({
+                                    id: entry.id,
+                                    points: entry.points,
+                                    description: entry.description,
+                                  })
+                                }
+                                title="Edit manual adjustment"
+                                className="rounded p-1 text-stone-500 hover:bg-amber-100 hover:text-stone-800 transition-colors cursor-pointer"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDeleteManualPoint(entry.id)
+                                }
+                                disabled={isDeletingThis}
+                                title="Delete manual adjustment"
+                                className="rounded p-1 text-stone-500 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                {isDeletingThis ? (
+                                  <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
+                                ) : (
+                                  <Trash2 size={12} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -712,6 +854,84 @@ const CommunityPlayerHistory = ({
           )}
         </div>
       </div>
+
+      {/* 🌟 EDIT MANUAL POINT MODAL */}
+      {editingPoint && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-stone-900/50 p-4 font-sans backdrop-blur-xs animate-in fade-in duration-150"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="w-full max-w-xs space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <h4 className="text-sm font-bold text-stone-900">
+                Edit Manual Adjustment
+              </h4>
+              <button
+                type="button"
+                onClick={() => setEditingPoint(null)}
+                className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleUpdateManualPointSubmit}
+              className="space-y-3"
+            >
+              <div className="flex flex-col gap-y-1">
+                <label className="text-[10px] font-semibold uppercase text-stone-500">
+                  Points
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={editingPoint.points}
+                  onChange={(e) =>
+                    setEditingPoint({ ...editingPoint, points: e.target.value })
+                  }
+                  className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-500 bg-stone-50/50"
+                />
+              </div>
+
+              <div className="flex flex-col gap-y-1">
+                <label className="text-[10px] font-semibold uppercase text-stone-500">
+                  Description
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={editingPoint.description}
+                  onChange={(e) =>
+                    setEditingPoint({
+                      ...editingPoint,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 outline-none focus:border-amber-500 bg-stone-50/50 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-x-2 pt-1 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingPoint(null)}
+                  className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs py-2 rounded-xl font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEdit}
+                  className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white text-xs py-2 rounded-xl font-semibold shadow-sm cursor-pointer"
+                >
+                  {isSubmittingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Transfer Sub-Modal Overlay */}
       {isTransferOpen && (
