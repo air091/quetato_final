@@ -879,7 +879,7 @@ export const addManualPoints = async ({
   communityId,
   communityPlayerId,
   points,
-  description,
+  description = "No description",
   authorizedUserId,
 }) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
@@ -888,7 +888,6 @@ export const addManualPoints = async ({
   if (points === undefined || typeof points !== "number") {
     throw new AppError("Valid points value is required", 400);
   }
-  if (!description) throw new AppError("Description is required", 400);
 
   return await prisma.$transaction(async (tx) => {
     // 1. Authorization check

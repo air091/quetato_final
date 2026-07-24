@@ -262,8 +262,7 @@ const PlayerSettings = ({
   const handleAddManualPoints = async (e) => {
     e.preventDefault();
     const numPoints = parseInt(pointsValue, 10);
-    if (isNaN(numPoints) || !pointsDescription.trim() || isSubmittingPoints)
-      return;
+    if (isNaN(numPoints) || isSubmittingPoints) return;
 
     try {
       setIsSubmittingPoints(true);
@@ -571,7 +570,6 @@ const PlayerSettings = ({
                     Description
                   </label>
                   <textarea
-                    required
                     rows={2}
                     placeholder="Reason (e.g. Tournament winner bonus)"
                     value={pointsDescription}
