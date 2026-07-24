@@ -62,6 +62,7 @@ import {
   getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
   getPlayerTotalCommunityGamesController,
+  transferPlayerGamesController,
 } from "../controllers/gameHistory.controller.js";
 import {
   addPricingController,
@@ -273,6 +274,11 @@ router.get(
 router.get(
   "/:communityId/sessions/:sessionId/players/history",
   getPlayerTotalCommunityGamesController,
+);
+
+router.post(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/transfer-games",
+  transferPlayerGamesController,
 );
 
 router.delete(

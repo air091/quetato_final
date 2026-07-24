@@ -4,6 +4,7 @@ import {
   getCommunityPlayerHistory,
   getPlayerGameHistory,
   getPlayerTotalCommunityGames,
+  transferPlayerGames,
 } from "../services/matchHistory.service.js";
 
 export const getPlayerGameHistoryController = async (request, response) => {
@@ -85,6 +86,41 @@ export const deleteMatchHistoryController = async (request, response) => {
     );
 
     return response.status(200).json({ success: true, data: results });
+  } catch (error) {
+    console.error("Delete match history failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const transferPlayerGamesController = async (request, response) => {
+  try {
+    const { communityId, sessionId, sessionPlayerId } = request.params;
+    const { targetCommunityPlayerId, matchHistoryIds } = request.body;
+    const authorizedUserId = request.user?.sub;
+
+    const result = await transferPlayerGames({
+      communityId,
+      sessionId,
+      sourceSessionPlayerId: sessionPlayerId,
+      targetCommunityPlayerId,
+      matchHistoryIds,
+      authorizedUserId,
+    });
+
+    return response.status(200).json({
+      status: "success",
+      data: result,
+    });
   } catch (error) {
     console.error("Delete match history failed", error);
     let errMessage = "Internal server error";
