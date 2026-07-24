@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../../../hooks/useAuth";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import { API_URL } from "../../../../../contexts/AuthContext";
+import PlayerSettings from "../../../../../components/community_comp/players/PlayerSettings"; // Adjust path if needed
 
 const Dashboard = () => {
   const { fetchWithAuth, user } = useAuth();
   const [players, setPlayers] = useState([]);
   const { communityId } = useParams();
+
+  // Settings popover state
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const toggleButtonRef = useRef(null);
 
   // State configurations for interactive table sorting
   const [sortBy, setSortBy] = useState("points"); // Default column key to sort by
@@ -25,7 +30,14 @@ const Dashboard = () => {
       const data = await response.json();
       if (!data.success) throw new Error(data?.message);
 
-      setPlayers(data?.results ?? []);
+      // Filter results to only keep players with status "accepted"
+      const acceptedPlayers = (data?.results ?? []).filter(
+        (player) =>
+          player?.status === "accepted" ||
+          player?.communityPlayer?.status === "accepted",
+      );
+
+      setPlayers(acceptedPlayers);
     } catch (error) {
       console.error(error);
     }
@@ -86,10 +98,6 @@ const Dashboard = () => {
 
     return (
       <div className="relative flex items-center justify-center w-4 h-4">
-        {/* 
-        Default generic placeholder icon when column is inactive. 
-        Fades out smoothly when the column becomes active.
-      */}
         <ArrowUpDown
           size={14}
           className={`absolute transition-all duration-300 ${
@@ -98,11 +106,6 @@ const Dashboard = () => {
               : "opacity-30 group-hover:opacity-100 scale-100"
           }`}
         />
-
-        {/* 
-        Active state indicator icon. 
-        Rotates 180 degrees seamlessly when changing order from 'desc' to 'asc'.
-      */}
         <ArrowDown
           size={14}
           className={`absolute text-stone-900 transition-all duration-300 ease-in-out ${
@@ -114,6 +117,12 @@ const Dashboard = () => {
       </div>
     );
   };
+
+  const handlePlayerClick = (e, player) => {
+    toggleButtonRef.current = e.currentTarget;
+    setSelectedPlayer(player);
+  };
+
   const sortedPlayers = getSortedPlayers();
 
   return (
@@ -125,8 +134,6 @@ const Dashboard = () => {
               <th className="p-4 text-stone-700 normal-case text-sm font-bold">
                 Player
               </th>
-
-              {/* Clickable Wins Column Header */}
               <th
                 onClick={() => handleSort("wins")}
                 className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[95px] text-center"
@@ -138,8 +145,6 @@ const Dashboard = () => {
                   </span>
                 </div>
               </th>
-
-              {/* Clickable Losses Column Header */}
               <th
                 onClick={() => handleSort("losses")}
                 className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[95px] text-center"
@@ -151,8 +156,6 @@ const Dashboard = () => {
                   </span>
                 </div>
               </th>
-
-              {/* Clickable Total Points Column Header */}
               <th
                 onClick={() => handleSort("points")}
                 className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[120px] text-center"
@@ -164,8 +167,6 @@ const Dashboard = () => {
                   </span>
                 </div>
               </th>
-
-              {/* Clickable Total Games Column Header */}
               <th
                 onClick={() => handleSort("games")}
                 className="p-4 cursor-pointer hover:bg-stone-100/80 transition-colors select-none group w-[120px] text-center"
@@ -187,17 +188,17 @@ const Dashboard = () => {
               const totalGames = player?.totalCommunityGames ?? 0;
               const totalPoints = player?.totalCommunityPoints ?? totalWins;
 
-              // Safely check if this is the current logged-in user
               const isCurrentUser =
                 user && player?.communityPlayer?.id === user?.id;
 
               return (
                 <tr
                   key={player?.id}
-                  className={`transition-colors duration-150 ${
+                  onClick={(e) => handlePlayerClick(e, player)}
+                  className={`cursor-pointer transition-colors duration-150 ${
                     isCurrentUser
-                      ? "bg-amber-50/60 hover:bg-amber-50"
-                      : "hover:bg-stone-50/40"
+                      ? "bg-amber-50/60 hover:bg-amber-100"
+                      : "hover:bg-stone-200"
                   }`}
                 >
                   {/* Primary Identifier */}
@@ -236,28 +237,24 @@ const Dashboard = () => {
                     </div>
                   </td>
 
-                  {/* Wins Count - Clear green distinction */}
                   <td className="p-4 text-sm text-center">
                     <span className="inline-flex items-center justify-center px-2 py-0.5 font-bold text-green-700 bg-green-50/60 rounded-md min-w-[36px] border border-green-100/50">
                       {totalWins}
                     </span>
                   </td>
 
-                  {/* Losses Count */}
                   <td className="p-4 text-sm text-center">
                     <span className="inline-flex items-center justify-center px-2 py-0.5 font-semibold text-stone-600 bg-stone-50 rounded-md min-w-[36px] border border-stone-200/40">
                       {totalLosses}
                     </span>
                   </td>
 
-                  {/* Total Points Metric */}
                   <td className="p-4 text-sm text-center">
                     <span className="inline-flex items-center justify-center px-2 py-0.5 font-bold text-amber-700 bg-amber-50/60 rounded-md min-w-[36px] border border-amber-100/50">
                       {totalPoints}
                     </span>
                   </td>
 
-                  {/* Total Summary Field */}
                   <td className="p-4 text-sm text-center font-semibold text-stone-500">
                     {totalGames}
                   </td>
@@ -278,6 +275,17 @@ const Dashboard = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Render settings popover when a player is selected */}
+      {selectedPlayer && (
+        <PlayerSettings
+          player={selectedPlayer}
+          type={selectedPlayer?.communityPlayer?.type || "user"}
+          toggleButtonRef={toggleButtonRef}
+          onClose={() => setSelectedPlayer(null)}
+          onUpdatePlayerStatus={getPlayers}
+        />
+      )}
     </div>
   );
 };
