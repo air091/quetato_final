@@ -32,6 +32,8 @@ const PlayerSettings = ({
   onUpdatePlayerStatus,
   type, // "static" (guest) or "user" (registered user)
   isRequest = false, // 🌟 New flag passed when mapping through requested players
+  onOptimisticTransfer,
+  onGamesTransferred,
   isManagement = false,
 }) => {
   const containerRef = useRef(null);
@@ -41,13 +43,12 @@ const PlayerSettings = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCommunityHistoryOpen, setIsCommunityHistoryOpen] = useState(false);
 
-  // Fallbacks depending on your payload structure (adjusting to fit community level data shape)
+  // Fallbacks depending on your payload structure
   const initialUsername =
     player?.username || player?.communityPlayer?.username || "";
   const initialSkillLevel =
     player?.skillLevel || player?.communityPlayer?.skillLevel || "BEG";
-  // CommunityPlayer.id identifies the membership record. The static-player
-  // endpoint updates the underlying User record instead.
+
   const userId = player?.communityPlayer?.id || player?.id;
   const communityPlayerId = player?.id;
 
@@ -134,7 +135,6 @@ const PlayerSettings = ({
   const handleRemovePlayer = useCallback(async () => {
     if (!communityId || !userId || isUpdating) return;
 
-    // Determine explicit endpoint action tag or method depending on if they are static or user
     const isStatic = type === "static";
     const endpoint = isStatic
       ? `${API_URL}/api/communities/${communityId}/players/${userId}/static`
@@ -289,7 +289,7 @@ const PlayerSettings = ({
 
             <div className="p-2">
               {isRequest ? (
-                /* 🎯 JOIN REQUESTED (GUEST) PLAYERS SETTINGS LAYOUT */
+                /* 🎯 JOIN REQUESTED PLAYERS SETTINGS LAYOUT */
                 <div className="space-y-3 p-0.5">
                   <div className="flex flex-col gap-y-0.5">
                     <span className="text-[10px] font-medium uppercase tracking-wider text-stone-400">
@@ -386,7 +386,7 @@ const PlayerSettings = ({
                   <button
                     type="button"
                     onClick={() => setIsCommunityHistoryOpen(true)}
-                    className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                    className="w-full rounded bg-blue-50 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100 cursor-pointer"
                   >
                     Points & session history
                   </button>
@@ -403,7 +403,6 @@ const PlayerSettings = ({
                     </span>
                   </div>
 
-                  {/* 🔵 This stays visible to everyone, including the member! */}
                   <button
                     type="button"
                     onClick={() => setIsCommunityHistoryOpen(true)}
@@ -412,11 +411,9 @@ const PlayerSettings = ({
                     Points & session history
                   </button>
 
-                  {/* 👇 Protect the administrative kick logic via isManagement check */}
                   {isManagement && player?.role !== "owner" && (
                     <div className="flex flex-col gap-y-2 pt-1 border-t border-stone-100">
                       {player?.role === "admin" ? (
-                        /* 🛡️ NEW ACTION: Demote/Remove admin privilege */
                         <button
                           type="button"
                           onClick={handleRemoveAsAdmin}
@@ -426,7 +423,6 @@ const PlayerSettings = ({
                           {isUpdating ? "Processing..." : "Remove as Admin"}
                         </button>
                       ) : (
-                        /* Standard Player Promotion options */
                         <button
                           type="button"
                           onClick={() => setIsAssignModalOpen(true)}
@@ -465,7 +461,7 @@ const PlayerSettings = ({
           player={player}
           onClose={() => {
             setIsAssignModalOpen(false);
-            onClose(); // 🎯 Close the parent menu completely on modal exit
+            onClose();
           }}
           onUpdatePlayerStatus={onUpdatePlayerStatus}
         />
@@ -477,6 +473,8 @@ const PlayerSettings = ({
           communityPlayerId={communityPlayerId}
           username={initialUsername || "Player"}
           onClose={() => setIsCommunityHistoryOpen(false)}
+          onOptimisticTransfer={onOptimisticTransfer}
+          onGamesTransferred={onGamesTransferred || onUpdatePlayerStatus}
         />
       )}
     </>

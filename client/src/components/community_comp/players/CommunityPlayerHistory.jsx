@@ -42,6 +42,7 @@ const CommunityPlayerHistory = ({
   communityPlayerId,
   username,
   onClose,
+  onOptimisticTransfer,
   onGamesTransferred,
 }) => {
   const { fetchWithAuth } = useAuth();
@@ -207,7 +208,12 @@ const CommunityPlayerHistory = ({
         throw new Error(errData.message || "Failed to transfer games");
       }
 
-      // Locally update the UI to filter out transferred matches
+      // Optimistically update local parent roster component
+      if (typeof onOptimisticTransfer === "function") {
+        onOptimisticTransfer(communityPlayerId, targetCommunityPlayerId);
+      }
+
+      // Locally update history modal UI
       setData((prevData) => {
         if (!prevData) return prevData;
 
@@ -242,6 +248,7 @@ const CommunityPlayerHistory = ({
       setSelectedMatchIds([]);
       setTargetCommunityPlayerId("");
 
+      // Re-fetch parent data from backend
       if (typeof onGamesTransferred === "function") {
         onGamesTransferred();
       }
@@ -297,6 +304,10 @@ const CommunityPlayerHistory = ({
           history: updatedHistory,
         };
       });
+
+      if (typeof onGamesTransferred === "function") {
+        onGamesTransferred();
+      }
     } catch (err) {
       alert(err.message || "An error occurred while deleting.");
     } finally {
@@ -643,7 +654,6 @@ const CommunityPlayerHistory = ({
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="w-full max-w-sm space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-xl">
-            {/* Sub-modal Header */}
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-x-2">
                 <ArrowRightLeft className="text-orange-500" size={18} />
@@ -679,7 +689,6 @@ const CommunityPlayerHistory = ({
               </div>
             )}
 
-            {/* Target Player Selection & Search */}
             <div className="relative space-y-1.5">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 Target Player
@@ -692,7 +701,6 @@ const CommunityPlayerHistory = ({
                 </div>
               ) : (
                 <div className="relative">
-                  {/* Search Input Box */}
                   <div className="relative">
                     <input
                       type="text"
@@ -725,7 +733,6 @@ const CommunityPlayerHistory = ({
                     )}
                   </div>
 
-                  {/* Floating Options Dropdown */}
                   {isDropdownOpen && (
                     <div
                       className="absolute left-0 right-0 top-full z-30 mt-1.5 max-h-40 overflow-y-auto rounded-xl border border-stone-200/80 bg-white p-1 shadow-xl space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150"
@@ -772,7 +779,6 @@ const CommunityPlayerHistory = ({
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex items-center gap-x-2 border-t border-stone-100 pt-2">
               <button
                 type="button"

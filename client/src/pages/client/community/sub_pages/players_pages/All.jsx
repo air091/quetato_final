@@ -23,15 +23,14 @@ const All = () => {
   const [isRequestMinimized, setIsRequestMinimized] = useState(true);
   const [isAddStaticPlayerModalOpen, setIsAddStaticPlayerModalOpen] =
     useState(false);
-  // 🌟 State to track which settings dropdown is open and its button anchor ref
-  const [activeMenu, setActiveMenu] = useState(null); // Structure: { playerId: string, ref: ReactRef }
+  const [activeMenu, setActiveMenu] = useState(null);
 
   const getAllSession = useCallback(async () => {
     if (!communityId) return;
 
     try {
       const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players`,
+        `${API_URL}/api/communities/${communityId}/players?t=${Date.now()}`,
         { method: "GET" },
       );
 
@@ -55,7 +54,40 @@ const All = () => {
     getAllSession();
   }, [getAllSession]);
 
-  // Dynamic assignment handler to pass down specific element triggers
+  const handleOptimisticTransfer = (sourcePlayerId, targetPlayerId) => {
+    setPlayers((prevPlayers) => {
+      const sourcePlayer = prevPlayers.find((p) => p.id === sourcePlayerId);
+      if (!sourcePlayer) return prevPlayers;
+
+      const transferredPaidCount = sourcePlayer.paidSessionCount || 0;
+      const transferredPaidPoints = transferredPaidCount * 3;
+
+      return prevPlayers.map((p) => {
+        if (p.id === sourcePlayerId) {
+          return {
+            ...p,
+            paidSessionCount: 0,
+            totalCommunityPoints: Math.max(
+              0,
+              (p.totalCommunityPoints || 0) - transferredPaidPoints,
+            ),
+          };
+        }
+
+        if (p.id === targetPlayerId) {
+          return {
+            ...p,
+            paidSessionCount: (p.paidSessionCount || 0) + transferredPaidCount,
+            totalCommunityPoints:
+              (p.totalCommunityPoints || 0) + transferredPaidPoints,
+          };
+        }
+
+        return p;
+      });
+    });
+  };
+
   const handleToggleMenu = (e, player) => {
     e.stopPropagation();
     if (activeMenu?.playerId === player.id) {
@@ -63,7 +95,6 @@ const All = () => {
     } else {
       setActiveMenu({
         playerId: player.id,
-        // Mock a standard React element ref container for the absolute layout setup
         current: e.currentTarget,
       });
     }
@@ -223,6 +254,8 @@ const All = () => {
                               toggleButtonRef={activeMenu}
                               onClose={() => setActiveMenu(null)}
                               onUpdatePlayerStatus={getAllSession}
+                              onGamesTransferred={getAllSession}
+                              onOptimisticTransfer={handleOptimisticTransfer}
                               isManagement={isManagement}
                             />
                           )}
@@ -323,7 +356,6 @@ const All = () => {
                         )}
 
                       <div className="relative">
-                        {/* 👇 ALLOW trigger if you are management OR if the card belongs to the logged-in user */}
                         {(isManagement || isCurrentUser) && (
                           <div className="relative">
                             <button
@@ -340,7 +372,8 @@ const All = () => {
                                 toggleButtonRef={activeMenu}
                                 onClose={() => setActiveMenu(null)}
                                 onUpdatePlayerStatus={getAllSession}
-                                // 👇 Pass along whether the viewer has management access or is viewing themselves
+                                onGamesTransferred={getAllSession}
+                                onOptimisticTransfer={handleOptimisticTransfer}
                                 isManagement={isManagement}
                               />
                             )}
@@ -462,6 +495,10 @@ const All = () => {
                                   toggleButtonRef={activeMenu}
                                   onClose={() => setActiveMenu(null)}
                                   onUpdatePlayerStatus={getAllSession}
+                                  onGamesTransferred={getAllSession}
+                                  onOptimisticTransfer={
+                                    handleOptimisticTransfer
+                                  }
                                   isRequest={player.role === "guest"}
                                 />
                               )}
