@@ -7,6 +7,7 @@ import {
   Calendar,
   RotateCcw,
   Search,
+  X,
 } from "lucide-react";
 import PlayerAvatar from "../../../../../components/PlayerAvatar";
 import { API_URL } from "../../../../../contexts/AuthContext";
@@ -55,7 +56,7 @@ const Dashboard = () => {
   const toggleButtonRef = useRef(null);
 
   // Search & Date Filter States
-  const [searchQuery, setSearchQuery] = useState(""); // 🌟 Search Player State
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [dayFilterType, setDayFilterType] = useState("all"); // 'all' | 'specific' | 'weekday'
   const [selectedDay, setSelectedDay] = useState("");
@@ -115,7 +116,7 @@ const Dashboard = () => {
   }, [getPlayers]);
 
   const handleResetFilters = () => {
-    setSearchQuery(""); // 🌟 Reset search query as well
+    setSearchQuery("");
     setSelectedMonth("");
     setDayFilterType("all");
     setSelectedDay("");
@@ -136,7 +137,7 @@ const Dashboard = () => {
   const getSortedPlayers = () => {
     if (!players) return [];
 
-    // 🌟 Filter players based on search query match against username
+    // Filter players based on search query match against username
     const filteredBySearch = players.filter((player) => {
       const username = player?.communityPlayer?.username || "";
       return username.toLowerCase().includes(searchQuery.toLowerCase().trim());
@@ -224,7 +225,7 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-x-2 flex-wrap">
-          {/* 🌟 Search Input Field */}
+          {/* Search Input Field with Clear (X) Button */}
           <div className="relative flex items-center">
             <Search
               size={14}
@@ -235,8 +236,18 @@ const Dashboard = () => {
               placeholder="Search player..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg pl-8 pr-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors w-[140px]"
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg pl-8 pr-7 py-1.5 outline-none focus:border-stone-400 transition-colors w-[150px]"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
           {/* Month Filter */}
