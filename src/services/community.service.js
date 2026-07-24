@@ -133,6 +133,7 @@ export const createCommunity = async (name, description, ownerId) => {
         communityId: community.id,
         userId: ownerId,
         role: "owner",
+        status: "accepted",
       },
     });
 
