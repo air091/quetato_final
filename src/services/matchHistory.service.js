@@ -579,15 +579,23 @@ export const transferPlayerGames = async ({
     });
 
     // 7. Payment Status Transfer Handling
-    // If the source player was marked as "paid", pass the status over to target player
-    if (
-      sourceSessionPlayer.gameStatus === "paid" &&
-      targetSessionPlayer.gameStatus !== "paid"
-    ) {
+    // Transfer paid status to target player AND make source player unpaid ("waiting")
+    if (sourceSessionPlayer.gameStatus === "paid") {
+      if (targetSessionPlayer.gameStatus !== "paid") {
+        await tx.sessionPlayer.update({
+          where: { id: targetSessionPlayer.id },
+          data: {
+            gameStatus: "paid",
+            updateStatus: new Date(),
+            updatedBy: authorizedPlayer.id,
+          },
+        });
+      }
+
       await tx.sessionPlayer.update({
-        where: { id: targetSessionPlayer.id },
+        where: { id: sourceSessionPlayer.id },
         data: {
-          gameStatus: "paid",
+          gameStatus: "waiting",
           updateStatus: new Date(),
           updatedBy: authorizedPlayer.id,
         },
@@ -757,20 +765,29 @@ export const transferCommunityPlayerGames = async ({
         data: { sessionPlayerId: targetSessionPlayer.id },
       });
 
-      // Pass paid status to target session player if applicable
-      if (
-        sourceSessionPlayer?.gameStatus === "paid" &&
-        targetSessionPlayer.gameStatus !== "paid"
-      ) {
+      // Pass paid status to target session player AND revert source player to "waiting"
+      if (sourceSessionPlayer?.gameStatus === "paid") {
+        if (targetSessionPlayer.gameStatus !== "paid") {
+          await tx.sessionPlayer.update({
+            where: { id: targetSessionPlayer.id },
+            data: {
+              gameStatus: "paid",
+              updateStatus: new Date(),
+              updatedBy: authorizedPlayer.id,
+            },
+          });
+          targetSessionPlayer.gameStatus = "paid";
+        }
+
         await tx.sessionPlayer.update({
-          where: { id: targetSessionPlayer.id },
+          where: { id: sourceSessionPlayer.id },
           data: {
-            gameStatus: "paid",
+            gameStatus: "waiting",
             updateStatus: new Date(),
             updatedBy: authorizedPlayer.id,
           },
         });
-        targetSessionPlayer.gameStatus = "paid";
+        sourceSessionPlayer.gameStatus = "waiting";
       }
 
       totalTransferredCount++;

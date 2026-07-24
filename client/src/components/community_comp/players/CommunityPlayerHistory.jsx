@@ -176,7 +176,7 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // Perform Transfer
+  // Perform Community-Level Transfer
   const handleExecuteTransfer = async () => {
     if (!targetCommunityPlayerId) {
       setTransferError("Please select a target player to transfer matches to.");
@@ -192,6 +192,7 @@ const CommunityPlayerHistory = ({
         matchHistoryIds: selectedMatchIds,
       };
 
+      // Call Community-Scoped Transfer API endpoint
       const res = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/transfer-games`,
         {
@@ -206,7 +207,7 @@ const CommunityPlayerHistory = ({
         throw new Error(errData.message || "Failed to transfer games");
       }
 
-      // Locally filter out transferred matches
+      // Locally update the UI to filter out transferred matches
       setData((prevData) => {
         if (!prevData) return prevData;
 
@@ -221,6 +222,7 @@ const CommunityPlayerHistory = ({
         const totalWins = updatedHistory.filter(
           (g) => g.result === "win" || g.playerPersonalResult === "win",
         ).length;
+        const paymentPoints = prevData.summary.paymentPoints || 0;
 
         return {
           ...prevData,
@@ -228,6 +230,9 @@ const CommunityPlayerHistory = ({
             ...prevData.summary,
             totalGames,
             totalWins,
+            totalLosses: totalGames - totalWins,
+            winPoints: totalWins,
+            totalPoints: totalWins + paymentPoints,
           },
           history: updatedHistory,
         };
@@ -273,14 +278,21 @@ const CommunityPlayerHistory = ({
           (item) => item.matchHistoryId !== matchHistoryId,
         );
 
+        const totalGames = updatedHistory.length;
+        const totalWins = updatedHistory.filter(
+          (g) => g.result === "win" || g.playerPersonalResult === "win",
+        ).length;
+        const paymentPoints = prevData.summary.paymentPoints || 0;
+
         return {
           ...prevData,
           summary: {
             ...prevData.summary,
-            totalGames: updatedHistory.length,
-            totalWins: updatedHistory.filter(
-              (g) => g.result === "win" || g.playerPersonalResult === "win",
-            ).length,
+            totalGames,
+            totalWins,
+            totalLosses: totalGames - totalWins,
+            winPoints: totalWins,
+            totalPoints: totalWins + paymentPoints,
           },
           history: updatedHistory,
         };
@@ -636,7 +648,7 @@ const CommunityPlayerHistory = ({
               <div className="flex items-center gap-x-2">
                 <ArrowRightLeft className="text-orange-500" size={18} />
                 <h4 className="text-sm font-bold text-stone-900">
-                  Transfer Games
+                  Transfer Community Games
                 </h4>
               </div>
               <button
