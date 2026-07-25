@@ -28,7 +28,7 @@ const All = () => {
   const [isAddStaticPlayerModalOpen, setIsAddStaticPlayerModalOpen] =
     useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
-
+  // swhatt
   const getAllSession = useCallback(async () => {
     if (!communityId) return;
 
