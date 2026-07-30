@@ -62,9 +62,10 @@ const Dashboard = () => {
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
 
-  // State configurations for interactive table sorting
+  // State configurations for interactive table sorting & pagination
   const [sortBy, setSortBy] = useState("points"); // Default column key to sort by
   const [order, setOrder] = useState("desc"); // Default sorting order ('desc' or 'asc')
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const getPlayers = useCallback(async () => {
     if (!communityId) return;
@@ -115,12 +116,24 @@ const Dashboard = () => {
     getPlayers();
   }, [getPlayers]);
 
+  // Reset visible count when search or filters change
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [
+    searchQuery,
+    selectedMonth,
+    dayFilterType,
+    selectedDay,
+    selectedDayOfWeek,
+  ]);
+
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedMonth("");
     setDayFilterType("all");
     setSelectedDay("");
     setSelectedDayOfWeek("");
+    setVisibleCount(8);
   };
 
   // Click handler to toggle sort column and direction
@@ -131,6 +144,7 @@ const Dashboard = () => {
       setSortBy(columnKey);
       setOrder("desc"); // Default to highest performance metrics first when swapping columns
     }
+    setVisibleCount(8);
   };
 
   // Helper function to dynamically filter by search and sort data locally
@@ -208,6 +222,9 @@ const Dashboard = () => {
   };
 
   const sortedPlayers = getSortedPlayers();
+  const paginatedPlayers = sortedPlayers.slice(0, visibleCount);
+  const hasMorePlayers = visibleCount < sortedPlayers.length;
+
   const isFiltered = Boolean(
     searchQuery ||
     selectedMonth ||
@@ -380,7 +397,7 @@ const Dashboard = () => {
           </thead>
 
           <tbody className="divide-y divide-stone-100">
-            {sortedPlayers.map((player) => {
+            {paginatedPlayers.map((player) => {
               const totalWins = player?.totalCommunityWins ?? 0;
               const totalLosses = player?.totalCommunityLosses ?? 0;
               const totalGames = player?.totalCommunityGames ?? 0;
@@ -460,7 +477,7 @@ const Dashboard = () => {
               );
             })}
 
-            {sortedPlayers.length === 0 && (
+            {paginatedPlayers.length === 0 && (
               <tr>
                 <td
                   colSpan={5}
@@ -473,6 +490,19 @@ const Dashboard = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Load More Button Section */}
+      {hasMorePlayers && (
+        <div className="p-3 bg-stone-50/50 border-t border-stone-200 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + 8)}
+            className="px-4 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer shadow-sm"
+          >
+            Load More ({sortedPlayers.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
 
       {/* Render settings popover when a player is selected */}
       {selectedPlayer && (

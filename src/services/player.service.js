@@ -27,24 +27,12 @@ export const getAllPlayers = async (
     communityId: communityId,
     role: "player",
     ...(search.trim() && {
-      OR: [
-        {
-          communityPlayer: {
-            username: {
-              contains: search.trim(),
-              mode: "insensitive",
-            },
-          },
+      communityPlayer: {
+        username: {
+          contains: search.trim(),
+          mode: "insensitive",
         },
-        {
-          player: {
-            username: {
-              contains: search.trim(),
-              mode: "insensitive",
-            },
-          },
-        },
-      ],
+      },
     }),
   };
 

@@ -20,7 +20,8 @@ const All = () => {
   const [managementPlayersList, setManagementPlayersList] = useState([]);
 
   // Search, Sort & Server-side Pagination State
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortOrder, setSortOrder] = useState("a-z"); // 'a-z' or 'z-a'
   const [page, setPage] = useState(1);
   const [hasMoreRegularPlayers, setHasMoreRegularPlayers] = useState(false);
@@ -33,7 +34,18 @@ const All = () => {
     useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
 
-  // Fetch players with server-side pagination, search, and sort parameters
+  // Debounce search input like CommunityActivities.jsx to prevent 500 errors on keystrokes
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // Fetch players with server-side pagination, debounced search, and sort parameters
   const getAllPlayers = useCallback(
     async (currentPage = 1, isAppending = false) => {
       if (!communityId) return;
@@ -42,10 +54,14 @@ const All = () => {
         const queryParams = new URLSearchParams({
           page: currentPage,
           limit: 5,
-          search: searchTerm,
           sort: sortOrder,
           t: Date.now(),
         });
+
+        // Only append the search query if it actually has text
+        if (debouncedSearch.trim()) {
+          queryParams.append("search", debouncedSearch.trim());
+        }
 
         const response = await fetchWithAuth(
           `${API_URL}/api/communities/${communityId}/players?${queryParams.toString()}`,
@@ -73,7 +89,7 @@ const All = () => {
         console.error("Failed to fetch players:", error);
       }
     },
-    [fetchWithAuth, communityId, searchTerm, sortOrder],
+    [fetchWithAuth, communityId, debouncedSearch, sortOrder],
   );
 
   // Fetch owners and admins using the managements endpoint
@@ -102,12 +118,12 @@ const All = () => {
     }
   }, [fetchWithAuth, communityId]);
 
-  // Reset to page 1 and fetch when search or sort criteria changes
+  // Reset to page 1 and fetch when debounced search or sort criteria changes
   useEffect(() => {
     setPage(1);
     getAllPlayers(1, false);
     getManagementTeam();
-  }, [getAllPlayers, getManagementTeam, searchTerm, sortOrder]);
+  }, [getAllPlayers, getManagementTeam, debouncedSearch, sortOrder]);
 
   const handleDataRefresh = () => {
     setPage(1);
@@ -173,7 +189,9 @@ const All = () => {
       .filter((p) => {
         const username =
           p?.communityPlayer?.username || p?.player?.username || "";
-        return username.toLowerCase().includes(searchTerm.toLowerCase().trim());
+        return username
+          .toLowerCase()
+          .includes(debouncedSearch.toLowerCase().trim());
       })
       .sort((a, b) => {
         const nameA = (
@@ -263,14 +281,14 @@ const All = () => {
           <input
             type="text"
             placeholder="Search players by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-stone-400 focus:bg-white transition-colors"
           />
-          {searchTerm && (
+          {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchTerm("")}
+              onClick={() => setSearchQuery("")}
               className="absolute right-2.5 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
               title="Clear search"
             >
