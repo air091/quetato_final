@@ -3,8 +3,16 @@ import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import { randomUUID } from "crypto";
 
-export const getAllPlayers = async (communityId) => {
+// player.service.js
+export const getAllPlayers = async (
+  communityId,
+  page = 1,
+  limit = 5,
+  search = "",
+  sort = "a-z",
+) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
+
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: { id: true },
@@ -12,24 +20,74 @@ export const getAllPlayers = async (communityId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const players = await prisma.communityPlayer.findMany({
-    where: {
-      communityId: communityId,
-      role: "player",
-    },
-    include: {
-      communityPlayer: {
-        select: {
-          id: true,
-          username: true,
-          type: true,
-          skillLevel: true,
+  const skip = (page - 1) * limit;
+
+  // Build dynamic where clause for filtering/searching and role
+  const whereClause = {
+    communityId: communityId,
+    role: "player",
+    ...(search.trim() && {
+      OR: [
+        {
+          communityPlayer: {
+            username: {
+              contains: search.trim(),
+              mode: "insensitive",
+            },
+          },
         },
+        {
+          player: {
+            username: {
+              contains: search.trim(),
+              mode: "insensitive",
+            },
+          },
+        },
+      ],
+    }),
+  };
+
+  // Build dynamic sort order
+  const orderBy = [
+    {
+      communityPlayer: {
+        username: sort === "z-a" ? "desc" : "asc",
       },
     },
-  });
+  ];
 
-  return players;
+  // Fetch paginated players and total count concurrently
+  const [players, totalCount] = await Promise.all([
+    prisma.communityPlayer.findMany({
+      where: whereClause,
+      include: {
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+            type: true,
+            skillLevel: true,
+          },
+        },
+      },
+      orderBy,
+      skip,
+      take: limit,
+    }),
+    prisma.communityPlayer.count({ where: whereClause }),
+  ]);
+
+  return {
+    players,
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+      hasMore: skip + players.length < totalCount,
+    },
+  };
 };
 
 export const getCommunityManagement = async (communityId) => {

@@ -19,9 +19,10 @@ const All = () => {
   const [players, setPlayers] = useState([]);
   const [managementPlayersList, setManagementPlayersList] = useState([]);
 
-  // Search & Sort State
+  // Search, Sort & Pagination State
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("a-z"); // 'a-z' or 'z-a'
+  const [visibleRegularCount, setVisibleRegularCount] = useState(5);
 
   const [isStaticMinimized, setIsStaticMinimized] = useState(true);
   const [isUserMinimized, setIsUserMinimized] = useState(true);
@@ -30,8 +31,8 @@ const All = () => {
     useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
 
-  // Fetch all players
-  const getAllSession = useCallback(async () => {
+  // Fetch all players with role "player"
+  const getAllPlayers = useCallback(async () => {
     if (!communityId) return;
 
     try {
@@ -50,13 +51,13 @@ const All = () => {
         throw new Error(data?.message || "An unknown error occurred");
       }
 
-      setPlayers(data.player);
+      setPlayers(data.players || []);
     } catch (error) {
       console.error("Failed to fetch players:", error);
     }
   }, [fetchWithAuth, communityId]);
 
-  // Fetch owners and admins using the new managements endpoint
+  // Fetch owners and admins using the managements endpoint
   const getManagementTeam = useCallback(async () => {
     if (!communityId) return;
 
@@ -83,12 +84,17 @@ const All = () => {
   }, [fetchWithAuth, communityId]);
 
   useEffect(() => {
-    getAllSession();
+    getAllPlayers();
     getManagementTeam();
-  }, [getAllSession, getManagementTeam]);
+  }, [getAllPlayers, getManagementTeam]);
+
+  // Reset visible count when search term or sort order changes
+  useEffect(() => {
+    setVisibleRegularCount(5);
+  }, [searchTerm, sortOrder]);
 
   const handleDataRefresh = () => {
-    getAllSession();
+    getAllPlayers();
     getManagementTeam();
   };
 
@@ -169,20 +175,16 @@ const All = () => {
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
 
-  // Combine management endpoint data with hosts from the general players list if necessary,
-  // or filter directly from the dedicated management list endpoint.
-  const combinedManagement = [
-    ...managementPlayersList,
-    ...players.filter(
-      (p) =>
-        p.role === "host" && !managementPlayersList.some((m) => m.id === p.id),
-    ),
-  ];
-
-  const managementPlayers = getFilteredAndSortedPlayers(combinedManagement);
-  const regularPlayers = getFilteredAndSortedPlayers(
+  const managementPlayers = getFilteredAndSortedPlayers(managementPlayersList);
+  const filteredRegularPlayers = getFilteredAndSortedPlayers(
     players.filter((p) => p.role === "player"),
   );
+
+  // Paginated list for regular players
+  const regularPlayers = filteredRegularPlayers.slice(0, visibleRegularCount);
+  const hasMoreRegularPlayers =
+    visibleRegularCount < filteredRegularPlayers.length;
+
   const requestedPlayers = getFilteredAndSortedPlayers(
     players.filter((p) => p.role === "guest"),
   );
@@ -388,7 +390,7 @@ const All = () => {
               All Regular & Static Players
             </h4>
             <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
-              {regularPlayers.length}
+              {filteredRegularPlayers.length}
             </span>
           </div>
           <span
@@ -489,6 +491,20 @@ const All = () => {
                 </div>
               );
             })}
+
+            {hasMoreRegularPlayers && (
+              <div className="p-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleRegularCount((prev) => prev + 5)}
+                  className="px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer shadow-sm"
+                >
+                  Load More (
+                  {filteredRegularPlayers.length - visibleRegularCount}{" "}
+                  remaining)
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

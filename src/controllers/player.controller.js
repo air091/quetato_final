@@ -22,8 +22,18 @@ import {
 export const getAllPlayersController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    const players = await getAllPlayers(communityId);
-    return response.status(200).json({ success: true, players });
+    const page = parseInt(request.query.page, 10) || 1;
+    const limit = parseInt(request.query.limit, 10) || 5;
+    const search = request.query.search || "";
+    const sort = request.query.sort || "a-z";
+
+    const result = await getAllPlayers(communityId, page, limit, search, sort);
+
+    return response.status(200).json({
+      success: true,
+      players: result.players,
+      pagination: result.pagination,
+    });
   } catch (error) {
     console.error("Get all players failed", error);
 
