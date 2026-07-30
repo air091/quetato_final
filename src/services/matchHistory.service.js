@@ -276,11 +276,23 @@ export const getPlayerTotalCommunityGames = async (
   });
 
   if (players.length === 0) {
-    return [];
+    return {
+      results: [],
+      pagination: { total: 0, hasMore: false, page: 1, limit: 8 },
+    };
   }
 
-  // 2. Map query parameters
-  const { month, day, dayOfWeek } = queryFilters;
+  // 2. Map query parameters (including new server-side grid params)
+  const {
+    month,
+    day,
+    dayOfWeek,
+    search = "",
+    sortBy = "points",
+    order = "desc",
+    page = 1,
+    limit = 8,
+  } = queryFilters;
 
   const weekdayMap = {
     sunday: 0,
@@ -295,7 +307,7 @@ export const getPlayerTotalCommunityGames = async (
   // 3. Construct dynamic SQL filter conditions for dates
   const matchDateFilters = [];
   const paymentDateFilters = [];
-  const manualDateFilters = []; // 🌟 Added manual point date filter tracking
+  const manualDateFilters = [];
 
   if (month) {
     const parsedMonth = parseInt(month, 10);
@@ -307,7 +319,7 @@ export const getPlayerTotalCommunityGames = async (
     );
     manualDateFilters.push(
       `EXTRACT(MONTH FROM mp."createdAt") = ${parsedMonth}`,
-    ); // 🌟 Filter manual points by month if specified
+    );
   }
 
   if (day) {
@@ -316,14 +328,14 @@ export const getPlayerTotalCommunityGames = async (
     paymentDateFilters.push(
       `EXTRACT(DAY FROM sp."updateStatus") = ${parsedDay}`,
     );
-    manualDateFilters.push(`EXTRACT(DAY FROM mp."createdAt") = ${parsedDay}`); // 🌟 Filter manual points by day if specified
+    manualDateFilters.push(`EXTRACT(DAY FROM mp."createdAt") = ${parsedDay}`);
   }
 
   if (dayOfWeek && weekdayMap[dayOfWeek.toLowerCase()] !== undefined) {
     const dow = weekdayMap[dayOfWeek.toLowerCase()];
     matchDateFilters.push(`EXTRACT(DOW FROM mh."startedAt") = ${dow}`);
     paymentDateFilters.push(`EXTRACT(DOW FROM sp."updateStatus") = ${dow}`);
-    manualDateFilters.push(`EXTRACT(DOW FROM mp."createdAt") = ${dow}`); // 🌟 Filter manual points by weekday if specified
+    manualDateFilters.push(`EXTRACT(DOW FROM mp."createdAt") = ${dow}`);
   }
 
   const matchDateWhere =
@@ -339,7 +351,7 @@ export const getPlayerTotalCommunityGames = async (
       ? `AND ${manualDateFilters.join(" AND ")}`
       : "";
 
-  // 4. Query Match History Stats grouped by community player
+  // 4. Query Match Stats
   const matchStatsQuery = `
     SELECT 
       cp.id AS "communityPlayerId",
@@ -355,7 +367,7 @@ export const getPlayerTotalCommunityGames = async (
     GROUP BY cp.id;
   `;
 
-  // 5. Query Paid Sessions Stats grouped by community player
+  // 5. Query Paid Sessions
   const paymentStatsQuery = `
     SELECT 
       cp.id AS "communityPlayerId",
@@ -368,7 +380,7 @@ export const getPlayerTotalCommunityGames = async (
     GROUP BY cp.id;
   `;
 
-  // 🌟 6. Query Manual Points Stats grouped by community player
+  // 6. Query Manual Points
   const manualStatsQuery = `
     SELECT 
       cp.id AS "communityPlayerId",
@@ -380,15 +392,13 @@ export const getPlayerTotalCommunityGames = async (
     GROUP BY cp.id;
   `;
 
-  // Execute queries in parallel
   const [matchStatsResults, paymentStatsResults, manualStatsResults] =
     await Promise.all([
       prisma.$queryRawUnsafe(matchStatsQuery, communityId),
       prisma.$queryRawUnsafe(paymentStatsQuery, communityId),
-      prisma.$queryRawUnsafe(manualStatsQuery, communityId), // 🌟 Execute manual points query
+      prisma.$queryRawUnsafe(manualStatsQuery, communityId),
     ]);
 
-  // Convert results into lookup maps
   const statsMap = new Map(
     matchStatsResults.map((stat) => [stat.communityPlayerId, stat]),
   );
@@ -397,19 +407,17 @@ export const getPlayerTotalCommunityGames = async (
   );
   const manualMap = new Map(
     manualStatsResults.map((m) => [m.communityPlayerId, m.totalManualPoints]),
-  ); // 🌟 Manual points lookup map
+  );
 
-  // 7. Merge filtered aggregated stats back onto the roster list
-  return players.map((player) => {
+  // 7. Merge into standard array
+  let mergedPlayers = players.map((player) => {
     const matchStat = statsMap.get(player.id);
     const paidCount = paidMap.get(player.id) || 0;
-    const manualPoints = manualMap.get(player.id) || 0; // 🌟 Fetch player manual points sum
+    const manualPoints = manualMap.get(player.id) || 0;
 
     const totalWins = matchStat?.totalCommunityWins || 0;
     const totalLosses = matchStat?.totalCommunityLosses || 0;
     const totalGames = matchStat?.totalCommunityGames || 0;
-
-    // 🌟 Aggregate total points (Wins + Payments (3 pts each) + Manual Points)
     const totalPoints = totalWins + paidCount * 3 + manualPoints;
 
     return {
@@ -419,9 +427,72 @@ export const getPlayerTotalCommunityGames = async (
       totalCommunityGames: totalGames,
       totalCommunityPoints: totalPoints,
       paidSessionCount: paidCount,
-      totalManualPoints: manualPoints, // Optional: exposes individual manual points tally if needed
+      totalManualPoints: manualPoints,
     };
   });
+
+  // 8. Server-side Status Filter
+  mergedPlayers = mergedPlayers.filter(
+    (player) =>
+      player?.status === "accepted" ||
+      player?.communityPlayer?.status === "accepted",
+  );
+
+  // 9. Server-side Search Filter
+  if (search) {
+    const lowerSearch = search.toLowerCase().trim();
+    mergedPlayers = mergedPlayers.filter((player) => {
+      const username = player?.communityPlayer?.username || "";
+      return username.toLowerCase().includes(lowerSearch);
+    });
+  }
+
+  // 10. Server-side Sort execution
+  mergedPlayers.sort((a, b) => {
+    let valA = 0;
+    let valB = 0;
+
+    switch (sortBy) {
+      case "wins":
+        valA = a.totalCommunityWins;
+        valB = b.totalCommunityWins;
+        break;
+      case "losses":
+        valA = a.totalCommunityLosses;
+        valB = b.totalCommunityLosses;
+        break;
+      case "games":
+        valA = a.totalCommunityGames;
+        valB = b.totalCommunityGames;
+        break;
+      case "points":
+      default:
+        valA = a.totalCommunityPoints;
+        valB = b.totalCommunityPoints;
+        break;
+    }
+
+    return order === "desc" ? valB - valA : valA - valB;
+  });
+
+  // 11. Server-side Pagination execution to reduce Egress
+  const parsedPage = parseInt(page, 10) || 1;
+  const parsedLimit = parseInt(limit, 10) || 8;
+  const skip = (parsedPage - 1) * parsedLimit;
+
+  const total = mergedPlayers.length;
+  const paginatedResults = mergedPlayers.slice(skip, skip + parsedLimit);
+  const hasMore = skip + parsedLimit < total;
+
+  return {
+    results: paginatedResults,
+    pagination: {
+      total,
+      hasMore,
+      page: parsedPage,
+      limit: parsedLimit,
+    },
+  };
 };
 
 export const deleteMatchHistory = async (

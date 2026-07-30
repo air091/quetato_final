@@ -57,75 +57,87 @@ const Dashboard = () => {
 
   // Search & Date Filter States
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
-  const [dayFilterType, setDayFilterType] = useState("all"); // 'all' | 'specific' | 'weekday'
+  const [dayFilterType, setDayFilterType] = useState("all");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState("");
 
-  // State configurations for interactive table sorting & pagination
-  const [sortBy, setSortBy] = useState("points"); // Default column key to sort by
-  const [order, setOrder] = useState("desc"); // Default sorting order ('desc' or 'asc')
-  const [visibleCount, setVisibleCount] = useState(8);
+  // Sort & Server Pagination State
+  const [sortBy, setSortBy] = useState("points");
+  const [order, setOrder] = useState("desc");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const getPlayers = useCallback(async () => {
-    if (!communityId) return;
-    try {
-      // Build date query params dynamically
-      const queryParams = new URLSearchParams();
-      if (selectedMonth) queryParams.append("month", selectedMonth);
+  // Debounce search input to prevent API spam
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
-      if (dayFilterType === "specific" && selectedDay) {
-        queryParams.append("day", selectedDay);
-      } else if (dayFilterType === "weekday" && selectedDayOfWeek) {
-        queryParams.append("dayOfWeek", selectedDayOfWeek);
+  const getPlayers = useCallback(
+    async (currentPage = 1, isAppending = false) => {
+      if (!communityId) return;
+      try {
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 8,
+          sortBy,
+          order,
+        });
+
+        if (debouncedSearch.trim())
+          queryParams.append("search", debouncedSearch.trim());
+        if (selectedMonth) queryParams.append("month", selectedMonth);
+
+        if (dayFilterType === "specific" && selectedDay) {
+          queryParams.append("day", selectedDay);
+        } else if (dayFilterType === "weekday" && selectedDayOfWeek) {
+          queryParams.append("dayOfWeek", selectedDayOfWeek);
+        }
+
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/players/total-community-games?${queryParams.toString()}`,
+          { method: "GET" },
+        );
+
+        if (!response.ok) throw new Error(`Http error ${response.status}`);
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data?.message);
+
+        // Map and resolve players payload
+        const fetchedPlayers = data?.results ?? [];
+        setPlayers((prev) =>
+          isAppending ? [...prev, ...fetchedPlayers] : fetchedPlayers,
+        );
+        setHasMore(data?.pagination?.hasMore ?? false);
+        setTotalCount(data?.pagination?.total ?? 0);
+      } catch (error) {
+        console.error(error);
       }
+    },
+    [
+      communityId,
+      fetchWithAuth,
+      selectedMonth,
+      dayFilterType,
+      selectedDay,
+      selectedDayOfWeek,
+      debouncedSearch,
+      sortBy,
+      order,
+    ],
+  );
 
-      const queryString = queryParams.toString()
-        ? `?${queryParams.toString()}`
-        : "";
-
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players/total-community-games${queryString}`,
-        { method: "GET" },
-      );
-      if (!response.ok) throw new Error("Http error", response.status);
-      const data = await response.json();
-      if (!data.success) throw new Error(data?.message);
-
-      // Filter results to only keep players with status "accepted"
-      const acceptedPlayers = (data?.results ?? []).filter(
-        (player) =>
-          player?.status === "accepted" ||
-          player?.communityPlayer?.status === "accepted",
-      );
-
-      setPlayers(acceptedPlayers);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [
-    communityId,
-    fetchWithAuth,
-    selectedMonth,
-    dayFilterType,
-    selectedDay,
-    selectedDayOfWeek,
-  ]);
-
+  // Re-fetch dynamically strictly on sorting, filtering, and searches
   useEffect(() => {
-    getPlayers();
+    setPage(1);
+    getPlayers(1, false);
   }, [getPlayers]);
-
-  // Reset visible count when search or filters change
-  useEffect(() => {
-    setVisibleCount(8);
-  }, [
-    searchQuery,
-    selectedMonth,
-    dayFilterType,
-    selectedDay,
-    selectedDayOfWeek,
-  ]);
 
   const handleResetFilters = () => {
     setSearchQuery("");
@@ -133,64 +145,19 @@ const Dashboard = () => {
     setDayFilterType("all");
     setSelectedDay("");
     setSelectedDayOfWeek("");
-    setVisibleCount(8);
+    setSortBy("points");
+    setOrder("desc");
   };
 
-  // Click handler to toggle sort column and direction
   const handleSort = (columnKey) => {
     if (sortBy === columnKey) {
       setOrder((prevOrder) => (prevOrder === "desc" ? "asc" : "desc"));
     } else {
       setSortBy(columnKey);
-      setOrder("desc"); // Default to highest performance metrics first when swapping columns
+      setOrder("desc");
     }
-    setVisibleCount(8);
   };
 
-  // Helper function to dynamically filter by search and sort data locally
-  const getSortedPlayers = () => {
-    if (!players) return [];
-
-    // Filter players based on search query match against username
-    const filteredBySearch = players.filter((player) => {
-      const username = player?.communityPlayer?.username || "";
-      return username.toLowerCase().includes(searchQuery.toLowerCase().trim());
-    });
-
-    return filteredBySearch.sort((a, b) => {
-      const aWins = a?.totalCommunityWins ?? 0;
-      const bWins = b?.totalCommunityWins ?? 0;
-      const aLosses = a?.totalCommunityLosses ?? 0;
-      const bLosses = b?.totalCommunityLosses ?? 0;
-      const aGames = a?.totalCommunityGames ?? 0;
-      const bGames = b?.totalCommunityGames ?? 0;
-
-      // Total Community Points (includes wins, payments, and manual points from backend)
-      const aPoints = a?.totalCommunityPoints ?? aWins;
-      const bPoints = b?.totalCommunityPoints ?? bWins;
-
-      let valA = 0;
-      let valB = 0;
-
-      if (sortBy === "wins") {
-        valA = aWins;
-        valB = bWins;
-      } else if (sortBy === "losses") {
-        valA = aLosses;
-        valB = bLosses;
-      } else if (sortBy === "points") {
-        valA = aPoints;
-        valB = bPoints;
-      } else if (sortBy === "games") {
-        valA = aGames;
-        valB = bGames;
-      }
-
-      return order === "desc" ? valB - valA : valA - valB;
-    });
-  };
-
-  // Render sort direction icon indicator helper
   const renderSortIcon = (columnKey) => {
     const isActive = sortBy === columnKey;
 
@@ -220,10 +187,6 @@ const Dashboard = () => {
     toggleButtonRef.current = e.currentTarget;
     setSelectedPlayer(player);
   };
-
-  const sortedPlayers = getSortedPlayers();
-  const paginatedPlayers = sortedPlayers.slice(0, visibleCount);
-  const hasMorePlayers = visibleCount < sortedPlayers.length;
 
   const isFiltered = Boolean(
     searchQuery ||
@@ -267,7 +230,6 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Month Filter */}
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -281,7 +243,6 @@ const Dashboard = () => {
             ))}
           </select>
 
-          {/* Day Filter Mode */}
           <select
             value={dayFilterType}
             onChange={(e) => {
@@ -296,7 +257,6 @@ const Dashboard = () => {
             <option value="weekday">Day of Week</option>
           </select>
 
-          {/* Conditional Dropdown for Single Day Selection */}
           {dayFilterType === "specific" && (
             <select
               value={selectedDay}
@@ -312,7 +272,6 @@ const Dashboard = () => {
             </select>
           )}
 
-          {/* Conditional Dropdown for Day of Week Selection */}
           {dayFilterType === "weekday" && (
             <select
               value={selectedDayOfWeek}
@@ -328,7 +287,6 @@ const Dashboard = () => {
             </select>
           )}
 
-          {/* Reset Filters Button */}
           {isFiltered && (
             <button
               onClick={handleResetFilters}
@@ -397,7 +355,7 @@ const Dashboard = () => {
           </thead>
 
           <tbody className="divide-y divide-stone-100">
-            {paginatedPlayers.map((player) => {
+            {players.map((player) => {
               const totalWins = player?.totalCommunityWins ?? 0;
               const totalLosses = player?.totalCommunityLosses ?? 0;
               const totalGames = player?.totalCommunityGames ?? 0;
@@ -416,7 +374,6 @@ const Dashboard = () => {
                       : "hover:bg-stone-100/80"
                   }`}
                 >
-                  {/* Primary Identifier */}
                   <td className="p-4 text-sm">
                     <div className="flex items-center gap-x-3 max-w-[260px]">
                       <PlayerAvatar
@@ -477,7 +434,7 @@ const Dashboard = () => {
               );
             })}
 
-            {paginatedPlayers.length === 0 && (
+            {players.length === 0 && (
               <tr>
                 <td
                   colSpan={5}
@@ -491,27 +448,29 @@ const Dashboard = () => {
         </table>
       </div>
 
-      {/* Load More Button Section */}
-      {hasMorePlayers && (
+      {hasMore && (
         <div className="p-3 bg-stone-50/50 border-t border-stone-200 flex justify-center">
           <button
             type="button"
-            onClick={() => setVisibleCount((prev) => prev + 8)}
+            onClick={() => {
+              const nextPage = page + 1;
+              setPage(nextPage);
+              getPlayers(nextPage, true);
+            }}
             className="px-4 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer shadow-sm"
           >
-            Load More ({sortedPlayers.length - visibleCount} remaining)
+            Load More ({totalCount - players.length} remaining)
           </button>
         </div>
       )}
 
-      {/* Render settings popover when a player is selected */}
       {selectedPlayer && (
         <PlayerSettings
           player={selectedPlayer}
           type={selectedPlayer?.communityPlayer?.type || "user"}
           toggleButtonRef={toggleButtonRef}
           onClose={() => setSelectedPlayer(null)}
-          onUpdatePlayerStatus={getPlayers}
+          onUpdatePlayerStatus={handleResetFilters}
         />
       )}
     </div>

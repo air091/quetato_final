@@ -61,13 +61,11 @@ export const getPlayerTotalCommunityGamesController = async (
   try {
     const { communityId } = request.params;
 
-    // Pass request.query (contains month, day, dayOfWeek) to the service
-    const results = await getPlayerTotalCommunityGames(
-      communityId,
-      request.query,
-    );
+    // Pass request.query to the service (handles search, sortBy, limit, etc.)
+    const data = await getPlayerTotalCommunityGames(communityId, request.query);
 
-    return response.status(200).json({ success: true, results });
+    // Spread data (which now includes 'results' and 'pagination')
+    return response.status(200).json({ success: true, ...data });
   } catch (error) {
     console.error("Get player total community games failed", error);
     let errMessage = "Internal server error";
