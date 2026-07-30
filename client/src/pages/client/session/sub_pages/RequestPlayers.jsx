@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PlayerAvatar from "../../../../components/PlayerAvatar";
 import { useAuth } from "../../../../hooks/useAuth";
 import { useParams } from "react-router-dom";
@@ -13,65 +13,146 @@ const RequestPlayers = () => {
 
   const [staticPlayers, setStaticPlayers] = useState([]);
   const [registeredPlayers, setRegisteredPlayers] = useState([]);
-  const [Players, setPlayers] = useState([]);
+  const [players, setPlayers] = useState([]);
 
   const [isStaticMinimized, setIsStaticMinimized] = useState(false);
   const [isRegisteredMinimized, setIsRegisteredMinimized] = useState(false);
   const [isRequestsMinimized, setIsRequestsMinimized] = useState(false);
 
-  // Search & Sort state
+  // Search, Sort & Server-side Pagination State
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortOption, setSortOption] = useState("a-z");
 
-  // 1. Fetch pending requests for this session
-  const getRequestedPlayers = useCallback(async () => {
-    if (!communityId || !sessionId) return;
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/requested`,
-        { method: "GET" },
-      );
+  // Requests Pagination State
+  const [requestPage, setRequestPage] = useState(1);
+  const [hasMoreRequests, setHasMoreRequests] = useState(false);
+  const [totalRequestsCount, setTotalRequestsCount] = useState(0);
 
-      if (!response || !response.ok) {
-        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
-      }
+  // Static Players Pagination State
+  const [staticPage, setStaticPage] = useState(1);
+  const [hasMoreStatic, setHasMoreStatic] = useState(false);
+  const [totalStaticCount, setTotalStaticCount] = useState(0);
 
-      const data = await response.json();
-      if (!data?.success) throw new Error(data?.message);
-
-      setPlayers(data?.results || []);
-    } catch (error) {
-      console.error("Fetch requested session players failed:", error.message);
-    }
-  }, [communityId, sessionId, fetchWithAuth]);
-
-  // 3. Fetch static players who aren't in this session
-  const getStaticPlayersNotInSession = useCallback(async () => {
-    if (!communityId || !sessionId) return;
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/static`,
-        { method: "GET" },
-      );
-
-      if (!response || !response.ok) {
-        throw new Error(`HTTP error! Status: ${response?.status || "Unknown"}`);
-      }
-
-      const data = await response.json();
-      if (!data?.success) throw new Error(data?.message);
-
-      setStaticPlayers(data?.results || []);
-    } catch (error) {
-      console.error("Fetch available static players failed:", error.message);
-    }
-  }, [communityId, sessionId, fetchWithAuth]);
-
-  // Trigger initial lifecycle data collection
+  // Debounce search input to prevent excessive API requests
   useEffect(() => {
-    getRequestedPlayers();
-    getStaticPlayersNotInSession();
-  }, [getRequestedPlayers, getStaticPlayersNotInSession]);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // 1. Fetch pending requests for this session with pagination
+  const getRequestedPlayers = useCallback(
+    async (currentPage = 1, isAppending = false) => {
+      if (!communityId || !sessionId) return;
+      try {
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 5,
+          sort: sortOption,
+          t: Date.now(),
+        });
+
+        if (debouncedSearch.trim()) {
+          queryParams.append("search", debouncedSearch.trim());
+        }
+
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/requested?${queryParams.toString()}`,
+          { method: "GET" },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+        if (!data?.success) throw new Error(data?.message);
+
+        const fetched = data?.results || [];
+        setPlayers((prev) => (isAppending ? [...prev, ...fetched] : fetched));
+        setHasMoreRequests(data?.pagination?.hasMore || false);
+        setTotalRequestsCount(data?.pagination?.total || fetched.length);
+      } catch (error) {
+        console.error("Fetch requested session players failed:", error.message);
+      }
+    },
+    [communityId, sessionId, fetchWithAuth, debouncedSearch, sortOption],
+  );
+
+  // 3. Fetch static players who aren't in this session with pagination
+  const getStaticPlayersNotInSession = useCallback(
+    async (currentPage = 1, isAppending = false) => {
+      if (!communityId || !sessionId) return;
+      try {
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 5,
+          sort: sortOption,
+          t: Date.now(),
+        });
+
+        if (debouncedSearch.trim()) {
+          queryParams.append("search", debouncedSearch.trim());
+        }
+
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players/static?${queryParams.toString()}`,
+          { method: "GET" },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+        if (!data?.success) throw new Error(data?.message);
+
+        const fetched = data?.results || [];
+        setStaticPlayers((prev) =>
+          isAppending ? [...prev, ...fetched] : fetched,
+        );
+        setHasMoreStatic(data?.pagination?.hasMore || false);
+        setTotalStaticCount(data?.pagination?.total || fetched.length);
+      } catch (error) {
+        console.error("Fetch available static players failed:", error.message);
+      }
+    },
+    [communityId, sessionId, fetchWithAuth, debouncedSearch, sortOption],
+  );
+
+  // Reset to page 1 and fetch when debounced search or sort criteria changes
+  useEffect(() => {
+    setRequestPage(1);
+    setStaticPage(1);
+    getRequestedPlayers(1, false);
+    getStaticPlayersNotInSession(1, false);
+  }, [
+    getRequestedPlayers,
+    getStaticPlayersNotInSession,
+    debouncedSearch,
+    sortOption,
+  ]);
+
+  const handleLoadMoreRequests = () => {
+    const nextPage = requestPage + 1;
+    setRequestPage(nextPage);
+    getRequestedPlayers(nextPage, true);
+  };
+
+  const handleLoadMoreStatic = () => {
+    const nextPage = staticPage + 1;
+    setStaticPage(nextPage);
+    getStaticPlayersNotInSession(nextPage, true);
+  };
 
   // 4. Accept a pending session request OR add an available player directly
   const addToSession = useCallback(
@@ -97,6 +178,7 @@ const RequestPlayers = () => {
           setPlayers((prev) =>
             prev.filter((request) => request.playerId !== communityPlayerId),
           );
+          setTotalRequestsCount((prev) => Math.max(0, prev - 1));
         } else {
           setRegisteredPlayers((prev) =>
             prev.filter((p) => p.id !== communityPlayerId),
@@ -104,13 +186,16 @@ const RequestPlayers = () => {
           setStaticPlayers((prev) =>
             prev.filter((p) => p.id !== communityPlayerId),
           );
+          setTotalStaticCount((prev) => Math.max(0, prev - 1));
         }
 
         // Re-sync all state lists safely
         await Promise.all([
-          getRequestedPlayers(),
-          getStaticPlayersNotInSession(),
+          getRequestedPlayers(1, false),
+          getStaticPlayersNotInSession(1, false),
         ]);
+        setRequestPage(1);
+        setStaticPage(1);
         await refreshSessionContext({ silent: true });
       } catch (error) {
         console.error("Adding player to session failed:", error.message);
@@ -125,53 +210,6 @@ const RequestPlayers = () => {
       refreshSessionContext,
     ],
   );
-
-  // Helper for sorting list by username
-  const sortList = (list, getUsername) => {
-    return [...list].sort((a, b) => {
-      const nameA = (getUsername(a) || "").toLowerCase();
-      const nameB = (getUsername(b) || "").toLowerCase();
-
-      if (sortOption === "a-z" || sortOption === "asc") {
-        return nameA.localeCompare(nameB);
-      } else if (sortOption === "desc") {
-        return nameB.localeCompare(nameA);
-      }
-      return 0;
-    });
-  };
-
-  // Filter & Sort requests
-  const filteredRequests = useMemo(() => {
-    let result = Players;
-    if (searchQuery.trim()) {
-      result = result.filter((request) => {
-        const username =
-          request?.sessionPlayer?.communityPlayer?.username || "";
-        return username
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase().trim());
-      });
-    }
-    return sortList(
-      result,
-      (req) => req?.sessionPlayer?.communityPlayer?.username,
-    );
-  }, [Players, searchQuery, sortOption]);
-
-  // Filter & Sort static players
-  const filteredStaticPlayers = useMemo(() => {
-    let result = staticPlayers;
-    if (searchQuery.trim()) {
-      result = result.filter((wrapper) => {
-        const username = wrapper?.communityPlayer?.username || "";
-        return username
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase().trim());
-      });
-    }
-    return sortList(result, (wrapper) => wrapper?.communityPlayer?.username);
-  }, [staticPlayers, searchQuery, sortOption]);
 
   return (
     <div className="w-full flex flex-col gap-y-5 selection:bg-orange-500/10 selection:text-orange-950">
@@ -235,7 +273,7 @@ const RequestPlayers = () => {
               Session Join Requests
             </h4>
             <span className="rounded-full bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-              {filteredRequests?.length || 0}
+              {totalRequestsCount}
             </span>
           </div>
           <ChevronDown
@@ -248,7 +286,7 @@ const RequestPlayers = () => {
 
         {!isRequestsMinimized && (
           <div className="p-2 animate-in fade-in duration-150">
-            {filteredRequests.length === 0 ? (
+            {players.length === 0 ? (
               <p className="p-6 text-center text-xs font-medium italic text-stone-400">
                 {searchQuery.trim()
                   ? `No pending requests found matching "${searchQuery}"`
@@ -256,7 +294,7 @@ const RequestPlayers = () => {
               </p>
             ) : (
               <div className="flex flex-col gap-y-1">
-                {filteredRequests.map((request) => {
+                {players.map((request) => {
                   const targetUser = request?.sessionPlayer?.communityPlayer;
                   return (
                     <div
@@ -294,6 +332,18 @@ const RequestPlayers = () => {
                     </div>
                   );
                 })}
+
+                {hasMoreRequests && (
+                  <div className="p-2 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleLoadMoreRequests}
+                      className="px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer shadow-sm"
+                    >
+                      Load More
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -312,7 +362,7 @@ const RequestPlayers = () => {
               Statics
             </h4>
             <span className="rounded-full bg-stone-200/60 px-2 py-0.5 text-[10px] font-bold text-stone-600">
-              {filteredStaticPlayers?.length || 0}
+              {totalStaticCount}
             </span>
           </div>
           <ChevronDown
@@ -325,7 +375,7 @@ const RequestPlayers = () => {
 
         {!isStaticMinimized && (
           <div className="p-2 animate-in fade-in duration-150">
-            {filteredStaticPlayers.length === 0 ? (
+            {staticPlayers.length === 0 ? (
               <p className="p-6 text-center text-xs font-medium italic text-stone-400">
                 {searchQuery.trim()
                   ? `No static players found matching "${searchQuery}"`
@@ -333,7 +383,7 @@ const RequestPlayers = () => {
               </p>
             ) : (
               <div className="flex flex-col gap-y-1">
-                {filteredStaticPlayers.map((wrapper) => (
+                {staticPlayers.map((wrapper) => (
                   <div
                     key={wrapper.id}
                     className="flex items-center justify-between rounded-xl p-2.5 transition-colors hover:bg-stone-50/70"
@@ -368,6 +418,18 @@ const RequestPlayers = () => {
                     </button>
                   </div>
                 ))}
+
+                {hasMoreStatic && (
+                  <div className="p-2 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={handleLoadMoreStatic}
+                      className="px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer shadow-sm"
+                    >
+                      Load More
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

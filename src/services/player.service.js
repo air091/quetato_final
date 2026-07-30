@@ -141,6 +141,7 @@ export const getStaticPlayerNotInSession = async (
   communityId,
   sessionId,
   authorizedId,
+  queryFilters = {},
 ) => {
   // 1. Authorization check: Ensure the operator is part of the community and holds an administrative role
   const operatorRole = await prisma.communityPlayer.findUnique({
@@ -173,38 +174,76 @@ export const getStaticPlayerNotInSession = async (
     throw new AppError("Session not found within this community.", 400);
   }
 
-  // 3. Query community players that are static users AND don't have a row in SessionPlayer for this sessionId
-  const availableStaticPlayers = await prisma.communityPlayer.findMany({
-    where: {
-      communityId: communityId,
-      communityPlayer: {
-        type: "static", // 🎯 Filter by the UserType.static enum value[cite: 9]
-      },
-      sessionPlayers: {
-        none: {
-          sessionId: sessionId, // 🙅‍♂️ Exclude players already linked to this session[cite: 9]
-        },
-      },
-    },
-    select: {
-      id: true,
-      communityId: true,
-      role: true,
-      // ⬇️ Move your relation query inside the select block instead of include!
-      communityPlayer: {
-        select: {
-          id: true,
-          username: true,
-          skillLevel: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  // Parse pagination and query parameters
+  const page = parseInt(queryFilters.page, 10) || 1;
+  const limit = parseInt(queryFilters.limit, 10) || 5;
+  const skip = (page - 1) * limit;
+  const search = queryFilters.search || "";
+  const sort = queryFilters.sort || "a-z";
 
-  return availableStaticPlayers;
+  // Build dynamic sorting order
+  let orderBy = { createdAt: "desc" };
+  if (sort === "a-z" || sort === "asc") {
+    orderBy = { communityPlayer: { username: "asc" } };
+  } else if (sort === "desc" || sort === "z-a") {
+    orderBy = { communityPlayer: { username: "desc" } };
+  }
+
+  // Build dynamic where clause for filtering
+  const whereClause = {
+    communityId: communityId,
+    communityPlayer: {
+      type: "static", // 🎯 Filter by the UserType.static enum value
+      ...(search.trim()
+        ? {
+            username: {
+              contains: search.trim(),
+              mode: "insensitive",
+            },
+          }
+        : {}),
+    },
+    sessionPlayers: {
+      none: {
+        sessionId: sessionId, // 🙅‍♂️ Exclude players already linked to this session
+      },
+    },
+  };
+
+  // 3. Query total count and paginated static players concurrently
+  const [total, availableStaticPlayers] = await Promise.all([
+    prisma.communityPlayer.count({ where: whereClause }),
+    prisma.communityPlayer.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        communityId: true,
+        role: true,
+        communityPlayer: {
+          select: {
+            id: true,
+            username: true,
+            skillLevel: true,
+          },
+        },
+      },
+      orderBy,
+      skip,
+      take: limit,
+    }),
+  ]);
+
+  const hasMore = skip + availableStaticPlayers.length < total;
+
+  return {
+    results: availableStaticPlayers,
+    pagination: {
+      total,
+      hasMore,
+      page,
+      limit,
+    },
+  };
 };
 
 export const createStaticPlayers = async (

@@ -41,14 +41,23 @@ export const getStaticPlayerNotInSessionController = async (
 ) => {
   try {
     const { communityId, sessionId } = request.params;
-    const results = await getStaticPlayerNotInSession(
+    const queryFilters = {
+      page: request.query.page,
+      limit: request.query.limit,
+      search: request.query.search,
+      sort: request.query.sort,
+    };
+
+    const { results, pagination } = await getStaticPlayerNotInSession(
       communityId,
       sessionId,
       request.user.sub,
+      queryFilters,
     );
-    return response.status(200).json({ success: true, results });
+
+    return response.status(200).json({ success: true, results, pagination });
   } catch (error) {
-    console.error("Get all session players failed", error);
+    console.error("Get static session players failed", error);
     let errMessage = "Internal server error";
     let statusCode = 500;
 
