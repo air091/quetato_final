@@ -63,7 +63,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
     order = "asc",
     search,
     page = 1,
-    limit = 6,
+    limit = 5,
   } = filters;
   const sortOrder = order.toLowerCase() === "desc" ? "desc" : "asc";
 
