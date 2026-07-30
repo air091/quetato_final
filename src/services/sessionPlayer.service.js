@@ -1,3 +1,4 @@
+import { Prisma } from "../../generated/prisma/client.ts";
 import { GameStatus } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
