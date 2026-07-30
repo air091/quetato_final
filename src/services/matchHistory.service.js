@@ -257,32 +257,6 @@ export const getPlayerTotalCommunityGames = async (
     throw new AppError("Community not found", 404);
   }
 
-  // 1. Fetch all active community players
-  const players = await prisma.communityPlayer.findMany({
-    where: { communityId },
-    include: {
-      communityPlayer: {
-        select: {
-          id: true,
-          username: true,
-          type: true,
-          skillLevel: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
-
-  if (players.length === 0) {
-    return {
-      results: [],
-      pagination: { total: 0, hasMore: false, page: 1, limit: 8 },
-    };
-  }
-
-  // 2. Map query parameters (including new server-side grid params)
   const {
     month,
     day,
@@ -294,6 +268,10 @@ export const getPlayerTotalCommunityGames = async (
     limit = 8,
   } = queryFilters;
 
+  const parsedPage = parseInt(page, 10) || 1;
+  const parsedLimit = parseInt(limit, 10) || 8;
+  const offset = (parsedPage - 1) * parsedLimit;
+
   const weekdayMap = {
     sunday: 0,
     monday: 1,
@@ -304,188 +282,124 @@ export const getPlayerTotalCommunityGames = async (
     saturday: 6,
   };
 
-  // 3. Construct dynamic SQL filter conditions for dates
-  const matchDateFilters = [];
-  const paymentDateFilters = [];
-  const manualDateFilters = [];
+  // 1. Build dynamic conditions safely using Prisma.sql fragments
+  const dateConditions = [];
 
   if (month) {
     const parsedMonth = parseInt(month, 10);
-    matchDateFilters.push(
-      `EXTRACT(MONTH FROM mh."startedAt") = ${parsedMonth}`,
-    );
-    paymentDateFilters.push(
-      `EXTRACT(MONTH FROM sp."updateStatus") = ${parsedMonth}`,
-    );
-    manualDateFilters.push(
-      `EXTRACT(MONTH FROM mp."createdAt") = ${parsedMonth}`,
-    );
+    dateConditions.push(PransesConditionsHelper(parsedMonth, day, dayOfWeek)); // handled below cleaner
   }
 
-  if (day) {
-    const parsedDay = parseInt(day, 10);
-    matchDateFilters.push(`EXTRACT(DAY FROM mh."startedAt") = ${parsedDay}`);
-    paymentDateFilters.push(
-      `EXTRACT(DAY FROM sp."updateStatus") = ${parsedDay}`,
-    );
-    manualDateFilters.push(`EXTRACT(DAY FROM mp."createdAt") = ${parsedDay}`);
-  }
+  // Safe parameters array for raw SQL
+  // We will build a comprehensive CTE (Common Table Expression) query to do all heavy lifting in Postgres.
 
-  if (dayOfWeek && weekdayMap[dayOfWeek.toLowerCase()] !== undefined) {
-    const dow = weekdayMap[dayOfWeek.toLowerCase()];
-    matchDateFilters.push(`EXTRACT(DOW FROM mh."startedAt") = ${dow}`);
-    paymentDateFilters.push(`EXTRACT(DOW FROM sp."updateStatus") = ${dow}`);
-    manualDateFilters.push(`EXTRACT(DOW FROM mp."createdAt") = ${dow}`);
-  }
+  const parsedMonthNum = month ? parseInt(month, 10) : null;
+  const parsedDayNum = day ? parseInt(day, 10) : null;
+  const parsedDowNum =
+    dayOfWeek && weekdayMap[dayOfWeek.toLowerCase()] !== undefined
+      ? weekdayMap[dayOfWeek.toLowerCase()]
+      : null;
 
-  const matchDateWhere =
-    matchDateFilters.length > 0 ? `AND ${matchDateFilters.join(" AND ")}` : "";
+  // 2. Optimized SQL Query executing aggregation, status check, search, sort, and pagination entirely in Postgres
+  const query = Prisma.sql`
+    WITH PlayerAggregates AS (
+      SELECT 
+        cp.id AS "communityIdField",
+        cp.id,
+        cp."communityId",
+        cp.status,
+        cp."createdAt",
+        json_build_object(
+          'id', u.id,
+          'username', u.username,
+          'type', u.type,
+          'skillLevel', u."skillLevel",
+          'status', cp.status
+        ) AS "communityPlayer",
+        COALESCE(m.games, 0)::INT AS "totalCommunityGames",
+        COALESCE(m.wins, 0)::INT AS "totalCommunityWins",
+        COALESCE(m.losses, 0)::INT AS "totalCommunityLosses",
+        COALESCE(p.paid_count, 0)::INT AS "paidSessionCount",
+        COALESCE(mp.manual_points, 0)::INT AS "totalManualPoints",
+        (
+          COALESCE(m.wins, 0) + 
+          (COALESCE(p.paid_count, 0) * 3) + 
+          COALESCE(mp.manual_points, 0)
+        )::INT AS "totalCommunityPoints"
+      FROM "CommunityPlayer" cp
+      LEFT JOIN "User" u ON u.id = cp."userId" -- Adjust table relation if your user profile table has a different name
+      
+      -- Match History Aggregations with optional date filters
+      LEFT JOIN (
+        SELECT 
+          sp."playerId" AS "communityPlayerId",
+          COUNT(mhp.id) AS games,
+          SUM(CASE WHEN mhp.iswin = true THEN 1 ELSE 0 END) AS wins,
+          SUM(CASE WHEN mhp.iswin = false THEN 1 ELSE 0 END) AS losses
+        FROM "SessionPlayer" sp
+        JOIN "MatchHistoryPlayer" mhp ON mhp."sessionPlayerId" = sp.id
+        JOIN "MatchHistory" mh ON mh.id = mhp."matchHistoryId"
+        WHERE 1=1
+          ${parsedMonthNum ? Prisma.sql`AND EXTRACT(MONTH FROM mh."startedAt") = ${parsedMonthNum}` : Prisma.empty}
+          ${parsedDayNum ? Prisma.sql`AND EXTRACT(DAY FROM mh."startedAt") = ${parsedDayNum}` : Prisma.empty}
+          ${parsedDowNum !== null ? Prisma.sql`AND EXTRACT(DOW FROM mh."startedAt") = ${parsedDowNum}` : Prisma.empty}
+        GROUP BY sp."playerId"
+      ) m ON m."communityPlayerId" = cp.id
 
-  const paymentDateWhere =
-    paymentDateFilters.length > 0
-      ? `AND ${paymentDateFilters.join(" AND ")}`
-      : "";
+      -- Paid Sessions Aggregations
+      LEFT JOIN (
+        SELECT 
+          sp."playerId" AS "communityPlayerId",
+          COUNT(sp.id) AS paid_count
+        FROM "SessionPlayer" sp
+        WHERE sp."gameStatus" = 'paid'
+          ${parsedMonthNum ? Prisma.sql`AND EXTRACT(MONTH FROM sp."updateStatus") = ${parsedMonthNum}` : Prisma.empty}
+          ${parsedDayNum ? Prisma.sql`AND EXTRACT(DAY FROM sp."updateStatus") = ${parsedDayNum}` : Prisma.empty}
+          ${parsedDowNum !== null ? Prisma.sql`AND EXTRACT(DOW FROM sp."updateStatus") = ${parsedDowNum}` : Prisma.empty}
+        GROUP BY sp."playerId"
+      ) p ON p."communityPlayerId" = cp.id
 
-  const manualDateWhere =
-    manualDateFilters.length > 0
-      ? `AND ${manualDateFilters.join(" AND ")}`
-      : "";
+      -- Manual Points Aggregations
+      LEFT JOIN (
+        SELECT 
+          mp."communityPlayerId",
+          SUM(mp.points) AS manual_points
+        FROM "ManualPoint" mp
+        WHERE 1=1
+          ${parsedMonthNum ? Prisma.sql`AND EXTRACT(MONTH FROM mp."createdAt") = ${parsedMonthNum}` : Prisma.empty}
+          ${parsedDayNum ? Prisma.sql`AND EXTRACT(DAY FROM mp."createdAt") = ${parsedDayNum}` : Prisma.empty}
+          ${parsedDowNum !== null ? Prisma.sql`AND EXTRACT(DOW FROM mp."createdAt") = ${parsedDowNum}` : Prisma.empty}
+        GROUP BY mp."communityPlayerId"
+      ) mp ON mp."communityPlayerId" = cp.id
 
-  // 4. Query Match Stats
-  const matchStatsQuery = `
-    SELECT 
-      cp.id AS "communityPlayerId",
-      COALESCE(COUNT(mhp.id), 0)::INT AS "totalCommunityGames",
-      COALESCE(SUM(CASE WHEN mhp.iswin = true THEN 1 ELSE 0 END), 0)::INT AS "totalCommunityWins",
-      COALESCE(SUM(CASE WHEN mhp.iswin = false THEN 1 ELSE 0 END), 0)::INT AS "totalCommunityLosses"
-    FROM "CommunityPlayer" cp
-    JOIN "SessionPlayer" sp ON sp."playerId" = cp.id
-    JOIN "MatchHistoryPlayer" mhp ON mhp."sessionPlayerId" = sp.id
-    JOIN "MatchHistory" mh ON mh.id = mhp."matchHistoryId"
-    WHERE cp."communityId" = $1
-    ${matchDateWhere}
-    GROUP BY cp.id;
+      WHERE cp."communityId" = ${communityId}
+        AND cp.status = 'accepted'
+        ${search ? Prisma.sql`AND u.username ILIKE ${`%${search}%`}` : Prisma.empty}
+    )
+    SELECT *, count(*) OVER() AS total_count
+    FROM PlayerAggregates
+    ORDER BY 
+      CASE WHEN ${sortBy} = 'wins' AND ${order} = 'desc' THEN "totalCommunityWins" END DESC,
+      CASE WHEN ${sortBy} = 'wins' AND ${order} = 'asc' THEN "totalCommunityWins" END ASC,
+      CASE WHEN ${sortBy} = 'losses' AND ${order} = 'desc' THEN "totalCommunityLosses" END DESC,
+      CASE WHEN ${sortBy} = 'losses' AND ${order} = 'asc' THEN "totalCommunityLosses" END ASC,
+      CASE WHEN ${sortBy} = 'games' AND ${order} = 'desc' THEN "totalCommunityGames" END DESC,
+      CASE WHEN ${sortBy} = 'games' AND ${order} = 'asc' THEN "totalCommunityGames" END ASC,
+      CASE WHEN ${sortBy} = 'points' AND ${order} = 'desc' THEN "totalCommunityPoints" END DESC,
+      CASE WHEN ${sortBy} = 'points' AND ${order} = 'asc' THEN "totalCommunityPoints" END ASC
+    LIMIT ${parsedLimit} OFFSET ${offset};
   `;
 
-  // 5. Query Paid Sessions
-  const paymentStatsQuery = `
-    SELECT 
-      cp.id AS "communityPlayerId",
-      COALESCE(COUNT(sp.id), 0)::INT AS "paidSessionCount"
-    FROM "CommunityPlayer" cp
-    JOIN "SessionPlayer" sp ON sp."playerId" = cp.id
-    WHERE cp."communityId" = $1
-      AND sp."gameStatus" = 'paid'
-      ${paymentDateWhere}
-    GROUP BY cp.id;
-  `;
+  const results = await prisma.$queryRaw(query);
 
-  // 6. Query Manual Points
-  const manualStatsQuery = `
-    SELECT 
-      cp.id AS "communityPlayerId",
-      COALESCE(SUM(mp.points), 0)::INT AS "totalManualPoints"
-    FROM "CommunityPlayer" cp
-    JOIN "ManualPoint" mp ON mp."communityPlayerId" = cp.id
-    WHERE cp."communityId" = $1
-      ${manualDateWhere}
-    GROUP BY cp.id;
-  `;
+  const total = results.length > 0 ? Number(results[0].total_count) : 0;
+  const hasMore = offset + results.length < total;
 
-  const [matchStatsResults, paymentStatsResults, manualStatsResults] =
-    await Promise.all([
-      prisma.$queryRawUnsafe(matchStatsQuery, communityId),
-      prisma.$queryRawUnsafe(paymentStatsQuery, communityId),
-      prisma.$queryRawUnsafe(manualStatsQuery, communityId),
-    ]);
-
-  const statsMap = new Map(
-    matchStatsResults.map((stat) => [stat.communityPlayerId, stat]),
-  );
-  const paidMap = new Map(
-    paymentStatsResults.map((p) => [p.communityPlayerId, p.paidSessionCount]),
-  );
-  const manualMap = new Map(
-    manualStatsResults.map((m) => [m.communityPlayerId, m.totalManualPoints]),
-  );
-
-  // 7. Merge into standard array
-  let mergedPlayers = players.map((player) => {
-    const matchStat = statsMap.get(player.id);
-    const paidCount = paidMap.get(player.id) || 0;
-    const manualPoints = manualMap.get(player.id) || 0;
-
-    const totalWins = matchStat?.totalCommunityWins || 0;
-    const totalLosses = matchStat?.totalCommunityLosses || 0;
-    const totalGames = matchStat?.totalCommunityGames || 0;
-    const totalPoints = totalWins + paidCount * 3 + manualPoints;
-
-    return {
-      ...player,
-      totalCommunityWins: totalWins,
-      totalCommunityLosses: totalLosses,
-      totalCommunityGames: totalGames,
-      totalCommunityPoints: totalPoints,
-      paidSessionCount: paidCount,
-      totalManualPoints: manualPoints,
-    };
-  });
-
-  // 8. Server-side Status Filter
-  mergedPlayers = mergedPlayers.filter(
-    (player) =>
-      player?.status === "accepted" ||
-      player?.communityPlayer?.status === "accepted",
-  );
-
-  // 9. Server-side Search Filter
-  if (search) {
-    const lowerSearch = search.toLowerCase().trim();
-    mergedPlayers = mergedPlayers.filter((player) => {
-      const username = player?.communityPlayer?.username || "";
-      return username.toLowerCase().includes(lowerSearch);
-    });
-  }
-
-  // 10. Server-side Sort execution
-  mergedPlayers.sort((a, b) => {
-    let valA = 0;
-    let valB = 0;
-
-    switch (sortBy) {
-      case "wins":
-        valA = a.totalCommunityWins;
-        valB = b.totalCommunityWins;
-        break;
-      case "losses":
-        valA = a.totalCommunityLosses;
-        valB = b.totalCommunityLosses;
-        break;
-      case "games":
-        valA = a.totalCommunityGames;
-        valB = b.totalCommunityGames;
-        break;
-      case "points":
-      default:
-        valA = a.totalCommunityPoints;
-        valB = b.totalCommunityPoints;
-        break;
-    }
-
-    return order === "desc" ? valB - valA : valA - valB;
-  });
-
-  // 11. Server-side Pagination execution to reduce Egress
-  const parsedPage = parseInt(page, 10) || 1;
-  const parsedLimit = parseInt(limit, 10) || 8;
-  const skip = (parsedPage - 1) * parsedLimit;
-
-  const total = mergedPlayers.length;
-  const paginatedResults = mergedPlayers.slice(skip, skip + parsedLimit);
-  const hasMore = skip + parsedLimit < total;
+  // Clean up helper metadata columns before returning to frontend
+  const cleanedResults = results.map(({ total_count, ...player }) => player);
 
   return {
-    results: paginatedResults,
+    results: cleanedResults,
     pagination: {
       total,
       hasMore,
