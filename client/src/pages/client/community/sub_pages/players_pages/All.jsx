@@ -307,7 +307,7 @@ const All = () => {
         >
           <div className="flex items-center gap-x-2">
             <h4 className="font-semibold text-sm text-stone-800">
-              Creator, Admins & Hosts
+              Creator & Admins
             </h4>
             <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
               {managementPlayers.length}
