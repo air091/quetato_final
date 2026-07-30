@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { API_URL } from "../../../contexts/AuthContext";
 import {
@@ -27,20 +27,73 @@ const AddStaticPlayer = ({
   existingPlayers = [],
 }) => {
   const [namesText, setNamesText] = useState("");
-  // Default to the first key in your dictionary ("LB")
   const [skillLevel, setSkillLevel] = useState("LB");
   const [loading, setLoading] = useState(false);
-  const existingPlayerNames = useMemo(
-    () =>
-      existingPlayers
-        .map((player) => player?.communityPlayer?.username)
-        .filter(Boolean),
-    [existingPlayers],
-  );
-  const nameValidation = getPlayerNameValidation(
-    namesText,
-    existingPlayerNames,
-  );
+
+  // Store ALL names from API to bypass the limit=5 pagination issue
+  const [allPlayerNames, setAllPlayerNames] = useState([]);
+
+  // Fetch ALL community players for accurate validation when the modal opens
+  useEffect(() => {
+    const fetchAllNamesForValidation = async () => {
+      if (!isOpen || !communityId) return;
+
+      try {
+        // Fetch players (with high limit to get all) and management players concurrently
+        const [playersRes, mgmtRes] = await Promise.all([
+          fetchWithAuth(
+            `${API_URL}/api/communities/${communityId}/players?limit=1000`,
+            { method: "GET" },
+          ),
+          fetchWithAuth(
+            `${API_URL}/api/communities/${communityId}/managements`,
+            { method: "GET" },
+          ),
+        ]);
+
+        const playersData = await playersRes.json();
+        const mgmtData = await mgmtRes.json();
+
+        let combinedNames = [];
+
+        // Extract regular/static player names
+        if (playersData.success && playersData.players) {
+          const pNames = playersData.players.map(
+            (p) => p?.communityPlayer?.username || p?.player?.username,
+          );
+          combinedNames = [...combinedNames, ...pNames];
+        }
+
+        // Extract admin/owner names
+        if (mgmtData.success && mgmtData.results) {
+          const mNames = mgmtData.results.map(
+            (p) => p?.communityPlayer?.username || p?.player?.username,
+          );
+          combinedNames = [...combinedNames, ...mNames];
+        }
+
+        // Filter out undefined/null and update state
+        setAllPlayerNames(combinedNames.filter(Boolean));
+      } catch (error) {
+        console.error(
+          "Failed to fetch full player list for validation:",
+          error,
+        );
+
+        // Fallback to the currently loaded players if the fetch fails
+        const fallbackNames = existingPlayers
+          .map((p) => p?.communityPlayer?.username || p?.player?.username)
+          .filter(Boolean);
+        setAllPlayerNames(fallbackNames);
+      }
+    };
+
+    fetchAllNamesForValidation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, communityId]);
+
+  // Use the newly fetched, comprehensive list for validation
+  const nameValidation = getPlayerNameValidation(namesText, allPlayerNames);
 
   if (!isOpen) return null;
 
@@ -67,7 +120,7 @@ const AddStaticPlayer = ({
           method: "POST",
           body: JSON.stringify({
             usernames: parsedNames,
-            skillLevel, // Sends the short key (e.g., "LB", "INT", "ADV")
+            skillLevel,
           }),
         },
       );
