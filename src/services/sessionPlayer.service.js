@@ -77,7 +77,7 @@ export const getAllSessionPlayers = async (
       GROUP BY m."sessionPlayerId"
     ),
     filtered AS (
-      SELECT 
+      SELECT
         sp.id,
         sp.status,
         sp."isHide",
@@ -85,23 +85,22 @@ export const getAllSessionPlayers = async (
         sp."acceptedAt",
         sp."gameStatus",
         sp."updateStatus",
-        sp."sessionPlayerId" as session_player_id,
-        cp.id as cp_id,
-        cp.username,
-        cp.type,
+
+        cp.id AS cp_id,
         cp.role,
-        cp."skillLevel",
-        COALESCE(stats.total_games, 0) as total_games,
-        COALESCE(stats.total_wins, 0) as total_wins,
-        CASE 
-          WHEN COALESCE(stats.total_games, 0) > 0 
-          THEN ROUND((COALESCE(stats.total_wins, 0)::numeric / stats.total_games) * 100)
-          ELSE 0 
-        END as win_rate,
-        COUNT(*) OVER() as total_count
+
+        u.id AS user_id,
+        u.username,
+        u.type,
+        u."skillLevel",
+
+        COALESCE(stats.total_games, 0) AS total_games,
+        COALESCE(stats.total_wins, 0) AS total_wins,
+        ...
       FROM "SessionPlayer" sp
-      JOIN "SessionPlayerProfile" s_profile ON sp."sessionPlayerId" = s_profile.id -- Adjust relation table name if needed
-      JOIN "CommunityPlayer" cp ON s_profile."communityPlayerId" = cp.id
+      JOIN "CommunityPlayer" cp
+      ON sp."playerId" = cp.id
+      JOIN "User" u ON cp."userId" = u.id
       LEFT JOIN match_stats stats ON stats."sessionPlayerId" = sp.id
       WHERE sp."sessionId" = ${sessionId}
         AND sp.status = 'accepted'
@@ -125,21 +124,25 @@ export const getAllSessionPlayers = async (
     acceptedAt: row.acceptedAt,
     gameStatus: row.gameStatus,
     updateStatus: row.updateStatus,
+
     totalGames: row.total_games,
     totalWins: row.total_wins,
     totalLosses: row.total_games - row.total_wins,
     winRate: Number(row.win_rate),
+
     stats: {
       totalGames: row.total_games,
       totalWins: row.total_wins,
       totalLosses: row.total_games - row.total_wins,
       winRate: Number(row.win_rate),
     },
+
     sessionPlayer: {
       id: row.cp_id,
       role: row.role,
+
       communityPlayer: {
-        id: row.cp_id,
+        id: row.user_id,
         username: row.username,
         type: row.type,
         skillLevel: row.skillLevel,
