@@ -22,6 +22,10 @@ const CommunityActivities = () => {
 
   const { communityId } = useParams();
   const [sessions, setSessions] = useState([]);
+  const [pagination, setPagination] = useState({
+    totalPages: 1,
+    currentPage: 1,
+  });
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
     useState(false);
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false);
@@ -58,6 +62,8 @@ const CommunityActivities = () => {
       const queryParams = new URLSearchParams({
         sortBy,
         order,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
       });
 
       if (status) queryParams.append("status", status);
@@ -80,10 +86,21 @@ const CommunityActivities = () => {
         throw new Error(data?.message || "Internal server error");
 
       setSessions(data.sessions);
+      if (data.pagination) {
+        setPagination(data.pagination);
+      }
     } catch (error) {
       console.error("Get all sessions failed", error);
     }
-  }, [communityId, sortBy, order, status, debouncedSearch, fetchWithAuth]);
+  }, [
+    communityId,
+    sortBy,
+    order,
+    status,
+    debouncedSearch,
+    currentPage,
+    fetchWithAuth,
+  ]);
 
   const deleteSession = useCallback(
     async (sessionId) => {
@@ -150,13 +167,7 @@ const CommunityActivities = () => {
   const canOpenSession = isManagement || communityPlayer?.role === "host";
   const isGuest = !communityPlayer || communityPlayer?.status === "requested";
 
-  // Pagination calculations
-  const totalPages = Math.ceil((sessions?.length || 0) / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentSessions = sessions?.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE,
-  );
+  const totalPages = pagination?.totalPages || 1;
 
   return (
     <>
@@ -302,7 +313,7 @@ const CommunityActivities = () => {
               </thead>
 
               <tbody className="divide-y divide-stone-100">
-                {currentSessions?.map((session) => {
+                {sessions?.map((session) => {
                   const hosts = (() => {
                     const explicitSessionHosts =
                       session?.players
@@ -500,7 +511,7 @@ const CommunityActivities = () => {
                   );
                 })}
 
-                {(!currentSessions || currentSessions.length === 0) && (
+                {(!sessions || sessions.length === 0) && (
                   <tr>
                     <td
                       colSpan={8}
