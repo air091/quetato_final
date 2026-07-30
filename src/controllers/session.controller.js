@@ -51,17 +51,22 @@ export const getAllPublicSessionsController = async (request, response) => {
 export const getAllSessionsController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    // Extract search along with your existing filters
-    const { status, sortBy, order, search } = request.query;
+    const { status, sortBy, order, search, page, limit } = request.query;
 
-    const sessions = await getAllSessions(communityId, {
+    const result = await getAllSessions(communityId, {
       status,
       sortBy,
       order,
       search,
+      page,
+      limit,
     });
 
-    return response.status(200).json({ success: true, sessions });
+    return response.status(200).json({
+      success: true,
+      sessions: result.sessions,
+      pagination: result.pagination,
+    });
   } catch (error) {
     console.error("Get all sessions failed", error);
     let errMessage = "Internal server error";

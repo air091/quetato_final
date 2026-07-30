@@ -57,24 +57,33 @@ export const getAllSessions = async (communityId, filters = {}) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const { status, sortBy, order = "asc", search } = filters;
+  const {
+    status,
+    sortBy,
+    order = "asc",
+    search,
+    page = 1,
+    limit = 6,
+  } = filters;
   const sortOrder = order.toLowerCase() === "desc" ? "desc" : "asc";
+
+  const pageNumber = Math.max(1, parseInt(page, 10));
+  const pageSize = Math.max(1, parseInt(limit, 10));
+  const skip = (pageNumber - 1) * pageSize;
 
   // 1. Build the dynamic WHERE clause
   const whereClause = {
     communityId: communityId,
   };
 
-  // If status is provided, map it to your boolean
   if (status) {
     whereClause.isAvailable = status === "available";
   }
 
-  // CRITICAL ADDITION: If search query is provided, look up names containing the string case-insensitively
   if (search && search.trim() !== "") {
     whereClause.name = {
       contains: search.trim(),
-      mode: "insensitive", // Makes 'Tennis', 'tennis', and 'TENNIS' match the same query
+      mode: "insensitive",
     };
   }
 
@@ -94,42 +103,55 @@ export const getAllSessions = async (communityId, filters = {}) => {
       orderByClause.push({ isAvailable: sortOrder });
       break;
     default:
-      orderByClause.push({ name: "asc" }); // Matches frontend default sorting (A-Z)
+      orderByClause.push({ name: "asc" });
       break;
   }
 
-  // 3. Fetch data from Prisma
-  const sessions = await prisma.session.findMany({
-    where: whereClause,
-    orderBy: orderByClause,
-    select: {
-      id: true,
-      name: true,
-      sport: true,
-      description: true,
-      location: true,
-      startAt: true,
-      endAt: true,
-      isAvailable: true,
-      players: {
-        select: {
-          id: true,
-          sessionPlayer: {
-            select: {
-              id: true,
-              role: true,
-              communityPlayer: {
-                select: { id: true, username: true, type: true },
+  // 3. Fetch data and total count concurrently using transaction
+  const [sessions, totalCount] = await prisma.$transaction([
+    prisma.session.findMany({
+      where: whereClause,
+      orderBy: orderByClause,
+      skip: skip,
+      take: pageSize,
+      select: {
+        id: true,
+        name: true,
+        sport: true,
+        description: true,
+        location: true,
+        startAt: true,
+        endAt: true,
+        isAvailable: true,
+        players: {
+          select: {
+            id: true,
+            sessionPlayer: {
+              select: {
+                id: true,
+                role: true,
+                communityPlayer: {
+                  select: { id: true, username: true, type: true },
+                },
               },
             },
           },
         },
+        _count: true,
       },
-      _count: true,
-    },
-  });
+    }),
+    prisma.session.count({ where: whereClause }),
+  ]);
 
-  return sessions;
+  return {
+    sessions,
+    pagination: {
+      totalItems: totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+      currentPage: pageNumber,
+      limit: pageSize,
+    },
+  };
 };
 
 export const getSessionById = async (communityId, sessionId) => {

@@ -34,6 +34,10 @@ const CommunityActivities = () => {
   const navigate = useNavigate();
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -43,6 +47,11 @@ const CommunityActivities = () => {
       clearTimeout(handler);
     };
   }, [searchQuery]);
+
+  // Reset to page 1 whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [status, debouncedSearch, sortBy, order]);
 
   const getAllSessions = useCallback(async () => {
     try {
@@ -140,6 +149,14 @@ const CommunityActivities = () => {
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
   const canOpenSession = isManagement || communityPlayer?.role === "host";
   const isGuest = !communityPlayer || communityPlayer?.status === "requested";
+
+  // Pagination calculations
+  const totalPages = Math.ceil((sessions?.length || 0) / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentSessions = sessions?.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE,
+  );
 
   return (
     <>
@@ -285,10 +302,8 @@ const CommunityActivities = () => {
               </thead>
 
               <tbody className="divide-y divide-stone-100">
-                {sessions?.map((session) => {
-                  // 🎯 FIX: Matches explicitly assigned hosts OR community owners/admins
+                {currentSessions?.map((session) => {
                   const hosts = (() => {
-                    // 1. Get the usernames of players explicitly assigned as "host", "owner", or "admin" in this session
                     const explicitSessionHosts =
                       session?.players
                         ?.filter((p) => {
@@ -304,7 +319,6 @@ const CommunityActivities = () => {
                         )
                         ?.filter(Boolean) || [];
 
-                    // 2. Fetch the community-level roster from context to identify global Owners & Admins
                     const communityRoster =
                       context?.community?.players || context?.players || [];
 
@@ -322,7 +336,6 @@ const CommunityActivities = () => {
                         )
                         ?.filter(Boolean) || [];
 
-                    // 3. Find which of those community owners/admins have actually joined this specific session
                     const sessionUsernames =
                       session?.players
                         ?.map(
@@ -335,7 +348,6 @@ const CommunityActivities = () => {
                         sessionUsernames.includes(username),
                       );
 
-                    // 4. Combine explicit hosts/owners/admins and present management, filtering out duplicates
                     const allHosts = Array.from(
                       new Set([
                         ...explicitSessionHosts,
@@ -343,8 +355,6 @@ const CommunityActivities = () => {
                       ]),
                     );
 
-                    // 5. Absolute fallback: If no management/hosts are active in the session yet,
-                    // display the current viewing admin/owner so the cell isn't empty
                     if (
                       allHosts.length === 0 &&
                       isManagement &&
@@ -490,7 +500,7 @@ const CommunityActivities = () => {
                   );
                 })}
 
-                {(!sessions || sessions.length === 0) && (
+                {(!currentSessions || currentSessions.length === 0) && (
                   <tr>
                     <td
                       colSpan={8}
@@ -503,6 +513,37 @@ const CommunityActivities = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-x-1.5 p-4 border-t border-stone-200/80 bg-stone-50/30">
+              {Array.from({ length: totalPages }, (_, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      currentPage === pageNumber
+                        ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20"
+                        : "bg-white border border-stone-200 text-stone-700 hover:bg-stone-100"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+
+              {currentPage < totalPages && (
+                <button
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-100 transition-all cursor-pointer ml-1"
+                >
+                  next
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {isManagement && (
