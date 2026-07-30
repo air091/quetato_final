@@ -43,6 +43,7 @@ export const getCommunityPlayerHistoryController = async (
     const results = await getCommunityPlayerHistory(
       communityId,
       communityPlayerId,
+      request.query, // Pass query params to service
     );
     return response.status(200).json({ success: true, results });
   } catch (error) {

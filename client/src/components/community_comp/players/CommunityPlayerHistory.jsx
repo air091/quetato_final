@@ -53,6 +53,11 @@ const CommunityPlayerHistory = ({
   const [deletingId, setDeletingId] = useState(null);
   const modalRef = useRef(null);
 
+  // Pagination States for Lists
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(5);
+  const [visibleManualPointsCount, setVisibleManualPointsCount] = useState(5);
+  const [visiblePaymentsCount, setVisiblePaymentsCount] = useState(5);
+
   // Transfer Feature State
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [selectedMatchIds, setSelectedMatchIds] = useState([]);
@@ -85,9 +90,14 @@ const CommunityPlayerHistory = ({
     };
   }, [onClose, isTransferOpen, editingPoint]);
 
-  // Filter accepted community players by search query
+  // Filter accepted community players by search query with robust name fallbacks
   const filteredCommunityPlayers = communityPlayers.filter((cp) => {
-    const name = cp.communityPlayer?.username || cp.username || "";
+    const name =
+      cp.communityPlayer?.username ||
+      cp.username ||
+      cp.user?.username ||
+      cp.name ||
+      "";
     return name.toLowerCase().includes(searchQuery.toLowerCase().trim());
   });
 
@@ -97,6 +107,9 @@ const CommunityPlayerHistory = ({
     try {
       setIsLoading(true);
       setError("");
+      setVisibleHistoryCount(5); // Reset visible counts on reload
+      setVisibleManualPointsCount(5);
+      setVisiblePaymentsCount(5);
       const response = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history`,
       );
@@ -118,34 +131,35 @@ const CommunityPlayerHistory = ({
     loadHistory();
   }, [communityId, communityPlayerId, fetchWithAuth]);
 
-  // Fetch Community Players with Status = "accepted"
+  // Fetch Community Players with Status = "accepted" and limit=1000
   const fetchCommunityPlayers = async () => {
     try {
       setLoadingPlayers(true);
       setTransferError(null);
       const res = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players`,
+        `${API_URL}/api/communities/${communityId}/players?limit=1000`,
         { method: "GET" },
       );
       if (!res.ok) throw new Error("Failed to load community players");
       const playersData = await res.json();
 
-      const rawList = Array.isArray(playersData.player)
-        ? playersData.player
-        : Array.isArray(playersData.results)
-          ? playersData.results
-          : Array.isArray(playersData)
-            ? playersData
-            : [];
+      const rawList = Array.isArray(playersData.players)
+        ? playersData.players
+        : Array.isArray(playersData.player)
+          ? playersData.player
+          : Array.isArray(playersData.results)
+            ? playersData.results
+            : Array.isArray(playersData)
+              ? playersData
+              : [];
 
-      // Filter out self and ensure status is "accepted"
+      // Filter out self and ensure status is "accepted" (or flexible if status omitted)
       const availablePlayers = rawList.filter((cp) => {
-        const isNotCurrentPlayer =
-          cp.id !== communityPlayerId &&
-          cp.communityPlayerId !== communityPlayerId;
+        const cpId = cp.id || cp.communityPlayerId;
+        const isNotCurrentPlayer = cpId !== communityPlayerId;
 
-        const isAccepted =
-          cp.status === "accepted" || cp.communityPlayer?.status === "accepted";
+        const status = cp.status || cp.communityPlayer?.status;
+        const isAccepted = !status || status.toLowerCase() === "accepted";
 
         return isNotCurrentPlayer && isAccepted;
       });
@@ -320,7 +334,7 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // 🌟 Handle Update Manual Point
+  // Handle Update Manual Point
   const handleUpdateManualPointSubmit = async (e) => {
     e.preventDefault();
     if (!editingPoint) return;
@@ -347,7 +361,7 @@ const CommunityPlayerHistory = ({
       }
 
       setEditingPoint(null);
-      loadHistory(); // Reload latest breakdown summary
+      loadHistory();
       if (typeof onGamesTransferred === "function") onGamesTransferred();
     } catch (err) {
       alert(err.message || "Failed to update manual point.");
@@ -356,7 +370,7 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // 🌟 Handle Delete Single Manual Point
+  // Handle Delete Single Manual Point
   const handleDeleteManualPoint = async (manualPointId) => {
     if (
       !window.confirm("Are you sure you want to delete this manual adjustment?")
@@ -383,7 +397,7 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // 🌟 Handle Delete All Manual Points
+  // Handle Delete All Manual Points
   const handleDeleteAllManualPoints = async () => {
     if (
       !window.confirm(
@@ -570,157 +584,175 @@ const CommunityPlayerHistory = ({
                     </p>
                   </div>
                 ) : (
-                  data.history.map((match) => {
-                    const isWin =
-                      match.result === "win" ||
-                      match.playerPersonalResult === "win";
-                    const isDeleting = deletingId === match.matchHistoryId;
-                    const isSelected = selectedMatchIds.includes(
-                      match.matchHistoryId,
-                    );
+                  <>
+                    {data.history.slice(0, visibleHistoryCount).map((match) => {
+                      const isWin =
+                        match.result === "win" ||
+                        match.playerPersonalResult === "win";
+                      const isDeleting = deletingId === match.matchHistoryId;
+                      const isSelected = selectedMatchIds.includes(
+                        match.matchHistoryId,
+                      );
 
-                    return (
-                      <div
-                        key={match.matchHistoryId}
-                        className={`relative flex flex-col gap-y-2.5 rounded-xl border p-3 transition-all duration-150 ${
-                          isSelected
-                            ? "border-orange-300 bg-orange-50/30 ring-1 ring-orange-400/20"
-                            : isWin
-                              ? "border-emerald-200/60 bg-emerald-50/20 hover:border-emerald-300"
-                              : "border-rose-100 bg-rose-50/20 hover:border-rose-200"
-                        }`}
-                      >
-                        {/* Match Header */}
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() =>
-                                handleToggleSelectMatch(match.matchHistoryId)
-                              }
-                              className="rounded border-stone-300 text-orange-500 focus:ring-orange-500/20 cursor-pointer"
-                            />
-                            <span
-                              className={`flex items-center gap-x-1 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                isWin
-                                  ? "bg-emerald-100/80 text-emerald-800"
-                                  : "bg-rose-100/80 text-rose-800"
-                              }`}
-                            >
-                              {isWin ? (
-                                <Trophy size={11} />
-                              ) : (
-                                <Frown size={11} />
-                              )}
-                              {match.result || match.playerPersonalResult} · +
-                              {match.points}
-                            </span>
-                            <span className="font-bold text-stone-800 truncate max-w-[120px]">
-                              {match.sessionName || match.courtName}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-x-2 text-[11px] font-medium text-stone-400">
-                            <span className="flex items-center gap-x-1">
-                              <Calendar size={12} />{" "}
-                              {formatDate(match.endedAt || match.startedAt)}
-                            </span>
-                            {match.startedAt && match.endedAt && (
-                              <span className="flex items-center gap-x-1">
-                                <Clock size={12} />{" "}
-                                {formatDuration(match.startedAt, match.endedAt)}
+                      return (
+                        <div
+                          key={match.matchHistoryId}
+                          className={`relative flex flex-col gap-y-2.5 rounded-xl border p-3 transition-all duration-150 ${
+                            isSelected
+                              ? "border-orange-300 bg-orange-50/30 ring-1 ring-orange-400/20"
+                              : isWin
+                                ? "border-emerald-200/60 bg-emerald-50/20 hover:border-emerald-300"
+                                : "border-rose-100 bg-rose-50/20 hover:border-rose-200"
+                          }`}
+                        >
+                          <span className="font-bold text-[10px] text-stone-800 truncate max-w-[120px]">
+                            {match.sessionName || match.courtName}
+                          </span>
+                          {/* Match Header */}
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-x-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() =>
+                                  handleToggleSelectMatch(match.matchHistoryId)
+                                }
+                                className="rounded border-stone-300 text-orange-500 focus:ring-orange-500/20 cursor-pointer"
+                              />
+                              <span
+                                className={`flex items-center gap-x-1 rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                  isWin
+                                    ? "bg-emerald-100/80 text-emerald-800"
+                                    : "bg-rose-100/80 text-rose-800"
+                                }`}
+                              >
+                                {isWin ? (
+                                  <Trophy size={11} />
+                                ) : (
+                                  <Frown size={11} />
+                                )}
+                                {match.result || match.playerPersonalResult} · +
+                                {match.points}
                               </span>
-                            )}
+                            </div>
 
-                            {/* Delete Entry Button */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDeleteMatch(match.matchHistoryId)
-                              }
-                              disabled={isDeleting}
-                              title="Delete match entry"
-                              className="ml-0.5 rounded-lg p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50 cursor-pointer"
-                            >
-                              {isDeleting ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
-                              ) : (
-                                <Trash2 size={13} />
+                            <div className="flex items-center gap-x-2 text-[11px] font-medium text-stone-400">
+                              <span className="flex items-center gap-x-1">
+                                <Calendar size={12} />{" "}
+                                {formatDate(match.endedAt || match.startedAt)}
+                              </span>
+                              {match.startedAt && match.endedAt && (
+                                <span className="flex items-center gap-x-1">
+                                  <Clock size={12} />{" "}
+                                  {formatDuration(
+                                    match.startedAt,
+                                    match.endedAt,
+                                  )}
+                                </span>
                               )}
-                            </button>
-                          </div>
-                        </div>
 
-                        {/* Matchup Teams Panel */}
-                        <div className="grid grid-cols-2 gap-x-3 border-t border-dashed border-stone-200/70 pt-2 text-xs">
-                          {/* Team A */}
-                          <div className="flex flex-col">
-                            <span
-                              className={`mb-1 text-[9px] font-bold uppercase tracking-wide ${
-                                match.winningTeam === "a"
-                                  ? "text-emerald-700"
-                                  : "text-stone-400"
-                              }`}
-                            >
-                              Team A {match.winningTeam === "a" && "🏆"}
-                            </span>
-                            <div className="flex flex-wrap gap-x-1 text-[11px] font-medium text-stone-700">
-                              {match.teamA.map((tPlayer, idx) => (
-                                <span
-                                  key={
-                                    tPlayer.communityPlayerId ||
-                                    tPlayer.username ||
-                                    idx
-                                  }
-                                  className={
-                                    tPlayer.username === username
-                                      ? "font-bold text-orange-600 underline underline-offset-2"
-                                      : ""
-                                  }
-                                >
-                                  {tPlayer.username}
-                                  {idx < match.teamA.length - 1 ? "," : ""}
-                                </span>
-                              ))}
+                              {/* Delete Entry Button */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDeleteMatch(match.matchHistoryId)
+                                }
+                                disabled={isDeleting}
+                                title="Delete match entry"
+                                className="ml-0.5 rounded-lg p-1 text-stone-400 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {isDeleting ? (
+                                  <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
+                                ) : (
+                                  <Trash2 size={13} />
+                                )}
+                              </button>
                             </div>
                           </div>
 
-                          {/* Team B */}
-                          <div className="flex flex-col border-l border-stone-200/60 pl-3">
-                            <span
-                              className={`mb-1 text-[9px] font-bold uppercase tracking-wide ${
-                                match.winningTeam === "b"
-                                  ? "text-emerald-700"
-                                  : "text-stone-400"
-                              }`}
-                            >
-                              Team B {match.winningTeam === "b" && "🏆"}
-                            </span>
-                            <div className="flex flex-wrap gap-x-1 text-[11px] font-medium text-stone-700">
-                              {match.teamB.map((tPlayer, idx) => (
-                                <span
-                                  key={
-                                    tPlayer.communityPlayerId ||
-                                    tPlayer.username ||
-                                    idx
-                                  }
-                                  className={
-                                    tPlayer.username === username
-                                      ? "font-bold text-orange-600 underline underline-offset-2"
-                                      : ""
-                                  }
-                                >
-                                  {tPlayer.username}
-                                  {idx < match.teamB.length - 1 ? "," : ""}
-                                </span>
-                              ))}
+                          {/* Matchup Teams Panel */}
+                          <div className="grid grid-cols-2 gap-x-3 border-t border-dashed border-stone-200/70 pt-2 text-xs">
+                            {/* Team A */}
+                            <div className="flex flex-col">
+                              <span
+                                className={`mb-1 text-[9px] font-bold uppercase tracking-wide ${
+                                  match.winningTeam === "a"
+                                    ? "text-emerald-700"
+                                    : "text-stone-400"
+                                }`}
+                              >
+                                Team A {match.winningTeam === "a" && "🏆"}
+                              </span>
+                              <div className="flex flex-wrap gap-x-1 text-[11px] font-medium text-stone-700">
+                                {match.teamA.map((tPlayer, idx) => (
+                                  <span
+                                    key={
+                                      tPlayer.communityPlayerId ||
+                                      tPlayer.username ||
+                                      idx
+                                    }
+                                    className={
+                                      tPlayer.username === username
+                                        ? "font-bold text-orange-600 underline underline-offset-2"
+                                        : ""
+                                    }
+                                  >
+                                    {tPlayer.username}
+                                    {idx < match.teamA.length - 1 ? "," : ""}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Team B */}
+                            <div className="flex flex-col border-l border-stone-200/60 pl-3">
+                              <span
+                                className={`mb-1 text-[9px] font-bold uppercase tracking-wide ${
+                                  match.winningTeam === "b"
+                                    ? "text-emerald-700"
+                                    : "text-stone-400"
+                                }`}
+                              >
+                                Team B {match.winningTeam === "b" && "🏆"}
+                              </span>
+                              <div className="flex flex-wrap gap-x-1 text-[11px] font-medium text-stone-700">
+                                {match.teamB.map((tPlayer, idx) => (
+                                  <span
+                                    key={
+                                      tPlayer.communityPlayerId ||
+                                      tPlayer.username ||
+                                      idx
+                                    }
+                                    className={
+                                      tPlayer.username === username
+                                        ? "font-bold text-orange-600 underline underline-offset-2"
+                                        : ""
+                                    }
+                                  >
+                                    {tPlayer.username}
+                                    {idx < match.teamB.length - 1 ? "," : ""}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })}
+
+                    {visibleHistoryCount < data.history.length && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleHistoryCount((prev) => prev + 5)
+                        }
+                        className="w-full rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs"
+                      >
+                        Load More ({data.history.length - visibleHistoryCount}{" "}
+                        remaining)
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -749,69 +781,87 @@ const CommunityPlayerHistory = ({
                       </p>
                     </div>
                   ) : (
-                    manualPointsList.map((entry) => {
-                      const isDeletingThis = deletingPointId === entry.id;
-                      return (
-                        <article
-                          key={entry.id || entry.createdAt}
-                          className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
-                        >
-                          <div className="space-y-0.5">
-                            <p className="font-semibold text-stone-800">
-                              {entry.description || "Manual adjustment"}
-                            </p>
-                            <p className="text-[11px] text-stone-400">
-                              {formatDate(entry.createdAt)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-x-2">
-                            <span
-                              className={`font-bold ${
-                                entry.points >= 0
-                                  ? "text-emerald-700"
-                                  : "text-rose-700"
-                              }`}
+                    <>
+                      {manualPointsList
+                        .slice(0, visibleManualPointsCount)
+                        .map((entry) => {
+                          const isDeletingThis = deletingPointId === entry.id;
+                          return (
+                            <article
+                              key={entry.id || entry.createdAt}
+                              className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
                             >
-                              {entry.points >= 0
-                                ? `+${entry.points}`
-                                : entry.points}{" "}
-                              pts
-                            </span>
-                            <div className="flex items-center gap-x-1 ml-1 border-l border-amber-200 pl-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setEditingPoint({
-                                    id: entry.id,
-                                    points: entry.points,
-                                    description: entry.description,
-                                  })
-                                }
-                                title="Edit manual adjustment"
-                                className="rounded p-1 text-stone-500 hover:bg-amber-100 hover:text-stone-800 transition-colors cursor-pointer"
-                              >
-                                <Edit3 size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDeleteManualPoint(entry.id)
-                                }
-                                disabled={isDeletingThis}
-                                title="Delete manual adjustment"
-                                className="rounded p-1 text-stone-500 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer disabled:opacity-50"
-                              >
-                                {isDeletingThis ? (
-                                  <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
-                                ) : (
-                                  <Trash2 size={12} />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })
+                              <div className="space-y-0.5">
+                                <p className="font-semibold text-stone-800">
+                                  {entry.description || "Manual adjustment"}
+                                </p>
+                                <p className="text-[11px] text-stone-400">
+                                  {formatDate(entry.createdAt)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-x-2">
+                                <span
+                                  className={`font-bold ${
+                                    entry.points >= 0
+                                      ? "text-emerald-700"
+                                      : "text-rose-700"
+                                  }`}
+                                >
+                                  {entry.points >= 0
+                                    ? `+${entry.points}`
+                                    : entry.points}{" "}
+                                  pts
+                                </span>
+                                <div className="flex items-center gap-x-1 ml-1 border-l border-amber-200 pl-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingPoint({
+                                        id: entry.id,
+                                        points: entry.points,
+                                        description: entry.description,
+                                      })
+                                    }
+                                    title="Edit manual adjustment"
+                                    className="rounded p-1 text-stone-500 hover:bg-amber-100 hover:text-stone-800 transition-colors cursor-pointer"
+                                  >
+                                    <Edit3 size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleDeleteManualPoint(entry.id)
+                                    }
+                                    disabled={isDeletingThis}
+                                    title="Delete manual adjustment"
+                                    className="rounded p-1 text-stone-500 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer disabled:opacity-50"
+                                  >
+                                    {isDeletingThis ? (
+                                      <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
+                                    ) : (
+                                      <Trash2 size={12} />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+
+                      {visibleManualPointsCount < manualPointsList.length && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleManualPointsCount((prev) => prev + 5)
+                          }
+                          className="w-full rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs"
+                        >
+                          Load More (
+                          {manualPointsList.length - visibleManualPointsCount}{" "}
+                          remaining)
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -829,24 +879,42 @@ const CommunityPlayerHistory = ({
                       </p>
                     </div>
                   ) : (
-                    data.payments.map((payment) => (
-                      <article
-                        key={payment.sessionId}
-                        className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
-                      >
-                        <div>
-                          <p className="font-semibold text-stone-800">
-                            {payment.sessionName}
-                          </p>
-                          <p className="text-[11px] text-stone-400">
-                            Marked paid {formatDate(payment.paidAt)}
-                          </p>
-                        </div>
-                        <span className="font-bold text-amber-700">
-                          +{payment.points} pts
-                        </span>
-                      </article>
-                    ))
+                    <>
+                      {data.payments
+                        .slice(0, visiblePaymentsCount)
+                        .map((payment) => (
+                          <article
+                            key={payment.sessionId}
+                            className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
+                          >
+                            <div>
+                              <p className="font-semibold text-stone-800">
+                                {payment.sessionName}
+                              </p>
+                              <p className="text-[11px] text-stone-400">
+                                Marked paid {formatDate(payment.paidAt)}
+                              </p>
+                            </div>
+                            <span className="font-bold text-amber-700">
+                              +{payment.points} pts
+                            </span>
+                          </article>
+                        ))}
+
+                      {visiblePaymentsCount < data.payments.length && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisiblePaymentsCount((prev) => prev + 5)
+                          }
+                          className="w-full rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs"
+                        >
+                          Load More (
+                          {data.payments.length - visiblePaymentsCount}{" "}
+                          remaining)
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -855,7 +923,7 @@ const CommunityPlayerHistory = ({
         </div>
       </div>
 
-      {/* 🌟 EDIT MANUAL POINT MODAL */}
+      {/* EDIT MANUAL POINT MODAL */}
       {editingPoint && (
         <div
           className="fixed inset-0 z-60 flex items-center justify-center bg-stone-900/50 p-4 font-sans backdrop-blur-xs animate-in fade-in duration-150"
@@ -1033,6 +1101,8 @@ const CommunityPlayerHistory = ({
                           const pName =
                             cp.communityPlayer?.username ||
                             cp.username ||
+                            cp.user?.username ||
+                            cp.name ||
                             "Unknown";
                           const isSelected = targetCommunityPlayerId === cp.id;
 

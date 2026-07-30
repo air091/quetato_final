@@ -106,25 +106,28 @@ export const getPlayerGameHistory = async (sessionPlayerId) => {
 export const getCommunityPlayerHistory = async (
   communityId,
   communityPlayerId,
+  query = {},
 ) => {
   if (!communityId || !communityPlayerId) {
     throw new AppError("Community and player IDs are required", 400);
   }
 
+  // Extract pagination limits and offsets from query params (defaulting to 5)
+  const historyLimit = parseInt(query.historyLimit, 10) || 5;
+  const historyOffset = parseInt(query.historyOffset, 10) || 0;
+
+  const manualLimit = parseInt(query.manualLimit, 10) || 5;
+  const manualOffset = parseInt(query.manualOffset, 10) || 0;
+
+  const paymentLimit = parseInt(query.paymentLimit, 10) || 5;
+  const paymentOffset = parseInt(query.paymentOffset, 10) || 0;
+
+  // 1. Fetch player basic info & total counts for pagination metadata
   const communityPlayer = await prisma.communityPlayer.findFirst({
     where: { id: communityPlayerId, communityId },
     select: {
       id: true,
       communityPlayer: { select: { username: true } },
-      manualPoints: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          points: true,
-          description: true,
-          createdAt: true,
-        },
-      },
       sessionPlayers: {
         where: { session: { communityId } },
         select: {
@@ -141,13 +144,44 @@ export const getCommunityPlayerHistory = async (
     throw new AppError("Community player not found", 404);
   }
 
+  // Get total manual points count for metadata/pagination state
+  const totalManualPointsCount = await prisma.manualPoint.count({
+    where: { communityPlayerId },
+  });
+
+  // Fetch paginated manual points directly via Prisma
+  const manualPoints = await prisma.manualPoint.findMany({
+    where: { communityPlayerId },
+    orderBy: { createdAt: "desc" },
+    take: manualLimit,
+    skip: manualOffset,
+    select: {
+      id: true,
+      points: true,
+      description: true,
+      createdAt: true,
+    },
+  });
+
   const sessionPlayerIds = communityPlayer.sessionPlayers.map(
     (player) => player.id,
   );
+
+  // Get total match records count
+  const totalHistoryCount =
+    sessionPlayerIds.length > 0
+      ? await prisma.matchHistoryPlayer.count({
+          where: { sessionPlayerId: { in: sessionPlayerIds } },
+        })
+      : 0;
+
+  // Fetch paginated match records
   const matchRecords =
     sessionPlayerIds.length > 0
       ? await prisma.matchHistoryPlayer.findMany({
           where: { sessionPlayerId: { in: sessionPlayerIds } },
+          take: historyLimit,
+          skip: historyOffset,
           include: {
             matchHistory: {
               include: {
@@ -203,7 +237,8 @@ export const getCommunityPlayerHistory = async (
     };
   });
 
-  const payments = communityPlayer.sessionPlayers
+  // Filter and paginate payments from sessionPlayers
+  const allPayments = communityPlayer.sessionPlayers
     .filter((player) => player.gameStatus === "paid")
     .map((player) => ({
       sessionId: player.session.id,
@@ -213,13 +248,27 @@ export const getCommunityPlayerHistory = async (
     }))
     .sort((left, right) => new Date(right.paidAt) - new Date(left.paidAt));
 
-  const manualPoints = communityPlayer.manualPoints || [];
-  const totalManualPoints = manualPoints.reduce(
+  const payments = allPayments.slice(
+    paymentOffset,
+    paymentOffset + paymentLimit,
+  );
+
+  // Summary calculations (Keep global totals accurate for metrics cards)
+  const allManualPointsEntries = await prisma.manualPoint.findMany({
+    where: { communityPlayerId },
+    select: { points: true },
+  });
+  const totalManualPoints = allManualPointsEntries.reduce(
     (sum, entry) => sum + entry.points,
     0,
   );
 
-  const totalWins = history.filter((match) => match.result === "win").length;
+  const totalWinsQueryCount =
+    sessionPlayerIds.length > 0
+      ? await prisma.matchHistoryPlayer.count({
+          where: { sessionPlayerId: { in: sessionPlayerIds }, iswin: true },
+        })
+      : 0;
 
   return {
     player: {
@@ -227,17 +276,23 @@ export const getCommunityPlayerHistory = async (
       username: communityPlayer.communityPlayer.username,
     },
     summary: {
-      totalGames: history.length,
-      totalWins,
-      totalLosses: history.length - totalWins,
-      winPoints: totalWins,
-      paymentPoints: payments.length * 3,
+      totalGames: totalHistoryCount,
+      totalWins: totalWinsQueryCount,
+      totalLosses: totalHistoryCount - totalWinsQueryCount,
+      winPoints: totalWinsQueryCount,
+      paymentPoints: allPayments.length * 3,
       manualPoints: totalManualPoints,
-      totalPoints: totalWins + payments.length * 3 + totalManualPoints,
+      totalPoints:
+        totalWinsQueryCount + allPayments.length * 3 + totalManualPoints,
     },
     history,
     payments,
     manualPoints,
+    pagination: {
+      historyTotal: totalHistoryCount,
+      manualPointsTotal: totalManualPointsCount,
+      paymentsTotal: allPayments.length,
+    },
   };
 };
 

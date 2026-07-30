@@ -100,6 +100,7 @@ router.get(
   "/:communityId/players/total-community-games",
   getPlayerTotalCommunityGamesController,
 );
+
 router.get(
   "/:communityId/players/:communityPlayerId/history",
   getCommunityPlayerHistoryController,
