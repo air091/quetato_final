@@ -115,10 +115,7 @@ export const SessionProvider = ({ children }) => {
           queueCourts: normalizeCourtsPayload(queueData),
         };
 
-        if (
-          updateState &&
-          requestVersion === sessionDataVersionRef.current
-        ) {
+        if (updateState && requestVersion === sessionDataVersionRef.current) {
           setSessionDataState(nextSessionData);
           setCurrentUserRole(playersData.currentUserRole || null);
           setCanManagePlayers(Boolean(playersData.canManagePlayers));

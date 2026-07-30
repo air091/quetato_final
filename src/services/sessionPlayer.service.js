@@ -11,198 +11,143 @@ export const getAllSessionPlayers = async (
   if (!communityId || !sessionId)
     throw new AppError("Community ID and session ID are required", 400);
 
-  // 1. Fetch the specific session and verify it belongs to this community
+  // 1. Verify session belongs to this community
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
     select: { id: true, communityId: true },
   });
 
-  // 2. Safeguard checks
   if (!session || session.communityId !== communityId) {
     throw new AppError("Session not found in this community", 404);
   }
 
-  // Dynamic filters setup for authorization & hidden players
+  // 2. Check authorization for hidden players
   const authorizedPlayer = authorizedId
     ? await prisma.communityPlayer.findUnique({
         where: {
-          communityId_userId: {
-            communityId,
-            userId: authorizedId,
-          },
+          communityId_userId: { communityId, userId: authorizedId },
         },
-        select: { id: true, role: true },
+        select: { role: true },
       })
     : null;
   const managerRoles = ["owner", "admin", "host"];
   const includeHidden = managerRoles.includes(authorizedPlayer?.role);
 
-  // Parse pagination, search, and sorting parameters
+  // 3. Parse parameters
   const page = parseInt(queryFilters.page, 10) || 1;
   const limit = Math.min(
     Math.max(parseInt(queryFilters.limit, 10) || 12, 1),
     50,
   );
-  const search = queryFilters.search || "";
-  const sortKey = queryFilters.sortKey || ""; // e.g., "games" or "wins"
-  const direction = queryFilters.direction === "asc" ? "asc" : "desc";
+  const offset = (page - 1) * limit;
+  const search = (queryFilters.search || "").trim();
+  const sortKey = queryFilters.sortKey || "";
+  const direction = queryFilters.direction === "asc" ? "ASC" : "DESC";
 
-  // Base where filter for accepted players in this session
-  const whereFilter = { sessionId: session.id, status: "accepted" };
+  // 4. Build dynamic SQL sort clause
+  let orderByClause = `
+    CASE sp."gameStatus" 
+      WHEN 'waiting' THEN 1 
+      WHEN 'queued' THEN 2 
+      WHEN 'playing' THEN 3 
+      WHEN 'paid' THEN 4 
+      ELSE 99 
+    END ASC, 
+    COALESCE(sp."updateStatus", sp."acceptedAt", '1970-01-01'::timestamp) ASC
+  `;
 
-  if (!includeHidden) {
-    whereFilter.isHide = false;
+  if (sortKey === "games") {
+    orderByClause =
+      `COALESCE(stats.total_games, 0) ${direction}, ` + orderByClause;
+  } else if (sortKey === "wins") {
+    orderByClause =
+      `COALESCE(stats.total_wins, 0) ${direction}, ` + orderByClause;
   }
 
-  if (search.trim()) {
-    whereFilter.sessionPlayer = {
+  // 5. Execute single optimized SQL query handling filter, search, aggregation, sort, and pagination
+  // Note: Adjust table and column names matching your exact Prisma schema naming conventions (snake_case vs camelCase)
+  const rows = await prisma.$queryRaw`
+    WITH match_stats AS (
+      SELECT 
+        m."sessionPlayerId",
+        COUNT(*)::int as total_games,
+        COUNT(CASE WHEN m.iswin THEN 1 END)::int as total_wins
+      FROM "MatchHistoryPlayer" m
+      GROUP BY m."sessionPlayerId"
+    ),
+    filtered AS (
+      SELECT 
+        sp.id,
+        sp.status,
+        sp."isHide",
+        sp."requestedAt",
+        sp."acceptedAt",
+        sp."gameStatus",
+        sp."updateStatus",
+        sp."sessionPlayerId" as session_player_id,
+        cp.id as cp_id,
+        cp.username,
+        cp.type,
+        cp.role,
+        cp."skillLevel",
+        COALESCE(stats.total_games, 0) as total_games,
+        COALESCE(stats.total_wins, 0) as total_wins,
+        CASE 
+          WHEN COALESCE(stats.total_games, 0) > 0 
+          THEN ROUND((COALESCE(stats.total_wins, 0)::numeric / stats.total_games) * 100)
+          ELSE 0 
+        END as win_rate,
+        COUNT(*) OVER() as total_count
+      FROM "SessionPlayer" sp
+      JOIN "SessionPlayerProfile" s_profile ON sp."sessionPlayerId" = s_profile.id -- Adjust relation table name if needed
+      JOIN "CommunityPlayer" cp ON s_profile."communityPlayerId" = cp.id
+      LEFT JOIN match_stats stats ON stats."sessionPlayerId" = sp.id
+      WHERE sp."sessionId" = ${sessionId}
+        AND sp.status = 'accepted'
+        ${includeHidden ? Prisma.sql`` : Prisma.sql`AND sp."isHide" = false`}
+        ${search ? Prisma.sql`AND cp.username ILIKE ${`%${search}%`}` : Prisma.sql``}
+    )
+    SELECT * FROM filtered
+    ORDER BY ${Prisma.raw(orderByClause)}
+    LIMIT ${limit} OFFSET ${offset};
+  `;
+
+  const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+  const hasMore = offset + rows.length < total;
+
+  // Format response structure to match controller expectations
+  const results = rows.map((row) => ({
+    id: row.id,
+    status: row.status,
+    isHide: row.isHide,
+    requestedAt: row.requestedAt,
+    acceptedAt: row.acceptedAt,
+    gameStatus: row.gameStatus,
+    updateStatus: row.updateStatus,
+    totalGames: row.total_games,
+    totalWins: row.total_wins,
+    totalLosses: row.total_games - row.total_wins,
+    winRate: Number(row.win_rate),
+    stats: {
+      totalGames: row.total_games,
+      totalWins: row.total_wins,
+      totalLosses: row.total_games - row.total_wins,
+      winRate: Number(row.win_rate),
+    },
+    sessionPlayer: {
+      id: row.cp_id,
+      role: row.role,
       communityPlayer: {
-        username: {
-          contains: search.trim(),
-          mode: "insensitive",
-        },
-      },
-    };
-  }
-
-  // 3. Fetch all matching session players for this query filter subset
-  const sessionPlayers = await prisma.sessionPlayer.findMany({
-    where: whereFilter,
-    select: {
-      id: true,
-      status: true,
-      isHide: true,
-      requestedAt: true,
-      acceptedAt: true,
-      gameStatus: true,
-      updateStatus: true,
-
-      sessionPlayer: {
-        select: {
-          id: true,
-          role: true,
-          communityPlayer: {
-            select: { id: true, username: true, type: true, skillLevel: true },
-          },
-        },
-      },
-
-      adminAccept: {
-        select: {
-          id: true,
-          role: true,
-          communityPlayer: { select: { id: true, username: true, type: true } },
-        },
-      },
-
-      adminUpdate: {
-        select: {
-          id: true,
-          role: true,
-          communityPlayer: { select: { id: true, username: true, type: true } },
-        },
+        id: row.cp_id,
+        username: row.username,
+        type: row.type,
+        skillLevel: row.skillLevel,
       },
     },
-  });
-
-  const sessionPlayerIds = sessionPlayers.map((player) => player.id);
-  const matchCounts =
-    sessionPlayerIds.length > 0
-      ? await prisma.matchHistoryPlayer.groupBy({
-          by: ["sessionPlayerId", "iswin"],
-          where: {
-            sessionPlayerId: {
-              in: sessionPlayerIds,
-            },
-          },
-          _count: {
-            _all: true,
-          },
-        })
-      : [];
-
-  const statsBySessionPlayerId = new Map();
-
-  matchCounts.forEach((count) => {
-    const current = statsBySessionPlayerId.get(count.sessionPlayerId) || {
-      totalGames: 0,
-      totalWins: 0,
-      totalLosses: 0,
-      winRate: 0,
-    };
-    const total = count._count?._all || 0;
-
-    current.totalGames += total;
-    if (count.iswin) {
-      current.totalWins += total;
-    } else {
-      current.totalLosses += total;
-    }
-
-    current.winRate =
-      current.totalGames > 0
-        ? Math.round((current.totalWins / current.totalGames) * 100)
-        : 0;
-
-    statsBySessionPlayerId.set(count.sessionPlayerId, current);
-  });
-
-  // Attach stats to players
-  const playersWithStats = sessionPlayers.map((player) => {
-    const stats = statsBySessionPlayerId.get(player.id) || {
-      totalGames: 0,
-      totalWins: 0,
-      totalLosses: 0,
-      winRate: 0,
-    };
-
-    return {
-      ...player,
-      ...stats,
-      stats,
-    };
-  });
-
-  // 4. Sort the players array
-  const statusPriority = {
-    waiting: 1,
-    queued: 2,
-    playing: 3,
-    paid: 4,
-  };
-
-  playersWithStats.sort((a, b) => {
-    // If sorting explicitly by Games or Wins
-    if (sortKey === "games" || sortKey === "wins") {
-      const valA = a[sortKey] || 0;
-      const valB = b[sortKey] || 0;
-      if (valA !== valB) {
-        return direction === "asc" ? valA - valB : valB - valA;
-      }
-    }
-
-    // Default sorting logic (Status Priority + Timestamp)
-    const priorityA = statusPriority[a.gameStatus] || 99;
-    const priorityB = statusPriority[b.gameStatus] || 99;
-
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB;
-    }
-
-    const timeA = new Date(a.updateStatus || a.acceptedAt || 0).getTime();
-    const timeB = new Date(b.updateStatus || b.acceptedAt || 0).getTime();
-
-    return timeA - timeB;
-  });
-
-  // 5. Apply pagination slicing in memory
-  const total = playersWithStats.length;
-  const skip = (page - 1) * limit;
-  const paginatedResults = playersWithStats.slice(skip, skip + limit);
-  const hasMore = skip + paginatedResults.length < total;
+  }));
 
   return {
-    results: paginatedResults,
+    results,
     pagination: {
       total,
       hasMore,
