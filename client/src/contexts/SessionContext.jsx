@@ -69,7 +69,7 @@ export const SessionProvider = ({ children }) => {
         const [dashboardRes, playersRes, matchRes, queueRes, pricingRes] =
           await Promise.all([
             fetchWithAuth(`${baseUrl}/dashboard`, { method: "GET" }),
-            fetchWithAuth(`${baseUrl}/players`, { method: "GET" }),
+            fetchWithAuth(`${baseUrl}/players?limit=1000`, { method: "GET" }),
             fetchWithAuth(`${baseUrl}/courts?type=match`, { method: "GET" }),
             fetchWithAuth(`${baseUrl}/courts?type=queue`, { method: "GET" }),
             fetchWithAuth(`${baseUrl}/pricing`, {
@@ -110,7 +110,7 @@ export const SessionProvider = ({ children }) => {
           dashboard: dashboardData.dashboard || null,
           pricingData:
             pricingData?.result?.result || pricingData?.result || pricingData,
-          players: playersData.players || [],
+          players: playersData.players || playersData.results || [],
           matchCourts: normalizeCourtsPayload(matchData),
           queueCourts: normalizeCourtsPayload(queueData),
         };
@@ -141,7 +141,7 @@ export const SessionProvider = ({ children }) => {
 
       try {
         if (!silent) setIsSessionLoading(true);
-        const response = await fetchWithAuth(`${baseUrl}/players`, {
+        const response = await fetchWithAuth(`${baseUrl}/players?limit=1000`, {
           method: "GET",
         });
 
@@ -156,16 +156,18 @@ export const SessionProvider = ({ children }) => {
           throw new Error(data?.message || "Failed to load players");
         }
 
+        const resolvedPlayers = data.players || data.results || [];
+
         if (requestVersion === sessionDataVersionRef.current) {
           setSessionDataState((prev) => ({
             ...prev,
-            players: data.players || [],
+            players: resolvedPlayers,
           }));
           setCurrentUserRole(data.currentUserRole || null);
           setCanManagePlayers(Boolean(data.canManagePlayers));
         }
 
-        return data.players || [];
+        return resolvedPlayers;
       } finally {
         setIsSessionLoading(false);
       }
