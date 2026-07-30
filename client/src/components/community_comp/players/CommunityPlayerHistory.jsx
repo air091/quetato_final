@@ -53,10 +53,10 @@ const CommunityPlayerHistory = ({
   const [deletingId, setDeletingId] = useState(null);
   const modalRef = useRef(null);
 
-  // Pagination States for Lists
-  const [visibleHistoryCount, setVisibleHistoryCount] = useState(5);
-  const [visibleManualPointsCount, setVisibleManualPointsCount] = useState(5);
-  const [visiblePaymentsCount, setVisiblePaymentsCount] = useState(5);
+  // Loading States for "Load More" Server-Side Pagination Actions
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false);
+  const [isLoadingMoreManual, setIsLoadingMoreManual] = useState(false);
+  const [isLoadingMorePayments, setIsLoadingMorePayments] = useState(false);
 
   // Transfer Feature State
   const [isTransferOpen, setIsTransferOpen] = useState(false);
@@ -107,11 +107,8 @@ const CommunityPlayerHistory = ({
     try {
       setIsLoading(true);
       setError("");
-      setVisibleHistoryCount(5); // Reset visible counts on reload
-      setVisibleManualPointsCount(5);
-      setVisiblePaymentsCount(5);
       const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history`,
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history?historyLimit=5&manualLimit=5&paymentLimit=5`,
       );
       const result = await response.json().catch(() => ({}));
 
@@ -130,6 +127,73 @@ const CommunityPlayerHistory = ({
   useEffect(() => {
     loadHistory();
   }, [communityId, communityPlayerId, fetchWithAuth]);
+
+  // Server-Side "Load More" Handlers (Appends Chunks)
+  const handleLoadMoreHistory = async () => {
+    if (!data) return;
+    try {
+      setIsLoadingMoreHistory(true);
+      const historyOffset = data.history.length;
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history?historyLimit=5&historyOffset=${historyOffset}&manualLimit=${data.manualPoints.length}&paymentLimit=${data.payments.length}`,
+      );
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setData((prev) => ({
+          ...prev,
+          history: [...prev.history, ...result.results.history],
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to load more history", err);
+    } finally {
+      setIsLoadingMoreHistory(false);
+    }
+  };
+
+  const handleLoadMoreManualPoints = async () => {
+    if (!data) return;
+    try {
+      setIsLoadingMoreManual(true);
+      const manualOffset = data.manualPoints.length;
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history?historyLimit=${data.history.length}&manualLimit=5&manualOffset=${manualOffset}&paymentLimit=${data.payments.length}`,
+      );
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setData((prev) => ({
+          ...prev,
+          manualPoints: [...prev.manualPoints, ...result.results.manualPoints],
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to load more manual points", err);
+    } finally {
+      setIsLoadingMoreManual(false);
+    }
+  };
+
+  const handleLoadMorePayments = async () => {
+    if (!data) return;
+    try {
+      setIsLoadingMorePayments(true);
+      const paymentOffset = data.payments.length;
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/players/${communityPlayerId}/history?historyLimit=${data.history.length}&manualLimit=${data.manualPoints.length}&paymentLimit=5&paymentOffset=${paymentOffset}`,
+      );
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setData((prev) => ({
+          ...prev,
+          payments: [...prev.payments, ...result.results.payments],
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to load more payments", err);
+    } finally {
+      setIsLoadingMorePayments(false);
+    }
+  };
 
   // Fetch Community Players with Status = "accepted" and limit=1000
   const fetchCommunityPlayers = async () => {
@@ -153,7 +217,6 @@ const CommunityPlayerHistory = ({
               ? playersData
               : [];
 
-      // Filter out self and ensure status is "accepted" (or flexible if status omitted)
       const availablePlayers = rawList.filter((cp) => {
         const cpId = cp.id || cp.communityPlayerId;
         const isNotCurrentPlayer = cpId !== communityPlayerId;
@@ -180,7 +243,6 @@ const CommunityPlayerHistory = ({
     fetchCommunityPlayers();
   };
 
-  // Checkbox Select Toggles
   const handleToggleSelectMatch = (matchHistoryId) => {
     setSelectedMatchIds((prev) =>
       prev.includes(matchHistoryId)
@@ -198,7 +260,6 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // Perform Community-Level Transfer
   const handleExecuteTransfer = async () => {
     if (!targetCommunityPlayerId) {
       setTransferError("Please select a target player to transfer matches to.");
@@ -277,7 +338,6 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // Delete Match Entry
   const handleDeleteMatch = async (matchHistoryId) => {
     if (!window.confirm("Are you sure you want to delete this match record?")) {
       return;
@@ -334,7 +394,6 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // Handle Update Manual Point
   const handleUpdateManualPointSubmit = async (e) => {
     e.preventDefault();
     if (!editingPoint) return;
@@ -370,7 +429,6 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // Handle Delete Single Manual Point
   const handleDeleteManualPoint = async (manualPointId) => {
     if (
       !window.confirm("Are you sure you want to delete this manual adjustment?")
@@ -397,7 +455,6 @@ const CommunityPlayerHistory = ({
     }
   };
 
-  // Handle Delete All Manual Points
   const handleDeleteAllManualPoints = async () => {
     if (
       !window.confirm(
@@ -585,7 +642,7 @@ const CommunityPlayerHistory = ({
                   </div>
                 ) : (
                   <>
-                    {data.history.slice(0, visibleHistoryCount).map((match) => {
+                    {data.history.map((match) => {
                       const isWin =
                         match.result === "win" ||
                         match.playerPersonalResult === "win";
@@ -740,15 +797,19 @@ const CommunityPlayerHistory = ({
                       );
                     })}
 
-                    {visibleHistoryCount < data.history.length && (
+                    {data.history.length <
+                      (data.pagination?.historyTotal || 0) && (
                       <button
                         type="button"
-                        onClick={() =>
-                          setVisibleHistoryCount((prev) => prev + 5)
-                        }
-                        className="w-full rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs"
+                        onClick={handleLoadMoreHistory}
+                        disabled={isLoadingMoreHistory}
+                        className="w-full flex items-center justify-center gap-x-2 rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                       >
-                        Load More ({data.history.length - visibleHistoryCount}{" "}
+                        {isLoadingMoreHistory && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        )}
+                        Load More (
+                        {data.pagination.historyTotal - data.history.length}{" "}
                         remaining)
                       </button>
                     )}
@@ -782,82 +843,84 @@ const CommunityPlayerHistory = ({
                     </div>
                   ) : (
                     <>
-                      {manualPointsList
-                        .slice(0, visibleManualPointsCount)
-                        .map((entry) => {
-                          const isDeletingThis = deletingPointId === entry.id;
-                          return (
-                            <article
-                              key={entry.id || entry.createdAt}
-                              className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
-                            >
-                              <div className="space-y-0.5">
-                                <p className="font-semibold text-stone-800">
-                                  {entry.description || "Manual adjustment"}
-                                </p>
-                                <p className="text-[11px] text-stone-400">
-                                  {formatDate(entry.createdAt)}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-x-2">
-                                <span
-                                  className={`font-bold ${
-                                    entry.points >= 0
-                                      ? "text-emerald-700"
-                                      : "text-rose-700"
-                                  }`}
+                      {manualPointsList.map((entry) => {
+                        const isDeletingThis = deletingPointId === entry.id;
+                        return (
+                          <article
+                            key={entry.id || entry.createdAt}
+                            className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
+                          >
+                            <div className="space-y-0.5">
+                              <p className="font-semibold text-stone-800">
+                                {entry.description || "Manual adjustment"}
+                              </p>
+                              <p className="text-[11px] text-stone-400">
+                                {formatDate(entry.createdAt)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-x-2">
+                              <span
+                                className={`font-bold ${
+                                  entry.points >= 0
+                                    ? "text-emerald-700"
+                                    : "text-rose-700"
+                                }`}
+                              >
+                                {entry.points >= 0
+                                  ? `+${entry.points}`
+                                  : entry.points}{" "}
+                                pts
+                              </span>
+                              <div className="flex items-center gap-x-1 ml-1 border-l border-amber-200 pl-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingPoint({
+                                      id: entry.id,
+                                      points: entry.points,
+                                      description: entry.description,
+                                    })
+                                  }
+                                  title="Edit manual adjustment"
+                                  className="rounded p-1 text-stone-500 hover:bg-amber-100 hover:text-stone-800 transition-colors cursor-pointer"
                                 >
-                                  {entry.points >= 0
-                                    ? `+${entry.points}`
-                                    : entry.points}{" "}
-                                  pts
-                                </span>
-                                <div className="flex items-center gap-x-1 ml-1 border-l border-amber-200 pl-2">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setEditingPoint({
-                                        id: entry.id,
-                                        points: entry.points,
-                                        description: entry.description,
-                                      })
-                                    }
-                                    title="Edit manual adjustment"
-                                    className="rounded p-1 text-stone-500 hover:bg-amber-100 hover:text-stone-800 transition-colors cursor-pointer"
-                                  >
-                                    <Edit3 size={12} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleDeleteManualPoint(entry.id)
-                                    }
-                                    disabled={isDeletingThis}
-                                    title="Delete manual adjustment"
-                                    className="rounded p-1 text-stone-500 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer disabled:opacity-50"
-                                  >
-                                    {isDeletingThis ? (
-                                      <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
-                                    ) : (
-                                      <Trash2 size={12} />
-                                    )}
-                                  </button>
-                                </div>
+                                  <Edit3 size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteManualPoint(entry.id)
+                                  }
+                                  disabled={isDeletingThis}
+                                  title="Delete manual adjustment"
+                                  className="rounded p-1 text-stone-500 hover:bg-rose-100 hover:text-rose-700 transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  {isDeletingThis ? (
+                                    <Loader2 className="h-3 w-3 animate-spin text-rose-600" />
+                                  ) : (
+                                    <Trash2 size={12} />
+                                  )}
+                                </button>
                               </div>
-                            </article>
-                          );
-                        })}
+                            </div>
+                          </article>
+                        );
+                      })}
 
-                      {visibleManualPointsCount < manualPointsList.length && (
+                      {manualPointsList.length <
+                        (data.pagination?.manualPointsTotal || 0) && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setVisibleManualPointsCount((prev) => prev + 5)
-                          }
-                          className="w-full rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs"
+                          onClick={handleLoadMoreManualPoints}
+                          disabled={isLoadingMoreManual}
+                          className="w-full flex items-center justify-center gap-x-2 rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                         >
+                          {isLoadingMoreManual && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          )}
                           Load More (
-                          {manualPointsList.length - visibleManualPointsCount}{" "}
+                          {data.pagination.manualPointsTotal -
+                            manualPointsList.length}{" "}
                           remaining)
                         </button>
                       )}
@@ -880,37 +943,38 @@ const CommunityPlayerHistory = ({
                     </div>
                   ) : (
                     <>
-                      {data.payments
-                        .slice(0, visiblePaymentsCount)
-                        .map((payment) => (
-                          <article
-                            key={payment.sessionId}
-                            className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
-                          >
-                            <div>
-                              <p className="font-semibold text-stone-800">
-                                {payment.sessionName}
-                              </p>
-                              <p className="text-[11px] text-stone-400">
-                                Marked paid {formatDate(payment.paidAt)}
-                              </p>
-                            </div>
-                            <span className="font-bold text-amber-700">
-                              +{payment.points} pts
-                            </span>
-                          </article>
-                        ))}
+                      {data.payments.map((payment) => (
+                        <article
+                          key={payment.sessionId}
+                          className="flex items-center justify-between rounded-xl border border-amber-200/60 bg-amber-50/50 p-3 text-xs"
+                        >
+                          <div>
+                            <p className="font-semibold text-stone-800">
+                              {payment.sessionName}
+                            </p>
+                            <p className="text-[11px] text-stone-400">
+                              Marked paid {formatDate(payment.paidAt)}
+                            </p>
+                          </div>
+                          <span className="font-bold text-amber-700">
+                            +{payment.points} pts
+                          </span>
+                        </article>
+                      ))}
 
-                      {visiblePaymentsCount < data.payments.length && (
+                      {data.payments.length <
+                        (data.pagination?.paymentsTotal || 0) && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setVisiblePaymentsCount((prev) => prev + 5)
-                          }
-                          className="w-full rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs"
+                          onClick={handleLoadMorePayments}
+                          disabled={isLoadingMorePayments}
+                          className="w-full flex items-center justify-center gap-x-2 rounded-xl border border-stone-200/80 bg-stone-50 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                         >
+                          {isLoadingMorePayments && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          )}
                           Load More (
-                          {data.payments.length - visiblePaymentsCount}{" "}
+                          {data.pagination.paymentsTotal - data.payments.length}{" "}
                           remaining)
                         </button>
                       )}
