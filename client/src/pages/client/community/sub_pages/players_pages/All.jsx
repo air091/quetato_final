@@ -19,10 +19,12 @@ const All = () => {
   const [players, setPlayers] = useState([]);
   const [managementPlayersList, setManagementPlayersList] = useState([]);
 
-  // Search, Sort & Pagination State
+  // Search, Sort & Server-side Pagination State
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("a-z"); // 'a-z' or 'z-a'
-  const [visibleRegularCount, setVisibleRegularCount] = useState(5);
+  const [page, setPage] = useState(1);
+  const [hasMoreRegularPlayers, setHasMoreRegularPlayers] = useState(false);
+  const [totalRegularCount, setTotalRegularCount] = useState(0);
 
   const [isStaticMinimized, setIsStaticMinimized] = useState(true);
   const [isUserMinimized, setIsUserMinimized] = useState(true);
@@ -31,31 +33,48 @@ const All = () => {
     useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
 
-  // Fetch all players with role "player"
-  const getAllPlayers = useCallback(async () => {
-    if (!communityId) return;
+  // Fetch players with server-side pagination, search, and sort parameters
+  const getAllPlayers = useCallback(
+    async (currentPage = 1, isAppending = false) => {
+      if (!communityId) return;
 
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/players?t=${Date.now()}`,
-        { method: "GET" },
-      );
+      try {
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 5,
+          search: searchTerm,
+          sort: sortOrder,
+          t: Date.now(),
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP request failed with status ${response.status}`);
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/players?${queryParams.toString()}`,
+          { method: "GET" },
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data?.message || "An unknown error occurred");
+        }
+
+        const fetchedPlayers = data.players || [];
+
+        setPlayers((prev) =>
+          isAppending ? [...prev, ...fetchedPlayers] : fetchedPlayers,
+        );
+        setHasMoreRegularPlayers(data.pagination?.hasMore || false);
+        setTotalRegularCount(data.pagination?.total || 0);
+      } catch (error) {
+        console.error("Failed to fetch players:", error);
       }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data?.message || "An unknown error occurred");
-      }
-
-      setPlayers(data.players || []);
-    } catch (error) {
-      console.error("Failed to fetch players:", error);
-    }
-  }, [fetchWithAuth, communityId]);
+    },
+    [fetchWithAuth, communityId, searchTerm, sortOrder],
+  );
 
   // Fetch owners and admins using the managements endpoint
   const getManagementTeam = useCallback(async () => {
@@ -83,19 +102,23 @@ const All = () => {
     }
   }, [fetchWithAuth, communityId]);
 
+  // Reset to page 1 and fetch when search or sort criteria changes
   useEffect(() => {
-    getAllPlayers();
+    setPage(1);
+    getAllPlayers(1, false);
     getManagementTeam();
-  }, [getAllPlayers, getManagementTeam]);
-
-  // Reset visible count when search term or sort order changes
-  useEffect(() => {
-    setVisibleRegularCount(5);
-  }, [searchTerm, sortOrder]);
+  }, [getAllPlayers, getManagementTeam, searchTerm, sortOrder]);
 
   const handleDataRefresh = () => {
-    getAllPlayers();
+    setPage(1);
+    getAllPlayers(1, false);
     getManagementTeam();
+  };
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    getAllPlayers(nextPage, true);
   };
 
   const handleOptimisticTransfer = (sourcePlayerId, targetPlayerId) => {
@@ -144,7 +167,7 @@ const All = () => {
     }
   };
 
-  // Helper function to search and sort list of players
+  // Helper function to search/sort management and requests locally if needed
   const getFilteredAndSortedPlayers = (playerList) => {
     return playerList
       .filter((p) => {
@@ -176,15 +199,7 @@ const All = () => {
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
 
   const managementPlayers = getFilteredAndSortedPlayers(managementPlayersList);
-  const filteredRegularPlayers = getFilteredAndSortedPlayers(
-    players.filter((p) => p.role === "player"),
-  );
-
-  // Paginated list for regular players
-  const regularPlayers = filteredRegularPlayers.slice(0, visibleRegularCount);
-  const hasMoreRegularPlayers =
-    visibleRegularCount < filteredRegularPlayers.length;
-
+  const regularPlayers = players.filter((p) => p.role === "player");
   const requestedPlayers = getFilteredAndSortedPlayers(
     players.filter((p) => p.role === "guest"),
   );
@@ -390,7 +405,7 @@ const All = () => {
               All Regular & Static Players
             </h4>
             <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
-              {filteredRegularPlayers.length}
+              {totalRegularCount}
             </span>
           </div>
           <span
@@ -496,12 +511,10 @@ const All = () => {
               <div className="p-2 flex justify-center">
                 <button
                   type="button"
-                  onClick={() => setVisibleRegularCount((prev) => prev + 5)}
+                  onClick={handleLoadMore}
                   className="px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer shadow-sm"
                 >
-                  Load More (
-                  {filteredRegularPlayers.length - visibleRegularCount}{" "}
-                  remaining)
+                  Load More
                 </button>
               </div>
             )}
