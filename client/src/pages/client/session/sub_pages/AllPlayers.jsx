@@ -174,10 +174,26 @@ const AllPlayers = () => {
         );
         if (!response?.ok) throw new Error("Failed to load community players");
         const data = await response.json();
-        if (data?.success && isCurrent) {
+
+        // Support multiple array response formats (data.player, data.players, or raw array)
+        const rawList = Array.isArray(data?.player)
+          ? data.player
+          : Array.isArray(data?.players)
+            ? data.players
+            : Array.isArray(data)
+              ? data
+              : [];
+
+        if (isCurrent) {
           setCommunityPlayerNames(
-            (data.player || [])
-              .map((player) => player?.communityPlayer?.username)
+            rawList
+              .map(
+                (player) =>
+                  player?.communityPlayer?.username ||
+                  player?.username ||
+                  player?.user?.username ||
+                  player?.name,
+              )
               .filter(Boolean),
           );
         }
