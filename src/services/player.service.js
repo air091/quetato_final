@@ -162,11 +162,14 @@ export const getStaticPlayerNotInSession = async (
     );
   }
 
-  // 2. Verify the session exists and belongs to the specified community
+  // 2. Verify the session exists (optimized to only select the id column)
   const sessionExists = await prisma.session.findFirst({
     where: {
       id: sessionId,
       communityId: communityId,
+    },
+    select: {
+      id: true,
     },
   });
 
@@ -174,9 +177,12 @@ export const getStaticPlayerNotInSession = async (
     throw new AppError("Session not found within this community.", 400);
   }
 
-  // Parse pagination and query parameters
+  // Parse pagination with safety clamping (prevents massive payload exploits)
   const page = parseInt(queryFilters.page, 10) || 1;
-  const limit = parseInt(queryFilters.limit, 10) || 5;
+  const limit = Math.min(
+    Math.max(parseInt(queryFilters.limit, 10) || 5, 1),
+    50,
+  );
   const skip = (page - 1) * limit;
   const search = queryFilters.search || "";
   const sort = queryFilters.sort || "a-z";
@@ -193,7 +199,7 @@ export const getStaticPlayerNotInSession = async (
   const whereClause = {
     communityId: communityId,
     communityPlayer: {
-      type: "static", // 🎯 Filter by the UserType.static enum value
+      type: "static", // Filter by the UserType.static enum value
       ...(search.trim()
         ? {
             username: {
@@ -205,7 +211,7 @@ export const getStaticPlayerNotInSession = async (
     },
     sessionPlayers: {
       none: {
-        sessionId: sessionId, // 🙅‍♂️ Exclude players already linked to this session
+        sessionId: sessionId, // Exclude players already linked to this session
       },
     },
   };
