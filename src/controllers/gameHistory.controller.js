@@ -74,6 +74,9 @@ export const getPlayerTotalCommunityGamesController = async (
     if (error instanceof AppError) {
       errMessage = error.message;
       statusCode = error.statusCode;
+    } else if (error.message) {
+      // Expose safe database error message if desired during debugging
+      errMessage = error.message;
     }
 
     return response
