@@ -43,41 +43,39 @@ export const getAllSessionPlayers = async (
   const offset = (page - 1) * limit;
   const search = (queryFilters.search || "").trim();
   const sortKey = queryFilters.sortKey || "";
-  const direction = queryFilters.direction === "asc" ? "ASC" : "DESC";
+  const directionSql =
+    queryFilters.direction === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
 
-  // 4. Build dynamic SQL sort clause
-  let orderByClause = `
-    CASE sp."gameStatus" 
+  // 4. Build safe dynamic SQL sort clause using Prisma.sql fragments
+  let orderByClause = Prisma.sql`
+    CASE "gameStatus" 
       WHEN 'waiting' THEN 1 
       WHEN 'queued' THEN 2 
       WHEN 'playing' THEN 3 
       WHEN 'paid' THEN 4 
       ELSE 99 
     END ASC, 
-    COALESCE(sp."updateStatus", sp."acceptedAt", '1970-01-01'::timestamp) ASC
+    COALESCE("updateStatus", "acceptedAt", '1970-01-01'::timestamp) ASC
   `;
 
   if (sortKey === "games") {
-    orderByClause =
-      `COALESCE(stats.total_games, 0) ${direction}, ` + orderByClause;
+    orderByClause = Prisma.sql`COALESCE(total_games, 0) ${directionSql}, ${orderByClause}`;
   } else if (sortKey === "wins") {
-    orderByClause =
-      `COALESCE(stats.total_wins, 0) ${direction}, ` + orderByClause;
+    orderByClause = Prisma.sql`COALESCE(total_wins, 0) ${directionSql}, ${orderByClause}`;
   }
 
-  // 5. Execute single optimized SQL query handling filter, search, aggregation, sort, and pagination
-  // Note: Adjust table and column names matching your exact Prisma schema naming conventions (snake_case vs camelCase)
+  // 5. Execute single optimized SQL query safely matching your schema relations
   const rows = await prisma.$queryRaw`
     WITH match_stats AS (
       SELECT 
         m."sessionPlayerId",
         COUNT(*)::int as total_games,
-        COUNT(CASE WHEN m.iswin THEN 1 END)::int as total_wins
+        SUM(CASE WHEN m.iswin THEN 1 ELSE 0 END)::int as total_wins
       FROM "MatchHistoryPlayer" m
       GROUP BY m."sessionPlayerId"
     ),
     filtered AS (
-      SELECT
+      SELECT 
         sp.id,
         sp.status,
         sp."isHide",
@@ -85,37 +83,38 @@ export const getAllSessionPlayers = async (
         sp."acceptedAt",
         sp."gameStatus",
         sp."updateStatus",
-
-        cp.id AS cp_id,
+        sp."playerId" as community_player_id,
         cp.role,
-
-        u.id AS user_id,
+        u.id as user_id,
         u.username,
         u.type,
         u."skillLevel",
-
-        COALESCE(stats.total_games, 0) AS total_games,
-        COALESCE(stats.total_wins, 0) AS total_wins,
-        ...
+        COALESCE(stats.total_games, 0) as total_games,
+        COALESCE(stats.total_wins, 0) as total_wins,
+        CASE 
+          WHEN COALESCE(stats.total_games, 0) > 0 
+          THEN ROUND((COALESCE(stats.total_wins, 0)::numeric / stats.total_games) * 100)
+          ELSE 0 
+        END as win_rate,
+        COUNT(*) OVER() as total_count
       FROM "SessionPlayer" sp
-      JOIN "CommunityPlayer" cp
-      ON sp."playerId" = cp.id
+      JOIN "CommunityPlayer" cp ON sp."playerId" = cp.id
       JOIN "User" u ON cp."userId" = u.id
       LEFT JOIN match_stats stats ON stats."sessionPlayerId" = sp.id
       WHERE sp."sessionId" = ${sessionId}
         AND sp.status = 'accepted'
         ${includeHidden ? Prisma.sql`` : Prisma.sql`AND sp."isHide" = false`}
-        ${search ? Prisma.sql`AND cp.username ILIKE ${`%${search}%`}` : Prisma.sql``}
+        ${search ? Prisma.sql`AND u.username ILIKE ${`%${search}%`}` : Prisma.sql``}
     )
     SELECT * FROM filtered
-    ORDER BY ${Prisma.raw(orderByClause)}
+    ORDER BY ${orderByClause}
     LIMIT ${limit} OFFSET ${offset};
   `;
 
   const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
   const hasMore = offset + rows.length < total;
 
-  // Format response structure to match controller expectations
+  // Format response structure to match controller and frontend expectations
   const results = rows.map((row) => ({
     id: row.id,
     status: row.status,
@@ -124,23 +123,19 @@ export const getAllSessionPlayers = async (
     acceptedAt: row.acceptedAt,
     gameStatus: row.gameStatus,
     updateStatus: row.updateStatus,
-
     totalGames: row.total_games,
     totalWins: row.total_wins,
     totalLosses: row.total_games - row.total_wins,
     winRate: Number(row.win_rate),
-
     stats: {
       totalGames: row.total_games,
       totalWins: row.total_wins,
       totalLosses: row.total_games - row.total_wins,
       winRate: Number(row.win_rate),
     },
-
     sessionPlayer: {
-      id: row.cp_id,
+      id: row.community_player_id,
       role: row.role,
-
       communityPlayer: {
         id: row.user_id,
         username: row.username,
