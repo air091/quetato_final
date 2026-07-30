@@ -22,9 +22,8 @@ import {
 export const getAllPlayersController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    const { type } = request.query;
-    const player = await getAllPlayers(communityId, type);
-    return response.status(200).json({ success: true, player });
+    const players = await getAllPlayers(communityId);
+    return response.status(200).json({ success: true, players });
   } catch (error) {
     console.error("Get all players failed", error);
 

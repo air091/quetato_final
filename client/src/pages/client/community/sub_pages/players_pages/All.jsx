@@ -17,6 +17,7 @@ const All = () => {
 
   const { communityId } = useParams();
   const [players, setPlayers] = useState([]);
+  const [managementPlayersList, setManagementPlayersList] = useState([]);
 
   // Search & Sort State
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,7 +29,8 @@ const All = () => {
   const [isAddStaticPlayerModalOpen, setIsAddStaticPlayerModalOpen] =
     useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
-  // swhatt
+
+  // Fetch all players
   const getAllSession = useCallback(async () => {
     if (!communityId) return;
 
@@ -50,13 +52,45 @@ const All = () => {
 
       setPlayers(data.player);
     } catch (error) {
-      console.error("Failed to fetch sessions:", error);
+      console.error("Failed to fetch players:", error);
+    }
+  }, [fetchWithAuth, communityId]);
+
+  // Fetch owners and admins using the new managements endpoint
+  const getManagementTeam = useCallback(async () => {
+    if (!communityId) return;
+
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/managements?t=${Date.now()}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data?.message || "An unknown error occurred");
+      }
+
+      setManagementPlayersList(data.results || []);
+    } catch (error) {
+      console.error("Failed to fetch management team:", error);
     }
   }, [fetchWithAuth, communityId]);
 
   useEffect(() => {
     getAllSession();
-  }, [getAllSession]);
+    getManagementTeam();
+  }, [getAllSession, getManagementTeam]);
+
+  const handleDataRefresh = () => {
+    getAllSession();
+    getManagementTeam();
+  };
 
   const handleOptimisticTransfer = (sourcePlayerId, targetPlayerId) => {
     setPlayers((prevPlayers) => {
@@ -108,12 +142,21 @@ const All = () => {
   const getFilteredAndSortedPlayers = (playerList) => {
     return playerList
       .filter((p) => {
-        const username = p?.communityPlayer?.username || "";
+        const username =
+          p?.communityPlayer?.username || p?.player?.username || "";
         return username.toLowerCase().includes(searchTerm.toLowerCase().trim());
       })
       .sort((a, b) => {
-        const nameA = (a?.communityPlayer?.username || "").toLowerCase();
-        const nameB = (b?.communityPlayer?.username || "").toLowerCase();
+        const nameA = (
+          a?.communityPlayer?.username ||
+          a?.player?.username ||
+          ""
+        ).toLowerCase();
+        const nameB = (
+          b?.communityPlayer?.username ||
+          b?.player?.username ||
+          ""
+        ).toLowerCase();
 
         if (sortOrder === "a-z") {
           return nameA.localeCompare(nameB);
@@ -126,9 +169,17 @@ const All = () => {
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
 
-  const managementPlayers = getFilteredAndSortedPlayers(
-    players.filter((p) => MANAGEMENT_ROLES.includes(p.role)),
-  );
+  // Combine management endpoint data with hosts from the general players list if necessary,
+  // or filter directly from the dedicated management list endpoint.
+  const combinedManagement = [
+    ...managementPlayersList,
+    ...players.filter(
+      (p) =>
+        p.role === "host" && !managementPlayersList.some((m) => m.id === p.id),
+    ),
+  ];
+
+  const managementPlayers = getFilteredAndSortedPlayers(combinedManagement);
   const regularPlayers = getFilteredAndSortedPlayers(
     players.filter((p) => p.role === "player"),
   );
@@ -165,7 +216,7 @@ const All = () => {
                 <AddStaticPlayer
                   fetchWithAuth={fetchWithAuth}
                   communityId={communityId}
-                  getAllSession={getAllSession}
+                  getAllSession={handleDataRefresh}
                   isOpen={isAddStaticPlayerModalOpen}
                   setIsOpen={setIsAddStaticPlayerModalOpen}
                   existingPlayers={players}
@@ -243,8 +294,8 @@ const All = () => {
         >
           <div className="overflow-hidden flex flex-col gap-y-1 px-1">
             {managementPlayers.map((player) => {
-              const isCurrentUser =
-                user && player?.communityPlayer?.id === user?.id;
+              const playerData = player?.communityPlayer || player?.player;
+              const isCurrentUser = user && playerData?.id === user?.id;
 
               return (
                 <div
@@ -256,14 +307,11 @@ const All = () => {
                   }`}
                 >
                   <div className="flex items-center gap-x-3">
-                    <PlayerAvatar
-                      username={player?.communityPlayer?.username}
-                      size="xl"
-                    />
+                    <PlayerAvatar username={playerData?.username} size="xl" />
                     <div>
                       <div className="flex items-center gap-x-2">
                         <h5 className="font-semibold text-sm text-stone-900 leading-tight">
-                          {player?.communityPlayer?.username}
+                          {playerData?.username}
                         </h5>
                         {isCurrentUser && (
                           <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
@@ -284,7 +332,7 @@ const All = () => {
                           {player.role}
                         </span>
                         <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
-                          {player?.communityPlayer?.skillLevel || "UNRANKED"}
+                          {playerData?.skillLevel || "UNRANKED"}
                         </span>
                       </div>
                     </div>
@@ -309,11 +357,11 @@ const All = () => {
                         {activeMenu?.playerId === player.id && (
                           <PlayerSettings
                             player={player}
-                            type={player?.communityPlayer?.type}
+                            type={playerData?.type}
                             toggleButtonRef={activeMenu}
                             onClose={() => setActiveMenu(null)}
-                            onUpdatePlayerStatus={getAllSession}
-                            onGamesTransferred={getAllSession}
+                            onUpdatePlayerStatus={handleDataRefresh}
+                            onGamesTransferred={handleDataRefresh}
                             onOptimisticTransfer={handleOptimisticTransfer}
                             isManagement={isManagement}
                           />
@@ -428,8 +476,8 @@ const All = () => {
                               type={player?.communityPlayer?.type}
                               toggleButtonRef={activeMenu}
                               onClose={() => setActiveMenu(null)}
-                              onUpdatePlayerStatus={getAllSession}
-                              onGamesTransferred={getAllSession}
+                              onUpdatePlayerStatus={handleDataRefresh}
+                              onGamesTransferred={handleDataRefresh}
                               onOptimisticTransfer={handleOptimisticTransfer}
                               isManagement={isManagement}
                             />
@@ -548,8 +596,8 @@ const All = () => {
                                 type={player?.communityPlayer?.type}
                                 toggleButtonRef={activeMenu}
                                 onClose={() => setActiveMenu(null)}
-                                onUpdatePlayerStatus={getAllSession}
-                                onGamesTransferred={getAllSession}
+                                onUpdatePlayerStatus={handleDataRefresh}
+                                onGamesTransferred={handleDataRefresh}
                                 onOptimisticTransfer={handleOptimisticTransfer}
                                 isRequest={player.role === "guest"}
                               />

@@ -3,7 +3,7 @@ import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import { randomUUID } from "crypto";
 
-export const getAllPlayers = async (communityId, type = "all") => {
+export const getAllPlayers = async (communityId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   const community = await prisma.community.findUnique({
     where: { id: communityId },
@@ -12,27 +12,10 @@ export const getAllPlayers = async (communityId, type = "all") => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  let userFilter = {};
-  if (type === "static") {
-    userFilter = {
-      player: {
-        type: "static",
-      },
-    };
-  } else if (type === "user") {
-    userFilter = {
-      player: {
-        NOT: {
-          type: "static",
-        },
-      },
-    };
-  }
-
   const players = await prisma.communityPlayer.findMany({
     where: {
       communityId: communityId,
-      ...userFilter,
+      role: "player",
     },
     include: {
       communityPlayer: {
