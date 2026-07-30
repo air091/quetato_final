@@ -11,8 +11,9 @@ import {
   Hourglass,
   Search,
   X,
+  Loader2,
 } from "lucide-react";
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useState, useMemo, useEffect } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import PlayerAvatar from "../../../components/PlayerAvatar";
 import { API_URL } from "../../../contexts/AuthContext";
@@ -20,17 +21,24 @@ import { useSession } from "../../../hooks/useSession";
 
 const Payment = () => {
   const { fetchWithAuth } = useAuth();
-  const {
-    communityId,
-    sessionId,
-    sessionData,
-    setSessionData,
-    refreshSessionContext,
-  } = useSession();
+  const { communityId, sessionId, sessionData, refreshSessionContext } =
+    useSession();
   const [updatingPlayerId, setUpdatingPlayerId] = useState(null);
   const [optimisticPaymentStatuses, setOptimisticPaymentStatuses] = useState(
     {},
   );
+
+  // Server-side Search & Sorting States (Matching AllPlayers.jsx)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  // Pagination State
+  const [players, setPlayers] = useState([]);
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Pricing Configuration States
   const [isConfiguring, setIsConfiguring] = useState(false);
@@ -40,10 +48,6 @@ const Payment = () => {
     currency: "PHP",
   });
   const [isSubmittingPrice, setIsSubmittingPrice] = useState(false);
-
-  // NEW: Search & Sorting States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   const pricingDetails = useMemo(() => {
     const res = sessionData.pricingData?.result || sessionData.pricingData;
@@ -63,15 +67,72 @@ const Payment = () => {
     [pricingDetails],
   );
 
-  const players = useMemo(() => {
-    return (sessionData.players ?? [])
-      .filter((player) => !player?.isHide)
-      .map((player) =>
-        optimisticPaymentStatuses[player.id]
-          ? { ...player, gameStatus: optimisticPaymentStatuses[player.id] }
-          : player,
-      );
-  }, [sessionData.players, optimisticPaymentStatuses]);
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Fetch paginated session players from server (matching AllPlayers.jsx pattern)
+  const getSessionPlayers = useCallback(
+    async (currentPage = 1, isAppending = false) => {
+      if (!communityId || !sessionId) return;
+      try {
+        if (!isAppending) setIsSessionLoading(true);
+
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 12,
+        });
+
+        if (debouncedSearch.trim()) {
+          queryParams.append("search", debouncedSearch.trim());
+        }
+        if (sortConfig.key) {
+          queryParams.append("sortKey", sortConfig.key);
+          queryParams.append("direction", sortConfig.direction);
+        }
+
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players?${queryParams.toString()}`,
+          { method: "GET" },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+        if (!data?.success) throw new Error(data?.message);
+
+        const fetched = data?.results || [];
+        setPlayers((prev) => (isAppending ? [...prev, ...fetched] : fetched));
+        setHasMore(data?.pagination?.hasMore || false);
+        setTotalCount(data?.pagination?.total || fetched.length);
+      } catch (error) {
+        console.error("Fetch session players failed:", error.message);
+      } finally {
+        if (!isAppending) setIsSessionLoading(false);
+      }
+    },
+    [communityId, sessionId, fetchWithAuth, debouncedSearch, sortConfig],
+  );
+
+  // Trigger fetch on search or sort change
+  useEffect(() => {
+    setPage(1);
+    getSessionPlayers(1, false);
+  }, [getSessionPlayers, debouncedSearch, sortConfig]);
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    getSessionPlayers(nextPage, true);
+  };
 
   // Refresh the shared session workspace without blanking this page.
   const getPaymentDetails = useCallback(async () => {
@@ -79,10 +140,11 @@ const Payment = () => {
 
     try {
       await refreshSessionContext({ silent: true });
+      await getSessionPlayers(1, false);
     } catch (error) {
       console.error("Fetch payment workspace details failed:", error);
     }
-  }, [communityId, sessionId, refreshSessionContext]);
+  }, [communityId, sessionId, refreshSessionContext, getSessionPlayers]);
 
   // Handle Base Pricing Submission
   const handlePricingSubmit = async (e) => {
@@ -146,27 +208,14 @@ const Payment = () => {
         data?.result?.player?.gameStatus ||
         (shouldMarkPaid ? "paid" : "waiting");
 
-      // Update the shared session roster immediately so the Game page's
-      // status filters reflect this payment without waiting for navigation.
-      setSessionData((previous) => ({
-        ...previous,
-        players: (previous.players || []).map((player) =>
-          player.id === sessionPlayerId
-            ? {
-                ...player,
-                gameStatus: nextGameStatus,
-                updateStatus:
-                  data?.result?.player?.updateStatus || player.updateStatus,
-              }
-            : player,
-        ),
-      }));
-
       setOptimisticPaymentStatuses((currentStatuses) => ({
         ...currentStatuses,
         [sessionPlayerId]: nextGameStatus,
       }));
+
       await refreshSessionContext({ silent: true });
+      await getSessionPlayers(page, false);
+
       setOptimisticPaymentStatuses((currentStatuses) => {
         const remainingStatuses = { ...currentStatuses };
         delete remainingStatuses[sessionPlayerId];
@@ -188,63 +237,34 @@ const Payment = () => {
     setSortConfig({ key, direction });
   };
 
-  // NEW: Filter & Sort Computation Pipeline
+  // Processed players with optimistic statuses applied
   const processedPlayers = useMemo(() => {
-    // 1. Filter by search query first
-    let result = players.filter((player) => {
-      const username =
-        player.sessionPlayer?.communityPlayer?.username || "Unknown";
-      return username.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+    return players
+      .filter((player) => !player?.isHide)
+      .map((player) =>
+        optimisticPaymentStatuses[player.id]
+          ? { ...player, gameStatus: optimisticPaymentStatuses[player.id] }
+          : player,
+      );
+  }, [players, optimisticPaymentStatuses]);
 
-    // 2. Apply sorting configurations
-    if (sortConfig.key !== null) {
-      result.sort((a, b) => {
-        let valueA, valueB;
-
-        switch (sortConfig.key) {
-          case "player":
-            valueA = (
-              a.sessionPlayer?.communityPlayer?.username || ""
-            ).toLowerCase();
-            valueB = (
-              b.sessionPlayer?.communityPlayer?.username || ""
-            ).toLowerCase();
-            break;
-          case "matches":
-            valueA = breakdownMap.get(a.id)?.totalGames ?? 0;
-            valueB = breakdownMap.get(b.id)?.totalGames ?? 0;
-            break;
-          case "totalDue":
-            valueA = breakdownMap.get(a.id)?.totalFee ?? 0;
-            valueB = breakdownMap.get(b.id)?.totalFee ?? 0;
-            break;
-          case "status":
-            valueA = a.gameStatus === "paid" ? 1 : 0;
-            valueB = b.gameStatus === "paid" ? 1 : 0;
-            break;
-          default:
-            return 0;
-        }
-
-        if (valueA < valueB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valueA > valueB) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
-      });
-    }
-    return result;
-  }, [players, searchQuery, sortConfig, breakdownMap]);
-
-  // Financial Metrics Calculations (always reflects the un-filtered pool for strict macro accuracy)
+  // Financial Metrics Calculations (computed from breakdown data for macro accuracy)
   const metrics = useMemo(() => {
     let totalValue = 0;
     let totalCollected = 0;
     let totalOutstanding = 0;
 
-    players.forEach((player) => {
-      const fee = breakdownMap.get(player.id)?.totalFee ?? 0;
-      totalValue += fee;
-      if (player.gameStatus === "paid") {
+    const allFees = Array.from(breakdownMap.values());
+    totalValue = allFees.reduce((sum, item) => sum + (item.totalFee || 0), 0);
+
+    allFees.forEach((item) => {
+      const fee = item.totalFee || 0;
+      const playerObj = players.find((p) => p.id === item.sessionPlayerId);
+      const status =
+        optimisticPaymentStatuses[item.sessionPlayerId] ||
+        playerObj?.gameStatus ||
+        item.gameStatus;
+      if (status === "paid") {
         totalCollected += fee;
       } else {
         totalOutstanding += fee;
@@ -252,7 +272,7 @@ const Payment = () => {
     });
 
     return { totalValue, totalCollected, totalOutstanding };
-  }, [players, breakdownMap]);
+  }, [breakdownMap, players, optimisticPaymentStatuses]);
 
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) {
@@ -275,6 +295,17 @@ const Payment = () => {
       />
     );
   };
+
+  if (isSessionLoading && players.length === 0) {
+    return (
+      <div className="w-full max-w-[1024px] mx-auto flex min-h-[320px] items-center justify-center p-6">
+        <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-white px-5 py-4 text-xs font-bold text-stone-600 shadow-sm">
+          <Loader2 className="animate-spin text-stone-900" size={16} />
+          Loading payment workspace...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 mt-6 px-4 sm:px-0">
@@ -473,7 +504,7 @@ const Payment = () => {
         </div>
       </div>
 
-      {/* NEW: LIVE PLAYER SEARCH FIELD */}
+      {/* LIVE PLAYER SEARCH FIELD */}
       <div className="relative w-full">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
           <Search size={16} />
@@ -488,7 +519,7 @@ const Payment = () => {
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 transition-colors"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -622,32 +653,34 @@ const Payment = () => {
                 );
               })}
 
-              {/* Fallback for completely empty sessions */}
-              {players.length === 0 && (
+              {/* Fallback for completely empty sessions or unmatched queries */}
+              {processedPlayers.length === 0 && !isSessionLoading && (
                 <tr>
                   <td
                     colSpan={5}
                     className="p-10 text-center text-sm text-stone-400 italic bg-stone-50/20"
                   >
-                    No players registered in this session.
-                  </td>
-                </tr>
-              )}
-
-              {/* NEW: Fallback for unmatched query results */}
-              {players.length > 0 && processedPlayers.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="p-10 text-center text-sm text-stone-400 italic bg-stone-50/10"
-                  >
-                    No players match your search "{searchQuery}"
+                    {searchQuery.trim()
+                      ? `No players match your search "${searchQuery}"`
+                      : "No players registered in this session."}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {hasMore && (
+          <div className="flex justify-center p-4 border-t border-stone-100 bg-stone-50/50">
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              className="px-5 py-2 text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl transition-colors cursor-pointer shadow-sm active:scale-[0.98]"
+            >
+              Load More ({totalCount - players.length} remaining)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
