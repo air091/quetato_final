@@ -282,17 +282,6 @@ export const getPlayerTotalCommunityGames = async (
     saturday: 6,
   };
 
-  // 1. Build dynamic conditions safely using Prisma.sql fragments
-  const dateConditions = [];
-
-  if (month) {
-    const parsedMonth = parseInt(month, 10);
-    dateConditions.push(PransesConditionsHelper(parsedMonth, day, dayOfWeek)); // handled below cleaner
-  }
-
-  // Safe parameters array for raw SQL
-  // We will build a comprehensive CTE (Common Table Expression) query to do all heavy lifting in Postgres.
-
   const parsedMonthNum = month ? parseInt(month, 10) : null;
   const parsedDayNum = day ? parseInt(day, 10) : null;
   const parsedDowNum =
@@ -300,7 +289,7 @@ export const getPlayerTotalCommunityGames = async (
       ? weekdayMap[dayOfWeek.toLowerCase()]
       : null;
 
-  // 2. Optimized SQL Query executing aggregation, status check, search, sort, and pagination entirely in Postgres
+  // Optimized SQL Query executing aggregation, status check, search, sort, and pagination entirely in Postgres
   const query = Prisma.sql`
     WITH PlayerAggregates AS (
       SELECT 
@@ -327,7 +316,7 @@ export const getPlayerTotalCommunityGames = async (
           COALESCE(mp.manual_points, 0)
         )::INT AS "totalCommunityPoints"
       FROM "CommunityPlayer" cp
-      LEFT JOIN "User" u ON u.id = cp."userId" -- Adjust table relation if your user profile table has a different name
+      LEFT JOIN "User" u ON u.id = cp."userId"
       
       -- Match History Aggregations with optional date filters
       LEFT JOIN (
@@ -387,7 +376,7 @@ export const getPlayerTotalCommunityGames = async (
       CASE WHEN ${sortBy} = 'games' AND ${order} = 'asc' THEN "totalCommunityGames" END ASC,
       CASE WHEN ${sortBy} = 'points' AND ${order} = 'desc' THEN "totalCommunityPoints" END DESC,
       CASE WHEN ${sortBy} = 'points' AND ${order} = 'asc' THEN "totalCommunityPoints" END ASC
-    LIMIT ${parsedLimit} OFFSET ${offset};
+    LIMIT ${Number(parsedLimit)} OFFSET ${Number(offset)};
   `;
 
   const results = await prisma.$queryRaw(query);
@@ -395,7 +384,6 @@ export const getPlayerTotalCommunityGames = async (
   const total = results.length > 0 ? Number(results[0].total_count) : 0;
   const hasMore = offset + results.length < total;
 
-  // Clean up helper metadata columns before returning to frontend
   const cleanedResults = results.map(({ total_count, ...player }) => player);
 
   return {

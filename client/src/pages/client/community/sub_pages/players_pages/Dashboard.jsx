@@ -109,7 +109,6 @@ const Dashboard = () => {
         const data = await response.json();
         if (!data.success) throw new Error(data?.message);
 
-        // Map and resolve players payload
         const fetchedPlayers = data?.results ?? [];
         setPlayers((prev) =>
           isAppending ? [...prev, ...fetchedPlayers] : fetchedPlayers,
@@ -133,7 +132,6 @@ const Dashboard = () => {
     ],
   );
 
-  // Re-fetch dynamically strictly on sorting, filtering, and searches
   useEffect(() => {
     setPage(1);
     getPlayers(1, false);
@@ -197,7 +195,6 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
-      {/* Top Controls Header: Search & Filters */}
       <div className="p-3 bg-stone-50/70 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-x-2 text-xs font-semibold text-stone-600">
           <Calendar size={15} className="text-stone-400" />
@@ -205,7 +202,6 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center gap-x-2 flex-wrap">
-          {/* Search Input Field with Clear (X) Button */}
           <div className="relative flex items-center">
             <Search
               size={14}
