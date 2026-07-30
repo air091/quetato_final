@@ -289,7 +289,6 @@ export const getPlayerTotalCommunityGames = async (
       ? weekdayMap[dayOfWeek.toLowerCase()]
       : null;
 
-  // Optimized SQL Query executing aggregation, status check, search, sort, and pagination entirely in Postgres
   const query = Prisma.sql`
     WITH PlayerAggregates AS (
       SELECT 
@@ -318,7 +317,6 @@ export const getPlayerTotalCommunityGames = async (
       FROM "CommunityPlayer" cp
       LEFT JOIN "User" u ON u.id = cp."userId"
       
-      -- Match History Aggregations with optional date filters
       LEFT JOIN (
         SELECT 
           sp."playerId" AS "communityPlayerId",
@@ -335,7 +333,6 @@ export const getPlayerTotalCommunityGames = async (
         GROUP BY sp."playerId"
       ) m ON m."communityPlayerId" = cp.id
 
-      -- Paid Sessions Aggregations
       LEFT JOIN (
         SELECT 
           sp."playerId" AS "communityPlayerId",
@@ -348,7 +345,6 @@ export const getPlayerTotalCommunityGames = async (
         GROUP BY sp."playerId"
       ) p ON p."communityPlayerId" = cp.id
 
-      -- Manual Points Aggregations
       LEFT JOIN (
         SELECT 
           mp."communityPlayerId",
@@ -376,7 +372,7 @@ export const getPlayerTotalCommunityGames = async (
       CASE WHEN ${sortBy} = 'games' AND ${order} = 'asc' THEN "totalCommunityGames" END ASC,
       CASE WHEN ${sortBy} = 'points' AND ${order} = 'desc' THEN "totalCommunityPoints" END DESC,
       CASE WHEN ${sortBy} = 'points' AND ${order} = 'asc' THEN "totalCommunityPoints" END ASC
-    LIMIT ${Number(parsedLimit)} OFFSET ${Number(offset)};
+    LIMIT ${Prisma.raw(parsedLimit)} OFFSET ${Prisma.raw(offset)};
   `;
 
   const results = await prisma.$queryRaw(query);
