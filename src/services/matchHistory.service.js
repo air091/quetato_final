@@ -530,6 +530,92 @@ export const deleteMatchHistory = async (
   });
 };
 
+export const deleteMatchSessionHistory = async (
+  communityId,
+  sessionId,
+  sessionPlayerId,
+  matchHistoryId,
+  authorizedUserId,
+) => {
+  // 1. Parameter Validations
+
+  if (!communityId) throw new AppError("Community ID is required", 400);
+  if (!sessionId) throw new AppError("Session ID is required", 400);
+  if (!matchHistoryId) throw new AppError("Match History ID is required", 400);
+  if (!authorizedUserId)
+    throw new AppError("Authorization User ID is required", 400);
+  // 2. Validate Community Existence (matching pattern in session.service.js)
+
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { id: true },
+  });
+  if (!community) throw new AppError("Community not found", 404);
+
+  // 3. Execute Transaction with Role Check & Scoped Deletion
+  return await prisma.$transaction(async (tx) => {
+    // Check user membership and permissions inside the community
+
+    const authorizedPlayer = await tx.communityPlayer.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+
+          userId: authorizedUserId,
+        },
+      },
+      select: {
+        role: true,
+      },
+    });
+    if (!authorizedPlayer) {
+      throw new AppError("Forbidden: Not a member of this community", 403);
+    }
+
+    const allowedRoles = ["admin", "owner", "host"];
+    if (!allowedRoles.includes(authorizedPlayer.role)) {
+      throw new AppError("Forbidden: Insufficient permissions", 403);
+    }
+
+    // Verify the target match exists and belongs to the given session & community
+
+    const existingMatch = await tx.matchHistory.findFirst({
+      where: {
+        id: matchHistoryId,
+        sessionId: sessionId,
+        session: {
+          communityId: communityId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!existingMatch) {
+      throw new AppError(
+        "Match history record not found for this session",
+        404,
+      );
+    }
+
+    // Delete relation records first to avoid foreign key constraints
+
+    await tx.matchHistoryPlayer.deleteMany({
+      where: { matchHistoryId: matchHistoryId },
+    });
+
+    // Delete parent match history record
+
+    const deletedMatch = await tx.matchHistory.delete({
+      where: { id: matchHistoryId },
+    });
+
+    return {
+      message: "Match history deleted successfully",
+      deletedMatch,
+    };
+  });
+};
+
 export const transferPlayerGames = async ({
   communityId,
   sessionId,

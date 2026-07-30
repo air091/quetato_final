@@ -4,6 +4,7 @@ import {
   deleteAllManualPoints,
   deleteManualPoint,
   deleteMatchHistory,
+  deleteMatchSessionHistory,
   getAllManualPoints,
   getCommunityPlayerHistory,
   getPlayerGameHistory,
@@ -100,6 +101,40 @@ export const deleteMatchHistoryController = async (request, response) => {
     return response.status(200).json({ success: true, data: results });
   } catch (error) {
     console.error("Delete match history failed", error);
+    let errMessage = "Internal server error";
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      errMessage = error.message;
+      statusCode = error.statusCode;
+    }
+
+    return response
+      .status(statusCode)
+      .json({ success: false, message: errMessage });
+  }
+};
+
+export const deleteMatchSessionHistoryController = async (
+  request,
+  response,
+) => {
+  try {
+    const { communityId, sessionId, sessionPlayerId, matchHistoryId } =
+      request.params;
+
+    const results = await deleteMatchSessionHistory(
+      communityId,
+      sessionId,
+      sessionPlayerId,
+      matchHistoryId,
+      request.user?.sub,
+    );
+
+    return response.status(200).json({ success: true, data: results });
+  } catch (error) {
+    console.error("Delete match history failed", error);
+
     let errMessage = "Internal server error";
     let statusCode = 500;
 

@@ -63,6 +63,7 @@ import {
   deleteAllManualPointsController,
   deleteManualPointController,
   deleteMatchHistoryController,
+  deleteMatchSessionHistoryController,
   getAllManualPointsController,
   getCommunityPlayerHistoryController,
   getPlayerGameHistoryController,
@@ -318,6 +319,11 @@ router.get(
 router.post(
   "/:communityId/sessions/:sessionId/players/:sessionPlayerId/transfer-games",
   transferPlayerGamesController,
+);
+
+router.delete(
+  "/:communityId/sessions/:sessionId/players/:sessionPlayerId/history/:matchHistoryId",
+  deleteMatchSessionHistoryController,
 );
 
 router.delete(
