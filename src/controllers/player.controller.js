@@ -8,6 +8,7 @@ import {
   deleteStaticPlayer,
   getAllPlayers,
   getAllRequestPlayers,
+  getCommunityManagement,
   getPlayerById,
   getRequestedPlayerToJoinSession,
   joinCommunity,
@@ -24,6 +25,26 @@ export const getAllPlayersController = async (request, response) => {
     const { type } = request.query;
     const player = await getAllPlayers(communityId, type);
     return response.status(200).json({ success: true, player });
+  } catch (error) {
+    console.error("Get all players failed", error);
+
+    let statusCode = 500;
+    let message = "Internal server error";
+
+    if (error instanceof AppError) {
+      statusCode = error.statusCode || 400;
+      message = error.message;
+    }
+
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const getCommunityManagementController = async (request, response) => {
+  try {
+    const { communityId } = request.params;
+    const results = await getCommunityManagement(communityId);
+    return response.status(200).json({ success: true, results });
   } catch (error) {
     console.error("Get all players failed", error);
 

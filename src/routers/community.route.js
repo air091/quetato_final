@@ -40,6 +40,7 @@ import {
   deleteStaticPlayerController,
   getAllPlayersController,
   getAllRequestPlayersController,
+  getCommunityManagementController,
   getPlayerByIdController,
   getRequestedPlayerToJoinSessionController,
   joinCommunityController,
@@ -94,6 +95,7 @@ router.delete("/:communityId", deleteCommunityController);
 
 // Community-scoped player actions
 router.get("/:communityId/players", getAllPlayersController);
+router.get("/:communityId/managements", getCommunityManagementController);
 router.get(
   "/:communityId/players/total-community-games",
   getPlayerTotalCommunityGamesController,

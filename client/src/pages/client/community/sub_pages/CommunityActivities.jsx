@@ -40,7 +40,7 @@ const CommunityActivities = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
     const handler = setTimeout(() => {

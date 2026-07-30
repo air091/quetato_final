@@ -49,6 +49,41 @@ export const getAllPlayers = async (communityId, type = "all") => {
   return players;
 };
 
+export const getCommunityManagement = async (communityId) => {
+  if (!communityId) throw new AppError("Community ID is required", 400);
+
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { id: true },
+  });
+
+  if (!community) throw new AppError("Community not found", 404);
+
+  const managementTeam = await prisma.communityPlayer.findMany({
+    where: {
+      communityId: communityId,
+      role: {
+        in: ["owner", "admin"],
+      },
+    },
+    include: {
+      communityPlayer: {
+        select: {
+          id: true,
+          username: true,
+          type: true,
+          skillLevel: true,
+        },
+      },
+    },
+    orderBy: {
+      role: "asc", // Optional: Orders so 'admin' or 'owner' groups consistently
+    },
+  });
+
+  return managementTeam;
+};
+
 export const getPlayerById = async (communityId, playerId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   if (!playerId) throw new AppError("Player ID is required", 400);
