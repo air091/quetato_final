@@ -13,12 +13,30 @@ import { getStaticPlayerNotInSession } from "../services/player.service.js";
 export const getAllSessionPlayersController = async (request, response) => {
   try {
     const { communityId, sessionId } = request.params;
-    const [players, access] = await Promise.all([
-      getAllSessionPlayers(communityId, sessionId, request.user.sub),
+    const queryFilters = {
+      page: request.query.page,
+      limit: request.query.limit,
+      search: request.query.search,
+      sortKey: request.query.sortKey,
+      direction: request.query.direction,
+    };
+
+    const [paginatedData, access] = await Promise.all([
+      getAllSessionPlayers(
+        communityId,
+        sessionId,
+        request.user.sub,
+        queryFilters,
+      ),
       getSessionPlayerAccess(communityId, request.user.sub),
     ]);
 
-    return response.status(200).json({ success: true, players, ...access });
+    return response.status(200).json({
+      success: true,
+      results: paginatedData.results,
+      pagination: paginatedData.pagination,
+      ...access,
+    });
   } catch (error) {
     console.error("Get all session players failed", error);
     let errMessage = "Internal server error";

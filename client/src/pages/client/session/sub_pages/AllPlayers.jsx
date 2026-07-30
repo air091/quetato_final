@@ -20,50 +20,43 @@ import {
   parsePlayerNames,
 } from "../../../../utils/playerNameValidation";
 
-const getPlayerMetric = (player, metric) => {
-  const value =
-    player?.stats?.[metric] ??
-    player?.[metric] ??
-    player?.sessionPlayer?.[metric] ??
-    0;
-
-  return Number(value) || 0;
-};
-
 const isAdminRole = (role) => ["owner", "admin", "host"].includes(role);
 
 const AllPlayers = () => {
   const { fetchWithAuth } = useAuth();
-  const {
-    communityId,
-    sessionId,
-    sessionPlayers: players,
-    refreshPlayers,
-    isSessionLoading,
-  } = useSession();
+  const { communityId, sessionId } = useSession();
 
-  // Functional States for Filter Pipeline
+  const [players, setPlayers] = useState([]);
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
+
+  // Search & Sort Server-side State
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "desc",
   });
 
+  // Pagination State (Default 12 per page)
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+
   // Modal State Management
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newPlayerNames, setNewPlayerNames] = useState(""); // Tracks multiline text
+  const [newPlayerNames, setNewPlayerNames] = useState("");
   const [skillLevel, setSkillLevel] = useState(
     Object.keys(SKILL_LEVEL_LABELS)[0] || "",
-  ); // Tracks selected dropdown value
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [communityPlayerNames, setCommunityPlayerNames] = useState([]);
   const [isCheckingNames, setIsCheckingNames] = useState(false);
+
   const nameValidation = useMemo(
     () => getPlayerNameValidation(newPlayerNames, communityPlayerNames),
     [newPlayerNames, communityPlayerNames],
   );
 
-  // Close modal and clear field handler
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setNewPlayerNames("");
@@ -81,9 +74,95 @@ const AllPlayers = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen, closeModal]);
 
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Fetch paginated session players from server
+  const getSessionPlayers = useCallback(
+    async (currentPage = 1, isAppending = false) => {
+      if (!communityId || !sessionId) return;
+      try {
+        if (!isAppending) setIsSessionLoading(true);
+
+        const queryParams = new URLSearchParams({
+          page: currentPage,
+          limit: 12,
+        });
+
+        if (debouncedSearch.trim()) {
+          queryParams.append("search", debouncedSearch.trim());
+        }
+        if (sortConfig.key) {
+          queryParams.append("sortKey", sortConfig.key);
+          queryParams.append("direction", sortConfig.direction);
+        }
+
+        const response = await fetchWithAuth(
+          `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/players?${queryParams.toString()}`,
+          { method: "GET" },
+        );
+
+        if (!response || !response.ok) {
+          throw new Error(
+            `HTTP error! Status: ${response?.status || "Unknown"}`,
+          );
+        }
+
+        const data = await response.json();
+        if (!data?.success) throw new Error(data?.message);
+
+        const fetched = data?.results || [];
+        setPlayers((prev) => (isAppending ? [...prev, ...fetched] : fetched));
+        setHasMore(data?.pagination?.hasMore || false);
+        setTotalCount(data?.pagination?.total || fetched.length);
+      } catch (error) {
+        console.error("Fetch session players failed:", error.message);
+      } finally {
+        if (!isAppending) setIsSessionLoading(false);
+      }
+    },
+    [communityId, sessionId, fetchWithAuth, debouncedSearch, sortConfig],
+  );
+
+  // Trigger fetch on search or sort change
+  useEffect(() => {
+    setPage(1);
+    getSessionPlayers(1, false);
+  }, [getSessionPlayers, debouncedSearch, sortConfig]);
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    getSessionPlayers(nextPage, true);
+  };
+
+  const handleSortToggleKey = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        if (prev.direction === "desc") return { key, direction: "asc" };
+        return { key: null, direction: "desc" };
+      }
+      return { key, direction: "desc" };
+    });
+  };
+
+  // Group current page results into admins and regulars
+  const adminGroup = useMemo(() => {
+    return players.filter((p) => isAdminRole(p.sessionPlayer?.role));
+  }, [players]);
+
+  const regularGroup = useMemo(() => {
+    return players.filter((p) => !isAdminRole(p.sessionPlayer?.role));
+  }, [players]);
+
+  // Fetch community names for modal validation
   useEffect(() => {
     if (!isModalOpen || !communityId) return;
-
     let isCurrent = true;
 
     const getCommunityPlayerNames = async () => {
@@ -93,19 +172,9 @@ const AllPlayers = () => {
           `${API_URL}/api/communities/${communityId}/players`,
           { method: "GET" },
         );
-
-        if (!response?.ok) {
-          throw new Error(
-            `HTTP error! Status: ${response?.status || "Unknown"}`,
-          );
-        }
-
+        if (!response?.ok) throw new Error("Failed to load community players");
         const data = await response.json();
-        if (!data?.success) {
-          throw new Error(data?.message || "Failed to load community players");
-        }
-
-        if (isCurrent) {
+        if (data?.success && isCurrent) {
           setCommunityPlayerNames(
             (data.player || [])
               .map((player) => player?.communityPlayer?.username)
@@ -120,68 +189,17 @@ const AllPlayers = () => {
     };
 
     getCommunityPlayerNames();
-
     return () => {
       isCurrent = false;
     };
   }, [isModalOpen, communityId, fetchWithAuth]);
 
-  const getAcceptedPlayers = async () => {
-    try {
-      await refreshPlayers();
-    } catch (error) {
-      console.error("Fetch players failed:", error.message);
-    }
-  };
-
-  const handleSortToggle = (key) => {
-    setSortConfig((prev) => {
-      if (prev.key === key) {
-        if (prev.direction === "desc") return { key, direction: "asc" };
-        return { key: null, direction: "desc" };
-      }
-      return { key, direction: "desc" };
-    });
-  };
-
-  const processedPlayers = useMemo(() => {
-    let result = (players || []).filter((player) => {
-      const username =
-        player.sessionPlayer?.communityPlayer?.username || "Unknown";
-      return username.toLowerCase().includes(searchQuery.toLowerCase().trim());
-    });
-
-    if (sortConfig.key !== null) {
-      result.sort((a, b) => {
-        const metricKey =
-          sortConfig.key === "games" ? "totalGames" : "totalWins";
-        const valA = getPlayerMetric(a, metricKey);
-        const valB = getPlayerMetric(b, metricKey);
-
-        if (valA < valB) return sortConfig.direction === "desc" ? 1 : -1;
-        if (valA > valB) return sortConfig.direction === "desc" ? -1 : 1;
-        return 0;
-      });
-    }
-
-    return result;
-  }, [players, searchQuery, sortConfig]);
-
-  const adminGroup = useMemo(() => {
-    return processedPlayers.filter((p) => isAdminRole(p.sessionPlayer?.role));
-  }, [processedPlayers]);
-
-  const regularGroup = useMemo(() => {
-    return processedPlayers.filter((p) => !isAdminRole(p.sessionPlayer?.role));
-  }, [processedPlayers]);
-
   const addStaticPlayerInSession = async (e) => {
     if (e) e.preventDefault();
-    if (!newPlayerNames.trim() || isSubmitting) return;
-    if (nameValidation.hasError) return;
+    if (!newPlayerNames.trim() || isSubmitting || nameValidation.hasError)
+      return;
 
     const usernamesArray = parsePlayerNames(newPlayerNames);
-
     if (usernamesArray.length === 0) return;
 
     setIsSubmitting(true);
@@ -208,13 +226,7 @@ const AllPlayers = () => {
         ? createdPlayersData
         : createdPlayersData?.players;
 
-      if (!targetPlayersArray || !Array.isArray(targetPlayersArray)) {
-        throw new Error(
-          "Invalid response format from player initialization backend",
-        );
-      }
-
-      const sessionAcceptPromises = targetPlayersArray.map((user) => {
+      const sessionAcceptPromises = (targetPlayersArray || []).map((user) => {
         const communityPlayerId = user.players?.[0]?.id || user.id;
         if (!communityPlayerId) return Promise.resolve();
 
@@ -225,8 +237,8 @@ const AllPlayers = () => {
       });
 
       await Promise.all(sessionAcceptPromises);
-
-      await refreshPlayers();
+      setPage(1);
+      await getSessionPlayers(1, false);
       closeModal();
     } catch (error) {
       console.error("Error setting up static session players:", error);
@@ -236,7 +248,7 @@ const AllPlayers = () => {
     }
   };
 
-  if (isSessionLoading) {
+  if (isSessionLoading && players.length === 0) {
     return (
       <div className="flex min-h-[320px] items-center justify-center p-6">
         <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-white px-5 py-4 text-xs font-bold text-stone-600 shadow-sm">
@@ -278,7 +290,7 @@ const AllPlayers = () => {
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-orange-500 text-white hover:bg-orange-600 px-3.5 text-xs font-bold  shadow-sm transition-all duration-200  active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-stone-900/10 cursor-pointer"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-orange-500 text-white hover:bg-orange-600 px-3.5 text-xs font-bold shadow-sm transition-all duration-200 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-stone-900/10 cursor-pointer"
           >
             <Plus size={15} />
             Add player
@@ -286,7 +298,7 @@ const AllPlayers = () => {
 
           <button
             type="button"
-            onClick={() => handleSortToggle("games")}
+            onClick={() => handleSortToggleKey("games")}
             className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold shadow-sm transition-all duration-200 active:scale-[0.99] cursor-pointer ${
               sortConfig.key === "games"
                 ? "border-stone-900 bg-stone-900 text-white"
@@ -308,7 +320,7 @@ const AllPlayers = () => {
 
           <button
             type="button"
-            onClick={() => handleSortToggle("wins")}
+            onClick={() => handleSortToggleKey("wins")}
             className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold shadow-sm transition-all duration-200 active:scale-[0.99] cursor-pointer ${
               sortConfig.key === "wins"
                 ? "border-stone-900 bg-stone-900 text-white"
@@ -332,9 +344,11 @@ const AllPlayers = () => {
 
       {/* MAIN DIRECTORY INTERFACE */}
       <main className="flex flex-col gap-y-6">
-        {players.length > 0 && processedPlayers.length === 0 && (
-          <div className="rounded-2xl border border-stone-200/80 bg-stone-50/50 p-8 text-center text-xs font-medium italic text-stone-500 shadow-sm">
-            No matching players found for "{searchQuery}"
+        {players.length === 0 && !isSessionLoading && (
+          <div className="rounded-2xl border border-dashed border-stone-200 bg-white p-10 text-center text-xs font-medium italic text-stone-400 shadow-sm">
+            {searchQuery.trim()
+              ? `No matching players found for "${searchQuery}"`
+              : "No registered players found in this session."}
           </div>
         )}
 
@@ -359,7 +373,7 @@ const AllPlayers = () => {
                 >
                   <PlayerCard
                     player={player}
-                    onRefreshData={getAcceptedPlayers}
+                    onRefreshData={() => getSessionPlayers(1, false)}
                   />
                 </article>
               ))}
@@ -388,7 +402,7 @@ const AllPlayers = () => {
                 >
                   <PlayerCard
                     player={player}
-                    onRefreshData={getAcceptedPlayers}
+                    onRefreshData={() => getSessionPlayers(1, false)}
                   />
                 </article>
               ))}
@@ -396,9 +410,15 @@ const AllPlayers = () => {
           </div>
         )}
 
-        {players.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-stone-200 bg-white p-10 text-center text-xs font-medium italic text-stone-400 shadow-sm">
-            No registered players found in this session.
+        {hasMore && (
+          <div className="flex justify-center pt-2">
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              className="px-5 py-2.5 text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors cursor-pointer shadow-sm active:scale-[0.98]"
+            >
+              Load More ({totalCount - players.length} remaining)
+            </button>
           </div>
         )}
       </main>

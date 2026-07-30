@@ -6,6 +6,7 @@ export const getAllSessionPlayers = async (
   communityId,
   sessionId,
   authorizedId,
+  queryFilters = {},
 ) => {
   if (!communityId || !sessionId)
     throw new AppError("Community ID and session ID are required", 400);
@@ -21,7 +22,7 @@ export const getAllSessionPlayers = async (
     throw new AppError("Session not found in this community", 404);
   }
 
-  // 🌟 Dynamic filters setup
+  // Dynamic filters setup for authorization & hidden players
   const authorizedPlayer = authorizedId
     ? await prisma.communityPlayer.findUnique({
         where: {
@@ -36,18 +37,37 @@ export const getAllSessionPlayers = async (
   const managerRoles = ["owner", "admin", "host"];
   const includeHidden = managerRoles.includes(authorizedPlayer?.role);
 
-  // Pending applications are returned by the dedicated /players/requested
-  // endpoint. The regular roster contains accepted players only.
+  // Parse pagination, search, and sorting parameters
+  const page = parseInt(queryFilters.page, 10) || 1;
+  const limit = Math.min(
+    Math.max(parseInt(queryFilters.limit, 10) || 12, 1),
+    50,
+  );
+  const search = queryFilters.search || "";
+  const sortKey = queryFilters.sortKey || ""; // e.g., "games" or "wins"
+  const direction = queryFilters.direction === "asc" ? "asc" : "desc";
+
+  // Base where filter for accepted players in this session
   const whereFilter = { sessionId: session.id, status: "accepted" };
 
-  // If we do NOT want to include hidden players, filter them out in the database query
   if (!includeHidden) {
     whereFilter.isHide = false;
   }
 
-  // 3. Fetch the players for the correct session using our dynamic filter
+  if (search.trim()) {
+    whereFilter.sessionPlayer = {
+      communityPlayer: {
+        username: {
+          contains: search.trim(),
+          mode: "insensitive",
+        },
+      },
+    };
+  }
+
+  // 3. Fetch all matching session players for this query filter subset
   const sessionPlayers = await prisma.sessionPlayer.findMany({
-    where: whereFilter, // 🌟 Swapped for dynamic filter object
+    where: whereFilter,
     select: {
       id: true,
       status: true,
@@ -57,7 +77,6 @@ export const getAllSessionPlayers = async (
       gameStatus: true,
       updateStatus: true,
 
-      // The target player's profile information
       sessionPlayer: {
         select: {
           id: true,
@@ -68,7 +87,6 @@ export const getAllSessionPlayers = async (
         },
       },
 
-      // The administrator who accepted the player
       adminAccept: {
         select: {
           id: true,
@@ -85,29 +103,6 @@ export const getAllSessionPlayers = async (
         },
       },
     },
-  });
-
-  // 🌟 4. Define Custom Priority Weight Matrix for gameStatus
-  const statusPriority = {
-    waiting: 1,
-    queued: 2,
-    playing: 3,
-    paid: 4,
-  };
-
-  // 🌟 5. Sort the array
-  sessionPlayers.sort((a, b) => {
-    const priorityA = statusPriority[a.gameStatus] || 99;
-    const priorityB = statusPriority[b.gameStatus] || 99;
-
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB;
-    }
-
-    const timeA = new Date(a.updateStatus || a.acceptedAt || 0).getTime();
-    const timeB = new Date(b.updateStatus || b.acceptedAt || 0).getTime();
-
-    return timeA - timeB;
   });
 
   const sessionPlayerIds = sessionPlayers.map((player) => player.id);
@@ -152,7 +147,8 @@ export const getAllSessionPlayers = async (
     statsBySessionPlayerId.set(count.sessionPlayerId, current);
   });
 
-  return sessionPlayers.map((player) => {
+  // Attach stats to players
+  const playersWithStats = sessionPlayers.map((player) => {
     const stats = statsBySessionPlayerId.get(player.id) || {
       totalGames: 0,
       totalWins: 0,
@@ -166,6 +162,54 @@ export const getAllSessionPlayers = async (
       stats,
     };
   });
+
+  // 4. Sort the players array
+  const statusPriority = {
+    waiting: 1,
+    queued: 2,
+    playing: 3,
+    paid: 4,
+  };
+
+  playersWithStats.sort((a, b) => {
+    // If sorting explicitly by Games or Wins
+    if (sortKey === "games" || sortKey === "wins") {
+      const valA = a[sortKey] || 0;
+      const valB = b[sortKey] || 0;
+      if (valA !== valB) {
+        return direction === "asc" ? valA - valB : valB - valA;
+      }
+    }
+
+    // Default sorting logic (Status Priority + Timestamp)
+    const priorityA = statusPriority[a.gameStatus] || 99;
+    const priorityB = statusPriority[b.gameStatus] || 99;
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+
+    const timeA = new Date(a.updateStatus || a.acceptedAt || 0).getTime();
+    const timeB = new Date(b.updateStatus || b.acceptedAt || 0).getTime();
+
+    return timeA - timeB;
+  });
+
+  // 5. Apply pagination slicing in memory
+  const total = playersWithStats.length;
+  const skip = (page - 1) * limit;
+  const paginatedResults = playersWithStats.slice(skip, skip + limit);
+  const hasMore = skip + paginatedResults.length < total;
+
+  return {
+    results: paginatedResults,
+    pagination: {
+      total,
+      hasMore,
+      page,
+      limit,
+    },
+  };
 };
 
 export const getSessionPlayerAccess = async (communityId, authorizedId) => {
