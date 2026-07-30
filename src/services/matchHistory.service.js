@@ -289,7 +289,7 @@ export const getPlayerTotalCommunityGames = async (
       ? weekdayMap[dayOfWeek.toLowerCase()]
       : null;
 
-  const query = Prisma.sql`
+  const query = prisma.sql`
     WITH PlayerAggregates AS (
       SELECT 
         cp.id AS "communityIdField",
@@ -327,9 +327,9 @@ export const getPlayerTotalCommunityGames = async (
         JOIN "MatchHistoryPlayer" mhp ON mhp."sessionPlayerId" = sp.id
         JOIN "MatchHistory" mh ON mh.id = mhp."matchHistoryId"
         WHERE 1=1
-          ${parsedMonthNum ? Prisma.sql`AND EXTRACT(MONTH FROM mh."startedAt") = ${parsedMonthNum}` : Prisma.empty}
-          ${parsedDayNum ? Prisma.sql`AND EXTRACT(DAY FROM mh."startedAt") = ${parsedDayNum}` : Prisma.empty}
-          ${parsedDowNum !== null ? Prisma.sql`AND EXTRACT(DOW FROM mh."startedAt") = ${parsedDowNum}` : Prisma.empty}
+          ${parsedMonthNum ? prisma.sql`AND EXTRACT(MONTH FROM mh."startedAt") = ${parsedMonthNum}` : prisma.empty}
+          ${parsedDayNum ? prisma.sql`AND EXTRACT(DAY FROM mh."startedAt") = ${parsedDayNum}` : prisma.empty}
+          ${parsedDowNum !== null ? prisma.sql`AND EXTRACT(DOW FROM mh."startedAt") = ${parsedDowNum}` : prisma.empty}
         GROUP BY sp."playerId"
       ) m ON m."communityPlayerId" = cp.id
 
@@ -339,9 +339,9 @@ export const getPlayerTotalCommunityGames = async (
           COUNT(sp.id) AS paid_count
         FROM "SessionPlayer" sp
         WHERE sp."gameStatus" = 'paid'
-          ${parsedMonthNum ? Prisma.sql`AND EXTRACT(MONTH FROM sp."updateStatus") = ${parsedMonthNum}` : Prisma.empty}
-          ${parsedDayNum ? Prisma.sql`AND EXTRACT(DAY FROM sp."updateStatus") = ${parsedDayNum}` : Prisma.empty}
-          ${parsedDowNum !== null ? Prisma.sql`AND EXTRACT(DOW FROM sp."updateStatus") = ${parsedDowNum}` : Prisma.empty}
+          ${parsedMonthNum ? prisma.sql`AND EXTRACT(MONTH FROM sp."updateStatus") = ${parsedMonthNum}` : prisma.empty}
+          ${parsedDayNum ? prisma.sql`AND EXTRACT(DAY FROM sp."updateStatus") = ${parsedDayNum}` : prisma.empty}
+          ${parsedDowNum !== null ? prisma.sql`AND EXTRACT(DOW FROM sp."updateStatus") = ${parsedDowNum}` : prisma.empty}
         GROUP BY sp."playerId"
       ) p ON p."communityPlayerId" = cp.id
 
@@ -351,15 +351,15 @@ export const getPlayerTotalCommunityGames = async (
           SUM(mp.points) AS manual_points
         FROM "ManualPoint" mp
         WHERE 1=1
-          ${parsedMonthNum ? Prisma.sql`AND EXTRACT(MONTH FROM mp."createdAt") = ${parsedMonthNum}` : Prisma.empty}
-          ${parsedDayNum ? Prisma.sql`AND EXTRACT(DAY FROM mp."createdAt") = ${parsedDayNum}` : Prisma.empty}
-          ${parsedDowNum !== null ? Prisma.sql`AND EXTRACT(DOW FROM mp."createdAt") = ${parsedDowNum}` : Prisma.empty}
+          ${parsedMonthNum ? prisma.sql`AND EXTRACT(MONTH FROM mp."createdAt") = ${parsedMonthNum}` : prisma.empty}
+          ${parsedDayNum ? prisma.sql`AND EXTRACT(DAY FROM mp."createdAt") = ${parsedDayNum}` : prisma.empty}
+          ${parsedDowNum !== null ? prisma.sql`AND EXTRACT(DOW FROM mp."createdAt") = ${parsedDowNum}` : prisma.empty}
         GROUP BY mp."communityPlayerId"
       ) mp ON mp."communityPlayerId" = cp.id
 
       WHERE cp."communityId" = ${communityId}
         AND cp.status = 'accepted'
-        ${search ? Prisma.sql`AND u.username ILIKE ${`%${search}%`}` : Prisma.empty}
+        ${search ? prisma.sql`AND u.username ILIKE ${`%${search}%`}` : prisma.empty}
     )
     SELECT *, count(*) OVER() AS total_count
     FROM PlayerAggregates
@@ -372,7 +372,7 @@ export const getPlayerTotalCommunityGames = async (
       CASE WHEN ${sortBy} = 'games' AND ${order} = 'asc' THEN "totalCommunityGames" END ASC,
       CASE WHEN ${sortBy} = 'points' AND ${order} = 'desc' THEN "totalCommunityPoints" END DESC,
       CASE WHEN ${sortBy} = 'points' AND ${order} = 'asc' THEN "totalCommunityPoints" END ASC
-    LIMIT ${Prisma.raw(parsedLimit)} OFFSET ${Prisma.raw(offset)};
+    LIMIT ${prisma.raw(parsedLimit)} OFFSET ${prisma.raw(offset)};
   `;
 
   const results = await prisma.$queryRaw(query);
