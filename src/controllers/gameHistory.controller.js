@@ -88,13 +88,11 @@ export const getPlayerTotalCommunityGamesController = async (
 
 export const deleteMatchHistoryController = async (request, response) => {
   try {
-    const { communityId, sessionId, sessionPlayerId, matchHistoryId } =
-      request.params;
+    const { communityId, communityPlayerId, matchHistoryId } = request.params;
 
     const results = await deleteMatchHistory(
       communityId,
-      sessionId,
-      sessionPlayerId,
+      communityPlayerId,
       matchHistoryId,
       request.user?.sub,
     );

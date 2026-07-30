@@ -451,19 +451,19 @@ export const getPlayerTotalCommunityGames = async (
 
 export const deleteMatchHistory = async (
   communityId,
-  sessionId,
-  sessionPlayerId,
+  communityPlayerId,
   matchHistoryId,
   authorizedUserId,
 ) => {
   // 1. Parameter Validations
   if (!communityId) throw new AppError("Community ID is required", 400);
-  if (!sessionId) throw new AppError("Session ID is required", 400);
+  if (!communityPlayerId)
+    throw new AppError("Community Player ID is required", 400);
   if (!matchHistoryId) throw new AppError("Match History ID is required", 400);
   if (!authorizedUserId)
     throw new AppError("Authorization User ID is required", 400);
 
-  // 2. Validate Community Existence (matching pattern in session.service.js)
+  // 2. Validate Community Existence
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: { id: true },
@@ -495,11 +495,10 @@ export const deleteMatchHistory = async (
       throw new AppError("Forbidden: Insufficient permissions", 403);
     }
 
-    // Verify the target match exists and belongs to the given session & community
+    // Verify the target match exists and belongs to a session within this community
     const existingMatch = await tx.matchHistory.findFirst({
       where: {
         id: matchHistoryId,
-        sessionId: sessionId,
         session: {
           communityId: communityId,
         },
@@ -509,7 +508,7 @@ export const deleteMatchHistory = async (
 
     if (!existingMatch) {
       throw new AppError(
-        "Match history record not found for this session",
+        "Match history record not found for this community",
         404,
       );
     }
