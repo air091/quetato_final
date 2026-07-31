@@ -69,14 +69,35 @@ const PlayerSettings = ({
     setSkillLevel(initialSkillLevel);
   }, [initialUsername, initialSkillLevel]);
 
-  // Track anchor element positioning
+  // Track anchor element positioning with smart placement UI/UX
   const updatePosition = () => {
     if (toggleButtonRef?.current) {
       const rect = toggleButtonRef.current.getBoundingClientRect();
-      setCoords({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX - 160,
-      });
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const popoverWidth = 192; // w-48 = 192px
+      const popoverHeight = 320; // Estimated maximum height of the popover
+
+      // Horizontal smart placement: Try aligning right edges, fallback to left align, and clamp to viewport
+      let left = rect.right + window.scrollX - popoverWidth;
+      if (left < window.scrollX + 8) {
+        left = rect.left + window.scrollX;
+      }
+      if (left + popoverWidth > window.scrollX + viewportWidth - 8) {
+        left = window.scrollX + viewportWidth - popoverWidth - 8;
+      }
+
+      // Vertical smart placement: Flip above if it overflows bottom and space permits above
+      let top = rect.bottom + window.scrollY + 4;
+      if (
+        rect.bottom + popoverHeight > viewportHeight &&
+        rect.top > popoverHeight
+      ) {
+        top = rect.top + window.scrollY - popoverHeight - 4;
+      }
+
+      setCoords({ top, left });
       setIsReady(true);
     }
   };

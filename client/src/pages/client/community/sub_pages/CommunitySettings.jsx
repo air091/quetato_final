@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import PlayerAvatar from "../../../../components/PlayerAvatar";
-import { useOutletContext, useParams, useNavigate } from "react-router-dom"; // Added useNavigate
+import { useOutletContext, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../hooks/useAuth";
-import { Camera, Edit2, Trash, Loader2 } from "lucide-react"; // Added Loader2 for visual delete feedback
+import { Camera, Edit2, Trash, Loader2 } from "lucide-react";
 import { API_URL } from "../../../../contexts/AuthContext";
 
 const CommunitySettings = () => {
   const { communityId } = useParams();
   const { fetchWithAuth } = useAuth();
-  const navigate = useNavigate(); // Hooked up routing redirects
+  const navigate = useNavigate();
 
   const context = useOutletContext();
   const communityPlayer = context?.communityPlayer;
@@ -17,7 +17,7 @@ const CommunitySettings = () => {
   const { community, setCommunity } = useOutletContext();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // Submittal loading blocker state
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -69,7 +69,6 @@ const CommunitySettings = () => {
       if (!data.success)
         throw new Error(data?.message || "Internal server error");
 
-      // Mutates Layout state so Header updates tracking simultaneously
       setCommunity((prevCommunity) => ({
         ...prevCommunity,
         ...data.community,
@@ -82,7 +81,6 @@ const CommunitySettings = () => {
   };
 
   const deleteCommunity = useCallback(async () => {
-    // 1. Structural confirmation guard to prevent accidents
     const confirmDelete = window.confirm(
       `Are you sure you want to delete "${community?.name}"? This action cannot be undone and will permanently remove all data in this community.`,
     );
@@ -97,7 +95,6 @@ const CommunitySettings = () => {
 
       if (!response.ok) throw new Error("Failed to delete the community");
 
-      // 2. Route the operator safely back out to home layout dashboard view
       navigate("/community/sessions");
     } catch (error) {
       console.error("Error deleting community:", error);
@@ -112,11 +109,14 @@ const CommunitySettings = () => {
   const isManagement = communityPlayer?.role === "owner";
 
   return (
-    <div className="w-full max-w-[720px] mx-auto p-6 bg-white rounded-xl border border-stone-200 shadow-sm mt-6">
-      <form onSubmit={handleOnSubmit} className="flex flex-col gap-y-6">
+    <div className="w-full max-w-[720px] mx-auto p-4 sm:p-6 bg-white rounded-2xl border border-stone-200/80 shadow-sm mt-4 sm:mt-6 select-none">
+      <form
+        onSubmit={handleOnSubmit}
+        className="flex flex-col gap-y-5 sm:gap-y-6"
+      >
         {/* PROFILE HEADER BLOCK */}
-        <div className="flex items-center gap-x-4 pb-6 border-b border-stone-100">
-          <div className="relative group cursor-pointer rounded-full overflow-hidden select-none">
+        <div className="flex items-center gap-x-3 sm:gap-x-4 pb-5 sm:pb-6 border-b border-stone-100">
+          <div className="relative group cursor-pointer rounded-full overflow-hidden select-none shrink-0">
             <PlayerAvatar username={community?.name} size="xl" />
             <div className="absolute inset-0 bg-stone-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               <Camera size={18} className="text-white" />
@@ -134,18 +134,18 @@ const CommunitySettings = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleOnChange}
-                  className="block px-3 py-1.5 text-base font-bold border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all text-stone-900"
+                  className="block px-3.5 py-2 text-sm sm:text-base font-bold border border-stone-200 w-full rounded-xl bg-stone-50/50 focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all text-stone-900"
                   required
                 />
               </div>
             ) : (
-              <h2 className="text-lg font-bold text-stone-900 truncate">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 truncate">
                 {community?.name}
               </h2>
             )}
-            <p className="text-sm text-stone-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
               Organized by{" "}
-              <span className="font-medium text-stone-700">
+              <span className="font-semibold text-stone-700">
                 @{community?.owner?.username || "unknown"}
               </span>
             </p>
@@ -156,7 +156,7 @@ const CommunitySettings = () => {
         <div className="flex flex-col gap-y-1.5">
           <label
             htmlFor="edit-desc"
-            className="block text-xs font-semibold text-stone-700 uppercase tracking-wider"
+            className="block text-xs font-bold text-stone-700 uppercase tracking-wider"
           >
             Description
           </label>
@@ -168,10 +168,10 @@ const CommunitySettings = () => {
               value={formData.description}
               onChange={handleOnChange}
               placeholder="Tell players what your community is all about..."
-              className="block px-3 py-2 text-sm border border-stone-200 w-full rounded-lg bg-stone-50/50 focus:bg-white focus:border-stone-400 focus:ring-1 focus:ring-stone-400 outline-none transition-all placeholder-stone-400 resize-none text-stone-800 leading-relaxed"
+              className="block px-3.5 py-2.5 text-xs sm:text-sm border border-stone-200 w-full rounded-xl bg-stone-50/50 focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all placeholder-stone-400 resize-none text-stone-800 leading-relaxed"
             />
           ) : (
-            <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">
               {community?.description || (
                 <span className="text-stone-400 italic font-normal">
                   No details provided yet.
@@ -180,14 +180,16 @@ const CommunitySettings = () => {
             </p>
           )}
         </div>
+
+        {/* MUTABLE ACTION MANAGEMENT STRIP */}
         {isManagement && (
-          <div className="flex items-center justify-end pt-4 border-t border-stone-100 mt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end pt-4 border-t border-stone-100 mt-2 gap-2">
             {!isEditing ? (
-              <div className="flex items-center gap-x-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                  className="flex items-center justify-center gap-x-1.5 px-4 py-2.5 text-xs font-bold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-xl transition-all cursor-pointer shadow-sm outline-none active:scale-[0.98]"
                 >
                   <Edit2 size={12} />
                   Edit Profile
@@ -196,7 +198,7 @@ const CommunitySettings = () => {
                   type="button"
                   onClick={deleteCommunity}
                   disabled={isDeleting}
-                  className="flex items-center gap-x-1.5 px-4 py-2 text-xs font-semibold bg-red-900 text-red-100 hover:bg-red-800 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                  className="flex items-center justify-center gap-x-1.5 px-4 py-2.5 text-xs font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer shadow-sm outline-none active:scale-[0.98]"
                 >
                   {isDeleting ? (
                     <Loader2 size={12} className="animate-spin" />
@@ -207,17 +209,17 @@ const CommunitySettings = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-x-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-4 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 rounded-lg transition-colors cursor-pointer outline-none"
+                  className="px-4 py-2.5 text-xs font-bold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 rounded-xl transition-all cursor-pointer outline-none active:scale-[0.98]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer shadow-sm outline-none"
+                  className="px-4 py-2.5 text-xs font-bold bg-stone-900 text-stone-100 hover:bg-stone-800 rounded-xl transition-all cursor-pointer shadow-sm outline-none active:scale-[0.98]"
                 >
                   Save Changes
                 </button>
@@ -225,7 +227,6 @@ const CommunitySettings = () => {
             )}
           </div>
         )}
-        {/* MUTABLE ACTION MANAGEMENT STRIP */}
       </form>
     </div>
   );
