@@ -28,7 +28,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         return;
       }
 
-      // If sidebar is minimized (not fully open), don't trigger click-away close behavior
       if (!isOpen) return;
 
       if (sidebarRef.current && !sidebarRef.current.contains(clickedElement)) {
@@ -75,8 +74,10 @@ const Sidebar = ({ isOpen, onClose }) => {
   return (
     <nav
       ref={sidebarRef}
-      className={`h-screen bg-stone-50 border-r border-stone-200/80 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between selection:bg-orange-500/10 selection:text-orange-950 ${
-        isOpen ? "w-[260px]" : "w-[60px]"
+      className={`absolute lg:relative z-50 h-full bg-stone-50 border-r border-stone-200/80 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between selection:bg-orange-500/10 selection:text-orange-950 ${
+        isOpen
+          ? "translate-x-0 w-[260px]" // Mobile & Desktop Open State
+          : "-translate-x-full lg:translate-x-0 lg:w-[60px]" // Mobile Closed (hidden) vs Desktop Closed (60px)
       }`}
     >
       <ul className="flex flex-col gap-y-1">

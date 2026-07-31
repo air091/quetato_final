@@ -5,7 +5,6 @@ import {
   Settings,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown,
   Banknote,
   Wallet,
   Hourglass,
@@ -28,7 +27,7 @@ const Payment = () => {
     {},
   );
 
-  // Server-side Search & Sorting States (Matching AllPlayers.jsx)
+  // Server-side Search & Sorting States
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -75,7 +74,7 @@ const Payment = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Fetch paginated session players from server (matching AllPlayers.jsx pattern)
+  // Fetch paginated session players from server
   const getSessionPlayers = useCallback(
     async (currentPage = 1, isAppending = false) => {
       if (!communityId || !sessionId) return;
@@ -248,7 +247,7 @@ const Payment = () => {
       );
   }, [players, optimisticPaymentStatuses]);
 
-  // Financial Metrics Calculations (computed from breakdown data for macro accuracy)
+  // Financial Metrics Calculations
   const metrics = useMemo(() => {
     let totalValue = 0;
     let totalCollected = 0;
@@ -274,28 +273,6 @@ const Payment = () => {
     return { totalValue, totalCollected, totalOutstanding };
   }, [breakdownMap, players, optimisticPaymentStatuses]);
 
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) {
-      return (
-        <ArrowUpDown
-          size={13}
-          className="text-stone-300 group-hover:text-stone-400 transition-colors ml-1.5 flex-shrink-0"
-        />
-      );
-    }
-    return sortConfig.direction === "asc" ? (
-      <ArrowUp
-        size={13}
-        className="text-stone-900 ml-1.5 flex-shrink-0 font-bold"
-      />
-    ) : (
-      <ArrowDown
-        size={13}
-        className="text-stone-900 ml-1.5 flex-shrink-0 font-bold"
-      />
-    );
-  };
-
   if (isSessionLoading && players.length === 0) {
     return (
       <div className="w-full max-w-[1024px] mx-auto flex min-h-[320px] items-center justify-center p-6">
@@ -308,11 +285,11 @@ const Payment = () => {
   }
 
   return (
-    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-6 mt-6 px-4 sm:px-0">
+    <div className="w-full max-w-[1024px] mx-auto flex flex-col gap-y-5 sm:gap-y-6 my-4 sm:my-6 px-3 sm:px-0 select-none">
       {/* PRICING SETTINGS SUMMARY BANNER */}
-      <div className="border border-stone-200 rounded-xl p-5 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border border-stone-200/80 rounded-2xl p-4 sm:p-5 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-x-3.5">
-          <div className="p-2.5 bg-stone-50 rounded-lg text-stone-600 border border-stone-100 hidden sm:block">
+          <div className="p-2.5 bg-stone-50 rounded-xl text-stone-600 border border-stone-100 hidden sm:block">
             <DollarSign size={20} />
           </div>
           <div>
@@ -323,15 +300,15 @@ const Payment = () => {
               Payment Management
             </h3>
             {pricing ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-stone-500">
-                <span className="bg-stone-50 border border-stone-100 px-2 py-0.5 rounded text-stone-700">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5 text-xs text-stone-500">
+                <span className="bg-stone-50 border border-stone-100 px-2.5 py-1 rounded-lg text-stone-700">
                   Entrance:{" "}
                   <strong className="font-bold text-stone-900">
                     {pricing.entranceFee} {pricing.currency}
                   </strong>
                 </span>
                 <span className="text-stone-300 hidden sm:inline">•</span>
-                <span className="bg-stone-50 border border-stone-100 px-2 py-0.5 rounded text-stone-700">
+                <span className="bg-stone-50 border border-stone-100 px-2.5 py-1 rounded-lg text-stone-700">
                   Per Match:{" "}
                   <strong className="font-bold text-stone-900">
                     {pricing.perGameFee} {pricing.currency}
@@ -358,7 +335,7 @@ const Payment = () => {
             }
             setIsConfiguring(nextIsConfiguring);
           }}
-          className={`flex items-center justify-center gap-x-1.5 px-3.5 py-2 border rounded-lg text-xs font-bold transition-all cursor-pointer outline-none ${
+          className={`flex items-center justify-center gap-x-1.5 px-4 py-2.5 border rounded-xl text-xs font-bold transition-all cursor-pointer outline-none active:scale-[0.98] ${
             isConfiguring
               ? "border-stone-900 bg-stone-900 text-white shadow-sm"
               : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50 hover:text-stone-900"
@@ -376,7 +353,7 @@ const Payment = () => {
       {isConfiguring && (
         <form
           onSubmit={handlePricingSubmit}
-          className="border border-stone-200 rounded-xl p-5 bg-stone-50/60 flex flex-col sm:flex-row gap-4 items-end transition-all shadow-inner"
+          className="border border-stone-200/80 rounded-2xl p-4 sm:p-5 bg-stone-50/60 flex flex-col sm:flex-row gap-3 sm:gap-4 items-end transition-all shadow-inner"
         >
           <div className="flex-1 w-full">
             <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
@@ -393,7 +370,7 @@ const Payment = () => {
                   entranceFee: e.target.value,
                 })
               }
-              className="w-full text-sm bg-white border border-stone-200 rounded-lg p-2.5 outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all text-stone-800 font-medium"
+              className="w-full text-xs sm:text-sm bg-white border border-stone-200 rounded-xl p-2.5 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all text-stone-800 font-medium"
             />
           </div>
           <div className="flex-1 w-full">
@@ -411,10 +388,10 @@ const Payment = () => {
                   perGameFee: e.target.value,
                 })
               }
-              className="w-full text-sm bg-white border border-stone-200 rounded-lg p-2.5 outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all text-stone-800 font-medium"
+              className="w-full text-xs sm:text-sm bg-white border border-stone-200 rounded-xl p-2.5 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all text-stone-800 font-medium"
             />
           </div>
-          <div className="w-full sm:w-[110px]">
+          <div className="w-full sm:w-[120px]">
             <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
               Currency
             </label>
@@ -426,7 +403,7 @@ const Payment = () => {
                   currency: e.target.value,
                 })
               }
-              className="w-full text-sm bg-white border border-stone-200 rounded-lg p-2.5 outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all text-stone-800 font-semibold h-[42px] cursor-pointer"
+              className="w-full text-xs sm:text-sm bg-white border border-stone-200 rounded-xl p-2.5 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all text-stone-800 font-semibold h-[42px] cursor-pointer"
             >
               <option value="PHP">PHP (₱)</option>
               <option value="USD">USD ($)</option>
@@ -436,7 +413,7 @@ const Payment = () => {
           <button
             type="submit"
             disabled={isSubmittingPrice}
-            className="w-full sm:w-auto px-5 py-2.5 bg-stone-900 text-stone-100 hover:bg-stone-800 disabled:opacity-60 text-xs font-bold rounded-lg h-[42px] transition-colors cursor-pointer whitespace-nowrap shadow-sm outline-none"
+            className="w-full sm:w-auto px-5 py-2.5 bg-stone-900 text-stone-100 hover:bg-stone-800 disabled:opacity-60 text-xs font-bold rounded-xl h-[42px] transition-colors cursor-pointer whitespace-nowrap shadow-sm outline-none active:scale-[0.98]"
           >
             {isSubmittingPrice ? "Saving..." : "Apply Pricing"}
           </button>
@@ -444,8 +421,8 @@ const Payment = () => {
       )}
 
       {/* FINANCIAL OVERVIEW SUMMARY TILES */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="border border-stone-200 bg-white rounded-xl p-4 flex items-center justify-between shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="border border-stone-200/80 bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm">
           <div>
             <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
               Total Session Fee
@@ -457,12 +434,12 @@ const Payment = () => {
               </span>
             </h3>
           </div>
-          <div className="p-2.5 bg-stone-50 rounded-lg text-stone-500 border border-stone-100">
+          <div className="p-2.5 bg-stone-50 rounded-xl text-stone-500 border border-stone-100">
             <Banknote size={18} />
           </div>
         </div>
 
-        <div className="border border-stone-200 bg-white rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div className="border border-stone-200/80 bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm">
           <div>
             <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
               Total Collected
@@ -474,12 +451,12 @@ const Payment = () => {
               </span>
             </h3>
           </div>
-          <div className="p-2.5 bg-green-50 rounded-lg text-green-700 border border-green-100/60">
+          <div className="p-2.5 bg-green-50 rounded-xl text-green-700 border border-green-100/60">
             <Wallet size={18} />
           </div>
         </div>
 
-        <div className="border border-stone-200 bg-white rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div className="border border-stone-200/80 bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm">
           <div>
             <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
               Remaining Balance
@@ -494,7 +471,7 @@ const Payment = () => {
             </h3>
           </div>
           <div
-            className={`p-2.5 rounded-lg border ${metrics.totalOutstanding > 0 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-stone-50 text-stone-400 border-stone-100"}`}
+            className={`p-2.5 rounded-xl border ${metrics.totalOutstanding > 0 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-stone-50 text-stone-400 border-stone-100"}`}
           >
             <Hourglass
               size={18}
@@ -504,178 +481,169 @@ const Payment = () => {
         </div>
       </div>
 
-      {/* LIVE PLAYER SEARCH FIELD */}
-      <div className="relative w-full">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
-          <Search size={16} />
+      {/* LIVE SEARCH & SORT TOOLBAR */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:max-w-[340px]">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+            <Search size={16} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search player..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 bg-white border border-stone-200/80 rounded-xl text-xs sm:text-sm placeholder-stone-400 text-stone-800 font-medium outline-none shadow-sm focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
-        <input
-          type="text"
-          placeholder="Search player by username..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-10 py-2.5 bg-white border border-stone-200 rounded-xl text-sm placeholder-stone-400 text-stone-800 font-medium outline-none shadow-sm focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
-          >
-            <X size={16} />
-          </button>
-        )}
+
+        {/* Sort Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mr-1 shrink-0">
+            Sort:
+          </span>
+          {[
+            { key: "player", label: "Player" },
+            { key: "matches", label: "Matches" },
+            { key: "totalDue", label: "Total Due" },
+            { key: "status", label: "Status" },
+          ].map((item) => {
+            const isActive = sortConfig.key === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleSort(item.key)}
+                className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  isActive
+                    ? "bg-stone-900 text-white shadow-sm"
+                    : "bg-white text-stone-600 hover:bg-stone-50 border border-stone-200/80"
+                }`}
+              >
+                {item.label}
+                {isActive &&
+                  (sortConfig.direction === "asc" ? (
+                    <ArrowUp size={12} />
+                  ) : (
+                    <ArrowDown size={12} />
+                  ))}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* CORE PAYMENT SETTLEMENT TABLE */}
-      <div className="border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-stone-50 border-b border-stone-200 text-[11px] uppercase tracking-wider text-stone-500 select-none">
-                <th
-                  onClick={() => handleSort("player")}
-                  title="Click to sort by Player"
-                  className="py-3 px-4 font-bold text-left cursor-pointer group hover:bg-stone-100/80 hover:text-stone-900 transition-all duration-150"
-                >
-                  <div className="flex items-center gap-x-0.5">
-                    Player {getSortIcon("player")}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("matches")}
-                  title="Click to sort by Matches"
-                  className="py-3 px-4 font-bold text-center w-[125px] cursor-pointer group hover:bg-stone-100/80 hover:text-stone-900 transition-all duration-150"
-                >
-                  <div className="flex items-center justify-center gap-x-0.5">
-                    Matches {getSortIcon("matches")}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("totalDue")}
-                  title="Click to sort by Total Due"
-                  className="py-3 px-4 font-bold text-right w-[135px] cursor-pointer group hover:bg-stone-100/80 hover:text-stone-900 transition-all duration-150"
-                >
-                  <div className="flex items-center justify-end gap-x-0.5">
-                    Total Due {getSortIcon("totalDue")}
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort("status")}
-                  title="Click to sort by Payment Status"
-                  className="py-3 px-4 font-bold text-center w-[125px] cursor-pointer group hover:bg-stone-100/80 hover:text-stone-900 transition-all duration-150"
-                >
-                  <div className="flex items-center justify-center gap-x-0.5">
-                    Status {getSortIcon("status")}
-                  </div>
-                </th>
-                <th className="py-3 px-4 font-bold text-right w-[140px] text-stone-400">
-                  Payment
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {processedPlayers.map((player) => {
-                const isPaid = player.gameStatus === "paid";
-                const isUpdating = updatingPlayerId === player.id;
+      {/* CARD-BASED PLAYER LIST */}
+      <div className="flex flex-col gap-3">
+        {processedPlayers.map((player) => {
+          const isPaid = player.gameStatus === "paid";
+          const isUpdating = updatingPlayerId === player.id;
 
-                const performanceBreakdown = breakdownMap.get(player.id);
-                const totalGames = performanceBreakdown?.totalGames ?? 0;
-                const totalFeeCalculated = performanceBreakdown?.totalFee ?? 0;
+          const performanceBreakdown = breakdownMap.get(player.id);
+          const totalGames = performanceBreakdown?.totalGames ?? 0;
+          const totalFeeCalculated = performanceBreakdown?.totalFee ?? 0;
 
-                return (
-                  <tr
-                    key={player.id}
-                    className="hover:bg-stone-50/40 transition-colors duration-150 group"
-                  >
-                    <td className="py-3.5 px-4 text-sm font-semibold text-stone-900">
-                      <div className="flex items-center gap-x-2">
-                        <PlayerAvatar
-                          username={
-                            player.sessionPlayer?.communityPlayer?.username
-                          }
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm text-stone-900 truncate">
-                            {player.sessionPlayer?.communityPlayer?.username ||
-                              "Unknown"}
-                          </span>
+          return (
+            <div
+              key={player.id}
+              className="border border-stone-200/80 rounded-2xl p-4 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-stone-300"
+            >
+              {/* Player Identity */}
+              <div className="flex items-center gap-x-3 min-w-0">
+                <PlayerAvatar
+                  username={player.sessionPlayer?.communityPlayer?.username}
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-sm text-stone-900 truncate">
+                    {player.sessionPlayer?.communityPlayer?.username ||
+                      "Unknown"}
+                  </span>
+                  <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider w-fit mt-0.5">
+                    {player.sessionPlayer?.role || "Guest"}
+                  </span>
+                </div>
+              </div>
 
-                          <div className="flex items-center gap-x-1.5 mt-0.5">
-                            <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wider">
-                              {player.sessionPlayer?.role || "Guest"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-sm text-stone-600 text-center font-medium">
-                      <span className="bg-stone-50 px-2 py-1 rounded text-stone-700 border border-stone-100 group-hover:bg-white transition-colors">
-                        {totalGames} {totalGames === 1 ? "game" : "games"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-sm text-right font-bold text-stone-900 tracking-tight">
-                      {totalFeeCalculated.toFixed(2)}{" "}
-                      <span className="text-xs font-semibold text-stone-400">
-                        {pricing?.currency || "PHP"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-sm text-center">
-                      <span
-                        className={`inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full min-w-[68px] border ${
-                          isPaid
-                            ? "text-green-700 bg-green-50 border-green-200"
-                            : "text-stone-600 bg-stone-100 border-stone-200/60"
-                        }`}
-                      >
-                        {isPaid ? "Paid" : "Unpaid"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-sm text-right">
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => updatePaidStatus(player.id, !isPaid)}
-                        className={`inline-flex items-center justify-center gap-x-1.5 border px-3 py-1.5 rounded-lg font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-all outline-none ${
-                          isPaid
-                            ? "border-stone-200 text-stone-600 bg-white hover:bg-stone-50 hover:text-stone-900"
-                            : "border-green-600 text-white bg-green-600 hover:bg-green-700 shadow-sm"
-                        }`}
-                      >
-                        {isPaid ? (
-                          <RotateCcw size={13} className="opacity-80" />
-                        ) : (
-                          <Check size={13} strokeWidth={3} />
-                        )}
-                        {isPaid ? "Unmark" : "Mark paid"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {/* Match Stats & Financial Breakdown */}
+              <div className="flex items-center justify-between sm:justify-end gap-x-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-stone-100">
+                <div className="flex flex-col sm:items-end">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                    Matches
+                  </span>
+                  <span className="text-xs sm:text-sm font-semibold text-stone-700 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-100 mt-0.5">
+                    {totalGames} {totalGames === 1 ? "game" : "games"}
+                  </span>
+                </div>
 
-              {/* Fallback for completely empty sessions or unmatched queries */}
-              {processedPlayers.length === 0 && !isSessionLoading && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="p-10 text-center text-sm text-stone-400 italic bg-stone-50/20"
-                  >
-                    {searchQuery.trim()
-                      ? `No players match your search "${searchQuery}"`
-                      : "No players registered in this session."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                <div className="flex flex-col sm:items-end">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                    Total Due
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-stone-900 mt-0.5">
+                    {totalFeeCalculated.toFixed(2)}{" "}
+                    <span className="text-[10px] sm:text-xs font-semibold text-stone-400">
+                      {pricing?.currency || "PHP"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Status & Action Button */}
+              <div className="flex items-center justify-between sm:justify-end gap-x-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-stone-100">
+                <span
+                  className={`inline-flex items-center justify-center px-2.5 py-1 text-[11px] font-bold rounded-full min-w-[68px] border ${
+                    isPaid
+                      ? "text-green-700 bg-green-50 border-green-200"
+                      : "text-stone-600 bg-stone-100 border-stone-200/60"
+                  }`}
+                >
+                  {isPaid ? "Paid" : "Unpaid"}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={isUpdating}
+                  onClick={() => updatePaidStatus(player.id, !isPaid)}
+                  className={`inline-flex items-center justify-center gap-x-1.5 border px-3.5 py-2 rounded-xl font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-all outline-none active:scale-[0.98] ${
+                    isPaid
+                      ? "border-stone-200 text-stone-600 bg-white hover:bg-stone-50 hover:text-stone-900"
+                      : "border-green-600 text-white bg-green-600 hover:bg-green-700 shadow-sm"
+                  }`}
+                >
+                  {isPaid ? (
+                    <RotateCcw size={13} className="opacity-80" />
+                  ) : (
+                    <Check size={13} strokeWidth={3} />
+                  )}
+                  {isPaid ? "Unmark" : "Mark paid"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Fallback for completely empty sessions or unmatched queries */}
+        {processedPlayers.length === 0 && !isSessionLoading && (
+          <div className="border border-stone-200/80 rounded-2xl p-10 text-center text-xs sm:text-sm text-stone-400 italic bg-white shadow-sm">
+            {searchQuery.trim()
+              ? `No players match your search "${searchQuery}"`
+              : "No players registered in this session."}
+          </div>
+        )}
 
         {hasMore && (
-          <div className="flex justify-center p-4 border-t border-stone-100 bg-stone-50/50">
+          <div className="flex justify-center pt-2">
             <button
               type="button"
               onClick={handleLoadMore}
-              className="px-5 py-2 text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-200 rounded-xl transition-colors cursor-pointer shadow-sm active:scale-[0.98]"
+              className="px-5 py-2.5 text-xs font-bold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200/80 rounded-xl transition-colors cursor-pointer shadow-sm active:scale-[0.98]"
             >
               Load More ({totalCount - players.length} remaining)
             </button>
