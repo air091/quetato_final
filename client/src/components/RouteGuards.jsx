@@ -13,9 +13,7 @@ export const ProtectedRoute = () => {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 font-sans">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-500 font-medium">
-            Loading session...
-          </p>
+          <p className="mt-2 text-sm text-gray-500 font-medium">Loading...</p>
         </div>
       </div>
     );
