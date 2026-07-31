@@ -475,9 +475,16 @@ const QueueCourt = ({
 
   return (
     <div>
-      <h4 className="font-semibold text-gray-700 mb-2">
-        Queues ({countDisplay})
-      </h4>
+      <div className="mb-2">
+        <h4 className="font-semibold text-gray-700">Queues ({countDisplay})</h4>
+        <button
+          onClick={onAddCourt}
+          className="cursor-pointer flex items-center gap-x-1 bg-stone-800 hover:bg-stone-700 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
+        >
+          <Plus size={14} />
+          <span>Add Queue</span>
+        </button>
+      </div>
       <div className="grid min-[1200px]:grid-cols-2 grid-cols-1 gap-3">
         {courtsList.map((queueCourt) => (
           <QueueCourtCard
@@ -493,80 +500,6 @@ const QueueCourt = ({
             sessionId={sessionId}
           />
         ))}
-
-        <button
-          onClick={onAddCourt}
-          className="relative rounded-md flex items-center justify-center cursor-pointer border-2 border-stone-800 border-dashed gap-x-2 min-h-[142px]"
-        >
-          <div className="absolute backdrop-blur-xs rounded-md z-11 h-full w-full bg-white opacity-70 hover:opacity-40"></div>
-          <svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 300 150"
-            fill="none"
-            stroke="rgba(200, 200, 200, 0.8)"
-            strokeWidth="2"
-            preserveAspectRatio="none"
-            className="bg-stone-800/95 absolute top-0 left-0 z-10 rounded-md pointer-events-none"
-          >
-            <rect
-              x="25"
-              y="25"
-              width="250"
-              height="100"
-              fill="none"
-              stroke="rgba(200, 200, 200, 0.8)"
-              strokeWidth="2"
-            />
-            <line
-              x1="150"
-              y1="25"
-              x2="150"
-              y2="125"
-              stroke="rgba(200, 200, 200, 0.8)"
-              strokeWidth="2"
-              strokeDasharray="5,5"
-            />
-            <line
-              x1="25"
-              y1="50"
-              x2="275"
-              y2="50"
-              stroke="rgba(200, 200, 200, 0.8)"
-              strokeWidth="1.5"
-            />
-            <line
-              x1="25"
-              y1="100"
-              x2="275"
-              y2="100"
-              stroke="rgba(200, 200, 200, 0.8)"
-              strokeWidth="1.5"
-            />
-            <line
-              x1="50"
-              y1="25"
-              x2="50"
-              y2="125"
-              stroke="rgba(200, 200, 200, 0.8)"
-              strokeWidth="1.5"
-            />
-            <line
-              x1="250"
-              y1="25"
-              x2="250"
-              y2="125"
-              stroke="rgba(200, 200, 200, 0.8)"
-              strokeWidth="1.5"
-            />
-          </svg>
-          <span className="block text-stone-800 z-12">
-            <Plus size={20} />
-          </span>
-          <span className="block font-medium text-stone-800 z-12">
-            Add Queue
-          </span>
-        </button>
       </div>
     </div>
   );
