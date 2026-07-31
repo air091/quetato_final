@@ -1,44 +1,14 @@
 import { Handshake, House, Info, UsersRound } from "lucide-react";
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { NavLink } from "react-router-dom";
 
-const Sidebar = ({ isOpen, onClose }) => {
-  const sidebarRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const clickedElement = event.target;
-
-      const isInteractive =
-        clickedElement.closest("button") ||
-        clickedElement.closest("a") ||
-        clickedElement.closest("input") ||
-        clickedElement.closest("select") ||
-        clickedElement.closest("textarea"); // Added consistency check
-
-      if (isInteractive) {
-        return;
-      }
-
-      // If sidebar is minimized (not fully open), we don't trigger click-away close behavior
-      if (!isOpen) return;
-
-      if (sidebarRef.current && !sidebarRef.current.contains(clickedElement)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen, onClose]);
-
+const Sidebar = ({ isOpen }) => {
   return (
     <nav
-      ref={sidebarRef}
-      className={`h-screen bg-stone-50 border-r border-stone-200/80 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between selection:bg-orange-500/10 selection:text-orange-950 ${
-        isOpen ? "w-[260px]" : "w-[60px]"
+      className={`absolute lg:relative z-50 h-full bg-stone-50 border-r border-stone-200/80 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between selection:bg-orange-500/10 selection:text-orange-950 ${
+        isOpen
+          ? "translate-x-0 w-[260px]" // Mobile & Desktop Open State
+          : "-translate-x-full lg:translate-x-0 lg:w-[60px]" // Mobile Closed (hidden) vs Desktop Closed (60px)
       }`}
     >
       <ul className="flex flex-col gap-y-1">
@@ -164,7 +134,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <li>
           <NavLink
             to="/about-us"
-            title={!isOpen ? "Community" : undefined}
+            title={!isOpen ? "About Us" : undefined}
             className={({ isActive }) =>
               `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
                 isOpen ? "gap-x-4 justify-start px-4" : "justify-center"

@@ -1,10 +1,12 @@
+// Login.jsx
 import React, { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 
 const Login = () => {
-  const { login, loading } = useAuth();
+  // Extract only login from useAuth. We no longer rely on the global 'loading' state here.
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -12,13 +14,15 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Track which fields have errors for stylistic highlights
+  // Local state to handle button loading UI safely
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldError, setFieldError] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setFieldError(false);
+    setIsSubmitting(true); // Trigger local loading state
 
     try {
       await login(email, password);
@@ -26,8 +30,9 @@ const Login = () => {
     } catch (err) {
       setError(err.message || "Invalid email or password. Please try again.");
       setFieldError(true);
-      // UX improvement: Clear only the password field on failure for security/retry convenience
       setPassword("");
+    } finally {
+      setIsSubmitting(false); // Stop local loading state
     }
   };
 
@@ -113,7 +118,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Forgot Password Link */}
           <div className="text-right">
             <NavLink
               to="/request-password-reset"
@@ -123,12 +127,13 @@ const Login = () => {
             </NavLink>
           </div>
 
+          {/* Change `loading` to `isSubmitting` */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full relative flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/10 hover:bg-orange-600 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-orange-500/10 disabled:bg-orange-400 disabled:scale-100 disabled:cursor-not-allowed transition-all duration-200 mt-6 cursor-pointer"
           >
-            {loading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="animate-spin -ml-1 mr-2 h-3.5 w-3.5" />
                 Signing in...
