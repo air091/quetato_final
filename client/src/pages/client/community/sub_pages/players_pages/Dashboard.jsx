@@ -194,15 +194,15 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200 rounded-xl overflow-hidden shadow-sm bg-white mt-4">
-      <div className="p-3 bg-stone-50/70 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-x-2 text-xs font-semibold text-stone-600">
+    <div className="w-full max-w-[720px] mx-auto select-none border border-stone-200/80 rounded-2xl overflow-hidden shadow-sm bg-white mt-4 sm:mt-6">
+      <div className="p-3.5 sm:p-4 bg-stone-50/70 border-b border-stone-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-x-2 text-xs font-bold text-stone-600">
           <Calendar size={15} className="text-stone-400" />
           <span>Filter Stats:</span>
         </div>
 
-        <div className="flex items-center gap-x-2 flex-wrap">
-          <div className="relative flex items-center">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex items-center flex-1 sm:flex-initial">
             <Search
               size={14}
               className="absolute left-2.5 text-stone-400 pointer-events-none"
@@ -212,13 +212,13 @@ const Dashboard = () => {
               placeholder="Search player..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg pl-8 pr-7 py-1.5 outline-none focus:border-stone-400 transition-colors w-[150px]"
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-xl pl-8 pr-7 py-2 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all w-full sm:w-[150px]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                className="absolute right-2 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer p-1"
                 title="Clear search"
               >
                 <X size={13} />
@@ -229,7 +229,7 @@ const Dashboard = () => {
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+            className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-xl px-2.5 py-2 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all cursor-pointer flex-1 sm:flex-initial"
           >
             <option value="">All Months</option>
             {MONTHS.map((m) => (
@@ -246,7 +246,7 @@ const Dashboard = () => {
               setSelectedDay("");
               setSelectedDayOfWeek("");
             }}
-            className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+            className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-xl px-2.5 py-2 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all cursor-pointer flex-1 sm:flex-initial"
           >
             <option value="all">All Days</option>
             <option value="specific">Single Day</option>
@@ -257,7 +257,7 @@ const Dashboard = () => {
             <select
               value={selectedDay}
               onChange={(e) => setSelectedDay(e.target.value)}
-              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-xl px-2.5 py-2 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all cursor-pointer flex-1 sm:flex-initial"
             >
               <option value="">Select Day</option>
               {NUMERIC_DAYS.map((d) => (
@@ -272,7 +272,7 @@ const Dashboard = () => {
             <select
               value={selectedDayOfWeek}
               onChange={(e) => setSelectedDayOfWeek(e.target.value)}
-              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none focus:border-stone-400 transition-colors cursor-pointer"
+              className="bg-white border border-stone-200 text-stone-700 text-xs font-medium rounded-xl px-2.5 py-2 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all cursor-pointer flex-1 sm:flex-initial"
             >
               <option value="">Select Weekday</option>
               {DAYS_OF_WEEK.map((w) => (
@@ -287,7 +287,7 @@ const Dashboard = () => {
             <button
               onClick={handleResetFilters}
               title="Reset Filters"
-              className="flex items-center gap-x-1 px-2 py-1.5 text-xs text-stone-500 hover:text-stone-800 bg-white border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-x-1 px-3 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 bg-white border border-stone-200 rounded-xl hover:bg-stone-100 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
             >
               <RotateCcw size={12} />
               <span>Reset</span>
@@ -296,7 +296,108 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* MOBILE VIEW: Card Layout (< 768px) */}
+      <div className="grid grid-cols-1 md:hidden gap-3 p-3 bg-stone-50/30">
+        {players.map((player) => {
+          const totalWins = player?.totalCommunityWins ?? 0;
+          const totalLosses = player?.totalCommunityLosses ?? 0;
+          const totalGames = player?.totalCommunityGames ?? 0;
+          const totalPoints = player?.totalCommunityPoints ?? totalWins;
+          const isCurrentUser =
+            user && player?.communityPlayer?.id === user?.id;
+
+          return (
+            <div
+              key={player?.id}
+              onClick={(e) => handlePlayerClick(e, player)}
+              className={`cursor-pointer p-4 rounded-xl border transition-all duration-150 flex flex-col gap-y-3 ${
+                isCurrentUser
+                  ? "bg-amber-50/60 border-amber-200/80 hover:bg-amber-100/70"
+                  : "bg-white border-stone-200/80 hover:border-stone-300 shadow-sm"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-x-3 min-w-0">
+                  <PlayerAvatar
+                    username={player?.communityPlayer?.username}
+                    size="md"
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-x-2">
+                      <span className="font-bold text-sm text-stone-900 truncate">
+                        {player?.communityPlayer?.username}
+                      </span>
+                      {isCurrentUser && (
+                        <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                          You
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-x-1.5 text-[11px] font-bold mt-0.5">
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md capitalize border ${
+                          player?.communityPlayer?.type === "static"
+                            ? "bg-purple-50 text-purple-700 border-purple-100"
+                            : "bg-stone-50 text-stone-600 border-stone-200"
+                        }`}
+                      >
+                        {player?.communityPlayer?.type || "Regular"}
+                      </span>
+                      <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded-md uppercase">
+                        {player?.communityPlayer?.skillLevel || "UNRANKED"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-stone-100 text-center">
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                    Wins
+                  </span>
+                  <span className="mt-1 inline-flex items-center justify-center px-2 py-0.5 font-bold text-green-700 bg-green-50/60 rounded-md text-xs border border-green-100/50 w-full">
+                    {totalWins}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                    Losses
+                  </span>
+                  <span className="mt-1 inline-flex items-center justify-center px-2 py-0.5 font-semibold text-stone-600 bg-stone-50 rounded-md text-xs border border-stone-200/40 w-full">
+                    {totalLosses}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                    Points
+                  </span>
+                  <span className="mt-1 inline-flex items-center justify-center px-2 py-0.5 font-bold text-amber-700 bg-amber-50/60 rounded-md text-xs border border-amber-100/50 w-full">
+                    {totalPoints}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                    Games
+                  </span>
+                  <span className="mt-1 inline-flex items-center justify-center px-2 py-0.5 font-semibold text-stone-700 bg-stone-100 rounded-md text-xs w-full">
+                    {totalGames}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {players.length === 0 && (
+          <div className="p-8 text-center text-xs text-stone-400 italic bg-white rounded-xl border border-stone-200/80">
+            No statistical roster data available for selected period
+          </div>
+        )}
+      </div>
+
+      {/* DESKTOP VIEW: Table Layout (>= 768px) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-stone-50/40 border-b border-stone-200 text-xs font-semibold text-stone-600 uppercase tracking-wider">
@@ -445,7 +546,7 @@ const Dashboard = () => {
       </div>
 
       {hasMore && (
-        <div className="p-3 bg-stone-50/50 border-t border-stone-200 flex justify-center">
+        <div className="p-3 bg-stone-50/50 border-t border-stone-200/80 flex justify-center">
           <button
             type="button"
             onClick={() => {
@@ -453,7 +554,7 @@ const Dashboard = () => {
               setPage(nextPage);
               getPlayers(nextPage, true);
             }}
-            className="px-4 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer shadow-sm"
+            className="px-4 py-2 text-xs font-bold text-stone-700 bg-white border border-stone-200 hover:bg-stone-100 rounded-xl transition-all cursor-pointer shadow-sm active:scale-[0.98]"
           >
             Load More ({totalCount - players.length} remaining)
           </button>

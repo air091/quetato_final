@@ -34,7 +34,7 @@ const All = () => {
     useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
 
-  // Debounce search input like CommunityActivities.jsx to prevent 500 errors on keystrokes
+  // Debounce search input to prevent performance issues on keystrokes
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -223,27 +223,27 @@ const All = () => {
   );
 
   return (
-    <div className="w-full max-w-[720px] mx-auto select-none bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden my-4">
+    <div className="w-full max-w-2xl mx-auto select-none bg-white border border-stone-200/80 rounded-2xl shadow-sm shadow-stone-100/50 overflow-hidden my-4 sm:my-6 selection:bg-orange-500/10 selection:text-orange-950">
       {/* Clean Top Action Header bar */}
-      <div className="p-4 border-b border-stone-100 flex flex-col gap-y-3">
+      <div className="p-4 sm:p-5 border-b border-stone-100 flex flex-col gap-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3">
           <div>
-            <h3 className="font-bold text-lg text-stone-900">
+            <h3 className="font-extrabold text-base sm:text-lg text-stone-900 tracking-tight">
               Community Members
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-500 font-medium mt-0.5 leading-relaxed">
               {isManagement
                 ? "Manage community rosters, roles, and static players."
                 : "View community rosters and verified players."}
             </p>
           </div>
 
-          <div className="flex items-center gap-x-2 self-end sm:self-auto">
+          <div className="flex items-center gap-x-2 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-end">
             {isManagement && (
               <>
                 <button
                   onClick={() => setIsAddStaticPlayerModalOpen(true)}
-                  className="px-3 py-1.5 text-xs font-semibold bg-orange-500 text-white hover:bg-orange-600 rounded-lg transition-colors cursor-pointer shadow-sm"
+                  className="px-3.5 py-2 text-xs font-bold bg-orange-500 text-white hover:bg-orange-600 rounded-xl transition-all cursor-pointer shadow-sm shadow-orange-500/10 active:scale-[0.98]"
                 >
                   Add Static Player
                 </button>
@@ -264,7 +264,7 @@ const All = () => {
               id="sort"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="bg-stone-50 border border-stone-200 px-2.5 py-1.5 text-xs font-medium text-stone-700 cursor-pointer rounded-lg outline-none focus:border-stone-400 transition-colors"
+              className="bg-stone-50 border border-stone-200 px-3 py-2 text-xs font-bold text-stone-700 cursor-pointer rounded-xl outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
             >
               <option value="a-z">Sort: A-Z</option>
               <option value="z-a">Sort: Z-A</option>
@@ -283,13 +283,13 @@ const All = () => {
             placeholder="Search players by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-stone-400 focus:bg-white transition-colors"
+            className="w-full pl-9 pr-8 py-2.5 bg-stone-50/50 border border-stone-200/80 rounded-xl text-xs sm:text-sm text-stone-900 placeholder:text-stone-400 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 focus:bg-white transition-all font-medium"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+              className="absolute right-3 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer p-1"
               title="Clear search"
             >
               <X size={14} />
@@ -299,17 +299,17 @@ const All = () => {
       </div>
 
       {/* Creator, Admin and Host Section */}
-      <div className="p-2 flex flex-col">
+      <div className="p-2 sm:p-3 flex flex-col">
         <header
           title={isUserMinimized ? "Expand container" : "Minimize container"}
           onClick={() => setIsUserMinimized((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer hover:bg-stone-50 py-2 px-3 rounded-xl group transition-colors"
+          className="flex items-center justify-between cursor-pointer hover:bg-stone-50/80 py-2.5 px-3 rounded-xl group transition-colors"
         >
           <div className="flex items-center gap-x-2">
-            <h4 className="font-semibold text-sm text-stone-800">
+            <h4 className="font-bold text-xs sm:text-sm text-stone-800">
               Creator & Admins
             </h4>
-            <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
+            <span className="text-[10px] sm:text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-bold rounded-full">
               {managementPlayers.length}
             </span>
           </div>
@@ -327,7 +327,7 @@ const All = () => {
             isUserMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
           }`}
         >
-          <div className="overflow-hidden flex flex-col gap-y-1 px-1">
+          <div className="overflow-hidden flex flex-col gap-y-1.5 px-1 pt-1">
             {managementPlayers.map((player) => {
               const playerData = player?.communityPlayer || player?.player;
               const isCurrentUser = user && playerData?.id === user?.id;
@@ -335,7 +335,7 @@ const All = () => {
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center justify-between p-2.5 rounded-xl transition-colors border ${
+                  className={`flex items-center justify-between p-3 rounded-xl transition-colors border ${
                     isCurrentUser
                       ? "bg-amber-50/60 border-amber-100/70 hover:bg-amber-50"
                       : "border-transparent hover:border-stone-100 hover:bg-stone-50/70"
@@ -345,16 +345,16 @@ const All = () => {
                     <PlayerAvatar username={playerData?.username} size="xl" />
                     <div>
                       <div className="flex items-center gap-x-2">
-                        <h5 className="font-semibold text-sm text-stone-900 leading-tight">
+                        <h5 className="font-bold text-sm text-stone-900 leading-tight">
                           {playerData?.username}
                         </h5>
                         {isCurrentUser && (
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
                             You
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                      <div className="flex items-center gap-x-1.5 text-[11px] font-bold mt-1">
                         <span
                           className={`px-2 py-0.5 rounded-md capitalize ${
                             player.role === "owner"
@@ -375,7 +375,7 @@ const All = () => {
 
                   <div className="flex items-center gap-x-2">
                     {!isCurrentUser && (
-                      <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                      <button className="border border-stone-200 px-3 py-1.5 font-bold text-xs text-stone-700 cursor-pointer rounded-xl hover:bg-stone-50 bg-white shadow-sm transition-all active:scale-[0.98]">
                         Add Friend
                       </button>
                     )}
@@ -384,7 +384,7 @@ const All = () => {
                       <div className="relative">
                         <button
                           onClick={(e) => handleToggleMenu(e, player)}
-                          className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
+                          className="block rounded-xl p-2 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                         >
                           <EllipsisVertical size={16} />
                         </button>
@@ -412,17 +412,17 @@ const All = () => {
       </div>
 
       {/* Players & Statics Section */}
-      <div className="p-2 flex flex-col border-t border-stone-100 bg-stone-50/30">
+      <div className="p-2 sm:p-3 flex flex-col border-t border-stone-100 bg-stone-50/30">
         <header
           title={isStaticMinimized ? "Expand container" : "Minimize container"}
           onClick={() => setIsStaticMinimized((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer hover:bg-stone-50 py-2 px-3 rounded-xl group transition-colors"
+          className="flex items-center justify-between cursor-pointer hover:bg-stone-50/80 py-2.5 px-3 rounded-xl group transition-colors"
         >
           <div className="flex items-center gap-x-2">
-            <h4 className="font-semibold text-sm text-stone-800">
+            <h4 className="font-bold text-xs sm:text-sm text-stone-800">
               All Regular & Static Players
             </h4>
-            <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
+            <span className="text-[10px] sm:text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-bold rounded-full">
               {totalRegularCount}
             </span>
           </div>
@@ -440,7 +440,7 @@ const All = () => {
             isStaticMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
           }`}
         >
-          <div className="overflow-hidden flex flex-col gap-y-1 px-1">
+          <div className="overflow-hidden flex flex-col gap-y-1.5 px-1 pt-1">
             {regularPlayers.map((player) => {
               const isCurrentUser =
                 user && player?.communityPlayer?.id === user?.id;
@@ -448,10 +448,10 @@ const All = () => {
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
                     isCurrentUser
                       ? "bg-amber-50/60 border-amber-100/70 hover:bg-amber-50"
-                      : "bg-white border-transparent"
+                      : "bg-white border-transparent hover:border-stone-100 hover:bg-stone-50/50"
                   }`}
                 >
                   <div className="flex items-center gap-x-3">
@@ -461,16 +461,16 @@ const All = () => {
                     />
                     <div>
                       <div className="flex items-center gap-x-2">
-                        <h5 className="font-semibold text-sm text-stone-900 leading-tight">
+                        <h5 className="font-bold text-sm text-stone-900 leading-tight">
                           {player?.communityPlayer?.username}
                         </h5>
                         {isCurrentUser && (
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
                             You
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                      <div className="flex items-center gap-x-1.5 text-[11px] font-bold mt-1">
                         <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
                           {player?.communityPlayer?.skillLevel || "UNRANKED"}
                         </span>
@@ -490,7 +490,7 @@ const All = () => {
                   <div className="flex items-center gap-x-2">
                     {!isCurrentUser &&
                       player?.communityPlayer?.type !== "static" && (
-                        <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                        <button className="border border-stone-200 px-3 py-1.5 font-bold text-xs text-stone-700 cursor-pointer rounded-xl hover:bg-stone-50 bg-white shadow-sm transition-all active:scale-[0.98]">
                           Add Friend
                         </button>
                       )}
@@ -500,7 +500,7 @@ const All = () => {
                         <div className="relative">
                           <button
                             onClick={(e) => handleToggleMenu(e, player)}
-                            className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
+                            className="block rounded-xl p-2 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                           >
                             <EllipsisVertical size={16} />
                           </button>
@@ -530,7 +530,7 @@ const All = () => {
                 <button
                   type="button"
                   onClick={handleLoadMore}
-                  className="px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer shadow-sm"
+                  className="px-4 py-2 text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer shadow-sm active:scale-[0.98]"
                 >
                   Load More
                 </button>
@@ -542,19 +542,19 @@ const All = () => {
 
       {/* Request players */}
       {isManagement && (
-        <div className="p-2 flex flex-col border-t border-stone-100 bg-stone-50/30">
+        <div className="p-2 sm:p-3 flex flex-col border-t border-stone-100 bg-stone-50/30">
           <header
             title={
               isRequestMinimized ? "Expand container" : "Minimize container"
             }
             onClick={() => setIsRequestMinimized((prev) => !prev)}
-            className="flex items-center justify-between cursor-pointer hover:bg-stone-50 py-2 px-3 rounded-xl group transition-colors"
+            className="flex items-center justify-between cursor-pointer hover:bg-stone-50/80 py-2.5 px-3 rounded-xl group transition-colors"
           >
             <div className="flex items-center gap-x-2">
-              <h4 className="font-semibold text-sm text-stone-800">
+              <h4 className="font-bold text-xs sm:text-sm text-stone-800">
                 All Requested Players
               </h4>
-              <span className="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-medium rounded-full">
+              <span className="text-[10px] sm:text-xs bg-stone-100 text-stone-600 px-2 py-0.5 font-bold rounded-full">
                 {requestedPlayers.length}
               </span>
             </div>
@@ -572,7 +572,7 @@ const All = () => {
               isRequestMinimized ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
             }`}
           >
-            <div className="overflow-hidden flex flex-col gap-y-1 px-1">
+            <div className="overflow-hidden flex flex-col gap-y-1.5 px-1 pt-1">
               {requestedPlayers.map((player) => {
                 const isCurrentUser =
                   user && player?.communityPlayer?.id === user?.id;
@@ -580,10 +580,10 @@ const All = () => {
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
                       isCurrentUser
                         ? "bg-amber-50/60 border-amber-100/70 hover:bg-amber-50"
-                        : "bg-white border-transparent"
+                        : "bg-white border-transparent hover:border-stone-100 hover:bg-stone-50/50"
                     }`}
                   >
                     <div className="flex items-center gap-x-3">
@@ -593,16 +593,16 @@ const All = () => {
                       />
                       <div>
                         <div className="flex items-center gap-x-2">
-                          <h5 className="font-semibold text-sm text-stone-900 leading-tight">
+                          <h5 className="font-bold text-sm text-stone-900 leading-tight">
                             {player?.communityPlayer?.username}
                           </h5>
                           {isCurrentUser && (
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
                               You
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-x-1.5 text-[11px] font-semibold mt-1">
+                        <div className="flex items-center gap-x-1.5 text-[11px] font-bold mt-1">
                           <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md uppercase">
                             {player?.communityPlayer?.skillLevel || "UNRANKED"}
                           </span>
@@ -622,7 +622,7 @@ const All = () => {
                     <div className="flex items-center gap-x-2">
                       {!isCurrentUser &&
                         player?.communityPlayer?.type !== "static" && (
-                          <button className="border border-stone-200 px-3 py-1.5 font-semibold text-xs text-stone-700 cursor-pointer rounded-lg hover:bg-stone-50 bg-white shadow-sm transition-colors">
+                          <button className="border border-stone-200 px-3 py-1.5 font-bold text-xs text-stone-700 cursor-pointer rounded-xl hover:bg-stone-50 bg-white shadow-sm transition-all active:scale-[0.98]">
                             Add Friend
                           </button>
                         )}
@@ -632,7 +632,7 @@ const All = () => {
                           <div className="relative">
                             <button
                               onClick={(e) => handleToggleMenu(e, player)}
-                              className="block rounded-lg p-1.5 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
+                              className="block rounded-xl p-2 hover:bg-stone-100 cursor-pointer text-stone-500 hover:text-stone-800 transition-colors outline-none"
                             >
                               <EllipsisVertical size={16} />
                             </button>
