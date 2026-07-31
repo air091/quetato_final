@@ -12,15 +12,22 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Track which fields have errors for stylistic highlights
+  const [fieldError, setFieldError] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setFieldError(false);
 
     try {
       await login(email, password);
       navigate("/");
     } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(err.message || "Invalid email or password. Please try again.");
+      setFieldError(true);
+      // UX improvement: Clear only the password field on failure for security/retry convenience
+      setPassword("");
     }
   };
 
@@ -40,7 +47,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Error State */}
+        {/* Error State Banner */}
         {error && (
           <div className="flex items-start gap-x-2.5 rounded-xl bg-red-50 border border-red-100 p-3.5 text-xs text-red-800 animate-in fade-in slide-in-from-top-1 duration-200">
             <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
@@ -65,7 +72,11 @@ const Login = () => {
               required
               autoComplete="email"
               placeholder="Enter your email address"
-              className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-850 placeholder-stone-400 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10 text-xs font-medium transition-all duration-200 bg-stone-50/50 focus:bg-white"
+              className={`w-full rounded-xl border px-3.5 py-2.5 text-stone-850 placeholder-stone-400 focus:outline-none focus:ring-4 text-xs font-medium transition-all duration-200 bg-stone-50/50 focus:bg-white ${
+                fieldError
+                  ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                  : "border-stone-200 focus:border-orange-500 focus:ring-orange-500/10"
+              }`}
             />
           </div>
 
@@ -85,7 +96,11 @@ const Login = () => {
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-stone-200 pl-3.5 pr-11 py-2.5 text-stone-850 placeholder-stone-400 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/10 text-xs font-medium transition-all duration-200 bg-stone-50/50 focus:bg-white"
+                className={`w-full rounded-xl border pl-3.5 pr-11 py-2.5 text-stone-850 placeholder-stone-400 focus:outline-none focus:ring-4 text-xs font-medium transition-all duration-200 bg-stone-50/50 focus:bg-white ${
+                  fieldError
+                    ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                    : "border-stone-200 focus:border-orange-500 focus:ring-orange-500/10"
+                }`}
               />
               <button
                 type="button"
@@ -98,7 +113,7 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Forgot Password Link - NEW */}
+          {/* Forgot Password Link */}
           <div className="text-right">
             <NavLink
               to="/request-password-reset"

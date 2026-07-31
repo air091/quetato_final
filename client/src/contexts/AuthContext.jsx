@@ -274,8 +274,7 @@ export const AuthProvider = ({ children }) => {
 
   // 5. Login Action
   const login = async (email, password) => {
-    setLoading(true);
-    // Explicitly bypass initialization hook when changing auth state dynamically
+    // REMOVED: setLoading(true);
     isInitialMount.current = false;
     try {
       const response = await fetch(`${AUTH_URL}/login`, {
@@ -306,7 +305,7 @@ export const AuthProvider = ({ children }) => {
 
       return data;
     } finally {
-      setLoading(false);
+      // REMOVED: setLoading(false);
     }
   };
 
