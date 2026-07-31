@@ -236,7 +236,7 @@ export const AuthProvider = ({ children }) => {
 
   // 4. Register Action
   const register = async (username, email, password, skillLevel) => {
-    setLoading(true);
+    // setLoading(true);
     // Explicitly bypass initialization hook when changing auth state dynamically
     isInitialMount.current = false;
     try {
@@ -268,7 +268,7 @@ export const AuthProvider = ({ children }) => {
 
       return data;
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
