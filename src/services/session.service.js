@@ -21,8 +21,6 @@ export const getAllPublicSessions = async (page = 1, limit = 10) => {
         startAt: true,
         endAt: true,
         isAvailable: true,
-        createdBy: true,
-        createdAt: true,
         community: {
           select: {
             id: true,
