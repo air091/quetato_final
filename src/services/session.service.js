@@ -4,6 +4,9 @@ import { prisma } from "../libs/prisma.js";
 
 export const getAllPublicSessions = async () => {
   const sessions = await prisma.session.findMany({
+    where: {
+      isAvailable: true,
+    },
     select: {
       id: true,
       name: true,
@@ -15,7 +18,6 @@ export const getAllPublicSessions = async () => {
       isAvailable: true,
       createdBy: true,
       createdAt: true,
-      // Move your relations inside the select block:
       community: {
         select: {
           id: true,
