@@ -5,7 +5,6 @@ import { prisma } from "../libs/prisma.js";
 export const getAllPublicSessions = async (page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
 
-  // Run data fetch and total count query in parallel
   const [sessions, totalCount] = await Promise.all([
     prisma.session.findMany({
       where: {
@@ -36,20 +35,12 @@ export const getAllPublicSessions = async (page = 1, limit = 10) => {
             username: true,
           },
         },
-        players: {
+        // Specify exact counts instead of fetching all default counts
+        _count: {
           select: {
-            id: true,
-            sessionPlayer: {
-              select: {
-                id: true,
-                communityPlayer: {
-                  select: { id: true, username: true },
-                },
-              },
-            },
+            players: true,
           },
         },
-        _count: true,
       },
       orderBy: {
         createdAt: "desc",
