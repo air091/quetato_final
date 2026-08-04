@@ -2,51 +2,71 @@ import { Sports } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
-export const getAllPublicSessions = async () => {
-  const sessions = await prisma.session.findMany({
-    where: {
-      isAvailable: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      sport: true,
-      description: true,
-      location: true,
-      startAt: true,
-      endAt: true,
-      isAvailable: true,
-      createdBy: true,
-      createdAt: true,
-      community: {
-        select: {
-          id: true,
-          name: true,
-        },
+export const getAllPublicSessions = async (page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
+
+  // Run data fetch and total count query in parallel
+  const [sessions, totalCount] = await Promise.all([
+    prisma.session.findMany({
+      where: {
+        isAvailable: true,
       },
-      creator: {
-        select: {
-          id: true,
-          username: true,
+      skip: skip,
+      take: limit,
+      select: {
+        id: true,
+        name: true,
+        sport: true,
+        description: true,
+        location: true,
+        startAt: true,
+        endAt: true,
+        isAvailable: true,
+        createdBy: true,
+        createdAt: true,
+        community: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-      },
-      players: {
-        select: {
-          id: true,
-          sessionPlayer: {
-            select: {
-              id: true,
-              communityPlayer: {
-                select: { id: true, username: true },
+        creator: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        players: {
+          select: {
+            id: true,
+            sessionPlayer: {
+              select: {
+                id: true,
+                communityPlayer: {
+                  select: { id: true, username: true },
+                },
               },
             },
           },
         },
+        _count: true,
       },
-      _count: true,
-    },
-  });
-  return sessions;
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    prisma.session.count({
+      where: {
+        isAvailable: true,
+      },
+    }),
+  ]);
+
+  return {
+    sessions,
+    totalPages: Math.ceil(totalCount / limit),
+    currentPage: page,
+  };
 };
 
 export const getAllSessions = async (communityId, filters = {}) => {

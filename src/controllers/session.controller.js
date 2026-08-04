@@ -30,8 +30,11 @@ import {
 
 export const getAllPublicSessionsController = async (request, response) => {
   try {
-    const sessions = await getAllPublicSessions();
-    return response.status(200).json({ success: true, sessions });
+    const page = parseInt(request.query.page) || 1;
+    const limit = parseInt(request.query.limit) || 10;
+
+    const result = await getAllPublicSessions(page, limit);
+    return response.status(200).json({ success: true, ...result });
   } catch (error) {
     console.error("Get all public sessions failed", error);
     let errMessage = "Internal server error";
