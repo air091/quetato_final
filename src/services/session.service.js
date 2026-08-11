@@ -2,9 +2,13 @@ import { Sports } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import {
+  getCommunitySessionsCacheVersion,
   getCachedJson,
   getPublicSessionsCacheVersion,
+  getSessionCacheVersion,
+  invalidateCommunitySessionsCache,
   invalidatePublicSessionsCache,
+  invalidateSessionCache,
   setCachedJson,
 } from "../libs/redis.js";
 
@@ -102,9 +106,25 @@ export const getAllSessions = async (communityId, filters = {}) => {
   } = filters;
   const sortOrder = order.toLowerCase() === "desc" ? "desc" : "asc";
 
-  const pageNumber = Math.max(1, parseInt(page, 10));
-  const pageSize = Math.max(1, parseInt(limit, 10));
+  const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+  const pageSize = Math.min(50, Math.max(1, parseInt(limit, 10) || 5));
   const skip = (pageNumber - 1) * pageSize;
+  const normalizedSearch = search?.trim() || "";
+  const version = await getCommunitySessionsCacheVersion(communityId);
+  const cacheKey = [
+    "community-sessions",
+    `community:${encodeURIComponent(communityId)}`,
+    `v:${version}`,
+    `status:${status || "all"}`,
+    `sort:${sortBy || "name"}`,
+    `order:${sortOrder}`,
+    `search:${encodeURIComponent(normalizedSearch)}`,
+    `page:${pageNumber}`,
+    `limit:${pageSize}`,
+  ].join(":");
+  const cached = await getCachedJson(cacheKey);
+
+  if (cached) return cached;
 
   // 1. Build the dynamic WHERE clause
   const whereClause = {
@@ -115,9 +135,9 @@ export const getAllSessions = async (communityId, filters = {}) => {
     whereClause.isAvailable = status === "available";
   }
 
-  if (search && search.trim() !== "") {
+  if (normalizedSearch) {
     whereClause.name = {
-      contains: search.trim(),
+      contains: normalizedSearch,
       mode: "insensitive",
     };
   }
@@ -178,7 +198,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
     prisma.session.count({ where: whereClause }),
   ]);
 
-  return {
+  const result = {
     sessions,
     pagination: {
       totalItems: totalCount,
@@ -187,6 +207,8 @@ export const getAllSessions = async (communityId, filters = {}) => {
       limit: pageSize,
     },
   };
+  await setCachedJson(cacheKey, result, PUBLIC_SESSIONS_CACHE_TTL_SECONDS);
+  return result;
 };
 
 export const getSessionById = async (communityId, sessionId) => {
@@ -200,8 +222,17 @@ export const getSessionById = async (communityId, sessionId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  const session = await prisma.session.findUnique({ where: { id: sessionId } });
+  const version = await getSessionCacheVersion(sessionId);
+  const cacheKey = `session:community:${encodeURIComponent(communityId)}:id:${encodeURIComponent(sessionId)}:v:${version}`;
+  const cached = await getCachedJson(cacheKey);
+
+  if (cached) return cached;
+
+  const session = await prisma.session.findFirst({
+    where: { id: sessionId, communityId },
+  });
   if (!session) throw new AppError("Session not found");
+  await setCachedJson(cacheKey, session, PUBLIC_SESSIONS_CACHE_TTL_SECONDS);
   return session;
 };
 
@@ -289,7 +320,10 @@ export const createSession = async (
 
     return createdSession;
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+  ]);
   return session;
 };
 
@@ -350,7 +384,11 @@ export const updateSession = async (
 
     return session;
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+    invalidateSessionCache(sessionId),
+  ]);
   return session;
 };
 
@@ -371,7 +409,11 @@ export const startSession = async (communityId, sessionId, userId) => {
     where: { id: sessionId },
     data: { isAvailable: true },
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+    invalidateSessionCache(sessionId),
+  ]);
   return session;
 };
 
@@ -392,7 +434,11 @@ export const endSession = async (communityId, sessionId, userId) => {
     where: { id: sessionId },
     data: { isAvailable: false },
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+    invalidateSessionCache(sessionId),
+  ]);
   return session;
 };
 
@@ -428,7 +474,11 @@ export const deleteSession = async (communityId, sessionId, authorizedId) => {
 
     await tx.session.delete({ where: { id: sessionId } });
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+    invalidateSessionCache(sessionId),
+  ]);
 };
 
 // DASHBOARD, GAMES, PAYMENTS

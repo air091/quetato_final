@@ -2,7 +2,10 @@ import { SkillLevel } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import { randomUUID } from "crypto";
-import { invalidatePublicSessionsCache } from "../libs/redis.js";
+import {
+  invalidateCommunitySessionsCache,
+  invalidatePublicSessionsCache,
+} from "../libs/redis.js";
 
 // player.service.js
 export const getAllPlayers = async (
@@ -922,7 +925,10 @@ export const joinSession = async (communityId, sessionId, userId) => {
 
     return createdSessionPlayer;
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+  ]);
   return newSessionPlayer;
 };
 

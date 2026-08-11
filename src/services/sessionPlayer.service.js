@@ -2,7 +2,10 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { GameStatus } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
-import { invalidatePublicSessionsCache } from "../libs/redis.js";
+import {
+  invalidateCommunitySessionsCache,
+  invalidatePublicSessionsCache,
+} from "../libs/redis.js";
 
 export const getAllSessionPlayers = async (
   communityId,
@@ -292,7 +295,10 @@ export const acceptPlayer = async (
       },
     });
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+  ]);
   return acceptedPlayer;
 };
 
@@ -537,6 +543,9 @@ export const removePlayerFromSession = async (
       deletedPlayer,
     };
   });
-  await invalidatePublicSessionsCache();
+  await Promise.all([
+    invalidatePublicSessionsCache(),
+    invalidateCommunitySessionsCache(communityId),
+  ]);
   return result;
 };

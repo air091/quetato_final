@@ -1,7 +1,29 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
+import {
+  getCachedJson,
+  getCommunitiesCacheVersion,
+  getCommunityCacheVersion,
+  invalidateCommunitiesCache,
+  invalidateCommunityCache,
+  setCachedJson,
+} from "../libs/redis.js";
+
+const configuredCommunitiesTtl = Number(
+  process.env.COMMUNITIES_CACHE_TTL_SECONDS || 60,
+);
+const COMMUNITIES_CACHE_TTL_SECONDS =
+  Number.isFinite(configuredCommunitiesTtl) && configuredCommunitiesTtl > 0
+    ? Math.floor(configuredCommunitiesTtl)
+    : 60;
 
 export const getAllCommunities = async () => {
+  const version = await getCommunitiesCacheVersion();
+  const cacheKey = `communities:v:${version}`;
+  const cached = await getCachedJson(cacheKey);
+
+  if (cached) return cached;
+
   const communities = await prisma.community.findMany({
     select: {
       id: true,
@@ -32,6 +54,7 @@ export const getAllCommunities = async () => {
     },
   });
 
+  await setCachedJson(cacheKey, communities, COMMUNITIES_CACHE_TTL_SECONDS);
   return communities;
 };
 
@@ -101,6 +124,12 @@ export const getMyCommunities = async (userId) => {
 
 export const getCommunityById = async (communityId) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
+  const version = await getCommunityCacheVersion(communityId);
+  const cacheKey = `community:id:${encodeURIComponent(communityId)}:v:${version}`;
+  const cached = await getCachedJson(cacheKey);
+
+  if (cached) return cached;
+
   const community = await prisma.community.findUnique({
     where: { id: communityId },
     select: {
@@ -113,13 +142,14 @@ export const getCommunityById = async (communityId) => {
   });
 
   if (!community) throw new AppError("Community not found", 404);
+  await setCachedJson(cacheKey, community, COMMUNITIES_CACHE_TTL_SECONDS);
   return community;
 };
 
 export const createCommunity = async (name, description, ownerId) => {
   if (name.trim().length === 0) throw new AppError("Name is required", 400);
 
-  return await prisma.$transaction(async (tx) => {
+  const community = await prisma.$transaction(async (tx) => {
     const community = await tx.community.create({
       data: {
         name: name.trim(),
@@ -139,6 +169,8 @@ export const createCommunity = async (name, description, ownerId) => {
 
     return community;
   });
+  await invalidateCommunitiesCache();
+  return community;
 };
 
 export const updateCommunityByOwner = async (
@@ -170,6 +202,10 @@ export const updateCommunityByOwner = async (
     },
   });
 
+  await Promise.all([
+    invalidateCommunitiesCache(),
+    invalidateCommunityCache(communityId),
+  ]);
   return updatedCommunity;
 };
 
@@ -219,4 +255,8 @@ export const deleteCommunity = async (communityId, ownerId) => {
       });
     }
   });
+  await Promise.all([
+    invalidateCommunitiesCache(),
+    invalidateCommunityCache(communityId),
+  ]);
 };

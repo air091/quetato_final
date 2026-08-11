@@ -50,6 +50,13 @@ export const setCachedJson = async (key, value, ttlSeconds) => {
 };
 
 const PUBLIC_SESSIONS_VERSION_KEY = "public-sessions:version";
+const communitySessionsVersionKey = (communityId) =>
+  `community-sessions:${encodeURIComponent(communityId)}:version`;
+const sessionVersionKey = (sessionId) =>
+  `session:${encodeURIComponent(sessionId)}:version`;
+const communityVersionKey = (communityId) =>
+  `community:${encodeURIComponent(communityId)}:version`;
+const COMMUNITIES_VERSION_KEY = "communities:version";
 
 export const getPublicSessionsCacheVersion = async () => {
   try {
@@ -65,6 +72,81 @@ export const invalidatePublicSessionsCache = async () => {
   try {
     const redis = await getClient();
     if (redis) await redis.incr(PUBLIC_SESSIONS_VERSION_KEY);
+  } catch (error) {
+    console.warn("Redis cache invalidation failed:", error.message);
+  }
+};
+
+export const getCommunitySessionsCacheVersion = async (communityId) => {
+  try {
+    const redis = await getClient();
+    return (
+      (redis && (await redis.get(communitySessionsVersionKey(communityId)))) ||
+      "1"
+    );
+  } catch {
+    return "1";
+  }
+};
+
+export const invalidateCommunitySessionsCache = async (communityId) => {
+  try {
+    const redis = await getClient();
+    if (redis) await redis.incr(communitySessionsVersionKey(communityId));
+  } catch (error) {
+    console.warn("Redis cache invalidation failed:", error.message);
+  }
+};
+
+export const getSessionCacheVersion = async (sessionId) => {
+  try {
+    const redis = await getClient();
+    return (redis && (await redis.get(sessionVersionKey(sessionId)))) || "1";
+  } catch {
+    return "1";
+  }
+};
+
+export const invalidateSessionCache = async (sessionId) => {
+  try {
+    const redis = await getClient();
+    if (redis) await redis.incr(sessionVersionKey(sessionId));
+  } catch (error) {
+    console.warn("Redis cache invalidation failed:", error.message);
+  }
+};
+
+export const getCommunitiesCacheVersion = async () => {
+  try {
+    const redis = await getClient();
+    return (redis && (await redis.get(COMMUNITIES_VERSION_KEY))) || "1";
+  } catch {
+    return "1";
+  }
+};
+
+export const invalidateCommunitiesCache = async () => {
+  try {
+    const redis = await getClient();
+    if (redis) await redis.incr(COMMUNITIES_VERSION_KEY);
+  } catch (error) {
+    console.warn("Redis cache invalidation failed:", error.message);
+  }
+};
+
+export const getCommunityCacheVersion = async (communityId) => {
+  try {
+    const redis = await getClient();
+    return (redis && (await redis.get(communityVersionKey(communityId)))) || "1";
+  } catch {
+    return "1";
+  }
+};
+
+export const invalidateCommunityCache = async (communityId) => {
+  try {
+    const redis = await getClient();
+    if (redis) await redis.incr(communityVersionKey(communityId));
   } catch (error) {
     console.warn("Redis cache invalidation failed:", error.message);
   }
