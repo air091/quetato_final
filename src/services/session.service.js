@@ -1,9 +1,30 @@
 import { Sports } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
+import {
+  getCachedJson,
+  getPublicSessionsCacheVersion,
+  invalidatePublicSessionsCache,
+  setCachedJson,
+} from "../libs/redis.js";
+
+const configuredPublicSessionsTtl = Number(
+  process.env.PUBLIC_SESSIONS_CACHE_TTL_SECONDS || 60,
+);
+const PUBLIC_SESSIONS_CACHE_TTL_SECONDS =
+  Number.isFinite(configuredPublicSessionsTtl) && configuredPublicSessionsTtl > 0
+    ? Math.floor(configuredPublicSessionsTtl)
+    : 60;
 
 export const getAllPublicSessions = async (page = 1, limit = 10) => {
+  page = Math.max(1, Number.parseInt(page, 10) || 1);
+  limit = Math.min(50, Math.max(1, Number.parseInt(limit, 10) || 10));
   const skip = (page - 1) * limit;
+  const version = await getPublicSessionsCacheVersion();
+  const cacheKey = `public-sessions:v${version}:page:${page}:limit:${limit}`;
+  const cached = await getCachedJson(cacheKey);
+
+  if (cached) return cached;
 
   const [sessions, totalCount] = await Promise.all([
     prisma.session.findMany({
@@ -51,11 +72,14 @@ export const getAllPublicSessions = async (page = 1, limit = 10) => {
     }),
   ]);
 
-  return {
+  const result = {
     sessions,
     totalPages: Math.ceil(totalCount / limit),
     currentPage: page,
   };
+
+  await setCachedJson(cacheKey, result, PUBLIC_SESSIONS_CACHE_TTL_SECONDS);
+  return result;
 };
 
 export const getAllSessions = async (communityId, filters = {}) => {
@@ -199,7 +223,7 @@ export const createSession = async (
     "Join the queue and start playing with nearby players.";
   const cleanLocation = location?.trim() || "TBA";
 
-  return await prisma.$transaction(async (tx) => {
+  const session = await prisma.$transaction(async (tx) => {
     // 1. Run the member fetch and a count query concurrently within the transaction
     const [communityMembers, sessionCount] = await Promise.all([
       tx.communityPlayer.findMany({
@@ -238,7 +262,7 @@ export const createSession = async (
     );
 
     // 5. Create the session
-    const session = await tx.session.create({
+    const createdSession = await tx.session.create({
       data: {
         communityId,
         name: cleanName,
@@ -255,7 +279,7 @@ export const createSession = async (
     if (adminsToAutoAdd.length > 0) {
       await tx.sessionPlayer.createMany({
         data: adminsToAutoAdd.map((admin) => ({
-          sessionId: session.id,
+          sessionId: createdSession.id,
           playerId: admin.id,
           status: "accepted",
           acceptedAt: new Date(),
@@ -263,8 +287,10 @@ export const createSession = async (
       });
     }
 
-    return session;
+    return createdSession;
   });
+  await invalidatePublicSessionsCache();
+  return session;
 };
 
 export const updateSession = async (
@@ -293,7 +319,7 @@ export const updateSession = async (
 
   if (!community) throw new AppError("Community not found");
 
-  return await prisma.$transaction(async (tx) => {
+  const session = await prisma.$transaction(async (tx) => {
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
         communityId_userId: {
@@ -324,6 +350,8 @@ export const updateSession = async (
 
     return session;
   });
+  await invalidatePublicSessionsCache();
+  return session;
 };
 
 export const startSession = async (communityId, sessionId, userId) => {
@@ -343,7 +371,7 @@ export const startSession = async (communityId, sessionId, userId) => {
     where: { id: sessionId },
     data: { isAvailable: true },
   });
-
+  await invalidatePublicSessionsCache();
   return session;
 };
 
@@ -364,7 +392,7 @@ export const endSession = async (communityId, sessionId, userId) => {
     where: { id: sessionId },
     data: { isAvailable: false },
   });
-
+  await invalidatePublicSessionsCache();
   return session;
 };
 
@@ -379,7 +407,7 @@ export const deleteSession = async (communityId, sessionId, authorizedId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  return await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
         communityId_userId: {
@@ -400,6 +428,7 @@ export const deleteSession = async (communityId, sessionId, authorizedId) => {
 
     await tx.session.delete({ where: { id: sessionId } });
   });
+  await invalidatePublicSessionsCache();
 };
 
 // DASHBOARD, GAMES, PAYMENTS

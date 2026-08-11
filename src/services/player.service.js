@@ -2,6 +2,7 @@ import { SkillLevel } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 import { randomUUID } from "crypto";
+import { invalidatePublicSessionsCache } from "../libs/redis.js";
 
 // player.service.js
 export const getAllPlayers = async (
@@ -842,7 +843,7 @@ export const joinSession = async (communityId, sessionId, userId) => {
     );
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const newSessionPlayer = await prisma.$transaction(async (tx) => {
     // 1. Verify the session exists and belongs to this community
     const session = await tx.session.findFirst({
       where: {
@@ -896,7 +897,7 @@ export const joinSession = async (communityId, sessionId, userId) => {
     }
 
     // 6. Create the registration entry
-    const newSessionPlayer = await tx.sessionPlayer.create({
+    const createdSessionPlayer = await tx.sessionPlayer.create({
       data: {
         sessionId: sessionId,
         playerId: communityPlayer.id,
@@ -919,8 +920,10 @@ export const joinSession = async (communityId, sessionId, userId) => {
       },
     });
 
-    return newSessionPlayer;
+    return createdSessionPlayer;
   });
+  await invalidatePublicSessionsCache();
+  return newSessionPlayer;
 };
 
 export const getRequestedPlayerToJoinSession = async (

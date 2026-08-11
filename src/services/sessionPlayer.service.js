@@ -2,6 +2,7 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { GameStatus } from "../../generated/prisma/enums.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
+import { invalidatePublicSessionsCache } from "../libs/redis.js";
 
 export const getAllSessionPlayers = async (
   communityId,
@@ -197,7 +198,7 @@ export const acceptPlayer = async (
 
   if (!community) throw new AppError("Community not found", 404);
 
-  return await prisma.$transaction(async (tx) => {
+  const acceptedPlayer = await prisma.$transaction(async (tx) => {
     // 1. Get the admin's CommunityPlayer record
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
@@ -291,6 +292,8 @@ export const acceptPlayer = async (
       },
     });
   });
+  await invalidatePublicSessionsCache();
+  return acceptedPlayer;
 };
 
 export const hideAuthorizedPlayerInSession = async (
@@ -521,7 +524,7 @@ export const removePlayerFromSession = async (
   }
 
   // 5. Execute deletion in an isolated transaction block
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const deletedPlayer = await tx.sessionPlayer.delete({
       where: {
         id: targetSessionPlayer.id,
@@ -534,4 +537,6 @@ export const removePlayerFromSession = async (
       deletedPlayer,
     };
   });
+  await invalidatePublicSessionsCache();
+  return result;
 };
