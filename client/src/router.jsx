@@ -28,7 +28,7 @@ import CommunitySettings from "./pages/client/community/sub_pages/CommunitySetti
 import CommunityCreate from "./pages/client/community/CommunityCreate";
 import RequestPasswordReset from "./pages/RequestPasswordReset";
 import ResetPassword from "./pages/ResetPassword";
-import Updates from "./pages/client/Updates";
+import Notice from "./pages/client/Updates";
 
 const router = createBrowserRouter([
   {
@@ -64,8 +64,8 @@ const router = createBrowserRouter([
             element: <Home />,
           },
           {
-            path: "Updates",
-            element: <Updates />,
+            path: "Notice",
+            element: <Notice />,
           },
         ],
       },

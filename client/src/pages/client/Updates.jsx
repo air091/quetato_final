@@ -1,7 +1,7 @@
 import React from "react";
 
-const Updates = () => {
-  return <div>Updates</div>;
+const Notice = () => {
+  return <div>Notice</div>;
 };
 
-export default Updates;
+export default Notice;

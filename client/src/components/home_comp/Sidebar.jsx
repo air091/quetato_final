@@ -133,8 +133,8 @@ const Sidebar = ({ isOpen }) => {
         {/* About */}
         <li>
           <NavLink
-            to="/about-us"
-            title={!isOpen ? "About Us" : undefined}
+            to="/Notice"
+            title={!isOpen ? "Notice" : undefined}
             className={({ isActive }) =>
               `flex items-center p-2.5 rounded-xl rounded-l-none transition-all duration-200 group relative ${
                 isOpen ? "gap-x-4 justify-start px-4" : "justify-center"
@@ -162,7 +162,7 @@ const Sidebar = ({ isOpen }) => {
                       : "opacity-0 max-w-0 pointer-events-none"
                   }`}
                 >
-                  About us
+                  Notice
                 </span>
               </>
             )}
