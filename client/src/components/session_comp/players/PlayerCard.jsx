@@ -94,9 +94,9 @@ const PlayerCard = ({ player, onRefreshData }) => {
                 </span>
               )}
 
-              {["owner", "admin", "host"].includes(playerRole) && (
+              {(["owner", "admin"].includes(playerRole) || player?.isHost) && (
                 <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
-                  {playerRole}
+                  {player?.isHost ? "host" : playerRole}
                 </span>
               )}
 

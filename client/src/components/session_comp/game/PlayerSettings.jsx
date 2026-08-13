@@ -26,7 +26,7 @@ const SKILL_LEVEL_LABELS = {
   EXP: "Experience",
 };
 
-const PROTECTED_SESSION_ROLES = ["owner", "admin", "host"];
+const PROTECTED_SESSION_ROLES = ["owner", "admin"];
 
 const PlayerSettings = ({
   player,
@@ -55,7 +55,8 @@ const PlayerSettings = ({
   const canRemovePlayer =
     canManagePlayers &&
     Boolean(sessionPlayerId) &&
-    !PROTECTED_SESSION_ROLES.includes(sessionRole);
+    !PROTECTED_SESSION_ROLES.includes(sessionRole) &&
+    !player?.isHost;
   const visibilityAction = player?.isHide ? "unhide" : "hide";
 
   const isPaid = player?.gameStatus === "paid";
@@ -311,9 +312,9 @@ const PlayerSettings = ({
                 <span className="text-xs font-bold text-stone-900 truncate max-w-[100px]">
                   {username}
                 </span>
-                {sessionRole && (
+                {(sessionRole || player?.isHost) && (
                   <span className="text-[9px] font-semibold tracking-wider text-stone-400 uppercase">
-                    {sessionRole}
+                    {player?.isHost ? "host" : sessionRole}
                   </span>
                 )}
               </div>

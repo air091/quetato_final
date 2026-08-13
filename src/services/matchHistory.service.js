@@ -2,6 +2,23 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
 
+const assertSessionManager = async (tx, communityId, sessionId, userId) => {
+  const member = await tx.sessionPlayer.findFirst({
+    where: {
+      sessionId,
+      sessionPlayer: { communityId, userId },
+    },
+    select: { isHost: true, sessionPlayer: { select: { role: true } } },
+  });
+
+  if (
+    !member ||
+    (!member.isHost && !["owner", "admin"].includes(member.sessionPlayer.role))
+  ) {
+    throw new AppError("Forbidden: Insufficient session permissions", 403);
+  }
+};
+
 export const getPlayerGameHistory = async (sessionPlayerId) => {
   if (!sessionPlayerId) {
     throw new AppError(
@@ -554,28 +571,7 @@ export const deleteMatchSessionHistory = async (
 
   // 3. Execute Transaction with Role Check & Scoped Deletion
   return await prisma.$transaction(async (tx) => {
-    // Check user membership and permissions inside the community
-
-    const authorizedPlayer = await tx.communityPlayer.findUnique({
-      where: {
-        communityId_userId: {
-          communityId: community.id,
-
-          userId: authorizedUserId,
-        },
-      },
-      select: {
-        role: true,
-      },
-    });
-    if (!authorizedPlayer) {
-      throw new AppError("Forbidden: Not a member of this community", 403);
-    }
-
-    const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizedPlayer.role)) {
-      throw new AppError("Forbidden: Insufficient permissions", 403);
-    }
+    await assertSessionManager(tx, community.id, sessionId, authorizedUserId);
 
     // Verify the target match exists and belongs to the given session & community
 
@@ -635,28 +631,7 @@ export const transferPlayerGames = async ({
     throw new AppError("Authorization User ID is required", 400);
 
   return await prisma.$transaction(async (tx) => {
-    // 2. Authorization Check (admin, owner, host)
-    const authorizedPlayer = await tx.communityPlayer.findUnique({
-      where: {
-        communityId_userId: {
-          communityId,
-          userId: authorizedUserId,
-        },
-      },
-      select: { role: true },
-    });
-
-    if (!authorizedPlayer) {
-      throw new AppError("Forbidden: Not a member of this community", 403);
-    }
-
-    const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizedPlayer.role)) {
-      throw new AppError(
-        "Forbidden: Insufficient permissions to transfer games",
-        403,
-      );
-    }
+    await assertSessionManager(tx, communityId, sessionId, authorizedUserId);
 
     // 3. Verify Source SessionPlayer Existence
     const sourceSessionPlayer = await tx.sessionPlayer.findFirst({

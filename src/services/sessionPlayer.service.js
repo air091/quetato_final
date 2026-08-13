@@ -97,6 +97,7 @@ export const getAllSessionPlayers = async (
       SELECT 
         sp.id,
         sp.status,
+        sp."isHost",
         sp."isHide",
         sp."requestedAt",
         sp."acceptedAt",
@@ -137,6 +138,7 @@ export const getAllSessionPlayers = async (
   const results = rows.map((row) => ({
     id: row.id,
     status: row.status,
+    isHost: row.isHost,
     isHide: row.isHide,
     requestedAt: row.requestedAt,
     acceptedAt: row.acceptedAt,

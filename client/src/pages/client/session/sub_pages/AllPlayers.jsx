@@ -20,7 +20,8 @@ import {
   parsePlayerNames,
 } from "../../../../utils/playerNameValidation";
 
-const isAdminRole = (role) => ["owner", "admin", "host"].includes(role);
+const isManagementPlayer = (player) =>
+  player?.isHost || ["owner", "admin"].includes(player?.sessionPlayer?.role);
 
 const AllPlayers = () => {
   const { fetchWithAuth } = useAuth();
@@ -153,11 +154,11 @@ const AllPlayers = () => {
 
   // Group current page results into admins and regulars
   const adminGroup = useMemo(() => {
-    return players.filter((p) => isAdminRole(p.sessionPlayer?.role));
+    return players.filter(isManagementPlayer);
   }, [players]);
 
   const regularGroup = useMemo(() => {
-    return players.filter((p) => !isAdminRole(p.sessionPlayer?.role));
+    return players.filter((p) => !isManagementPlayer(p));
   }, [players]);
 
   // Fetch community names for modal validation
