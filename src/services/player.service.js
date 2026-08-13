@@ -7,6 +7,23 @@ import {
   invalidatePublicSessionsCache,
 } from "../libs/redis.js";
 
+const assertSessionManager = async (communityId, sessionId, userId) => {
+  const manager = await prisma.sessionPlayer.findFirst({
+    where: {
+      sessionId,
+      sessionPlayer: { communityId, userId },
+    },
+    select: { isHost: true, sessionPlayer: { select: { role: true } } },
+  });
+
+  if (
+    !manager ||
+    (!manager.isHost && !["owner", "admin"].includes(manager.sessionPlayer.role))
+  ) {
+    throw new AppError("Unauthorized: You cannot manage this session.", 403);
+  }
+};
+
 // player.service.js
 export const getAllPlayers = async (
   communityId,
@@ -147,26 +164,7 @@ export const getStaticPlayerNotInSession = async (
   authorizedId,
   queryFilters = {},
 ) => {
-  // 1. Authorization check: Ensure the operator is part of the community and holds an administrative role
-  const operatorRole = await prisma.communityPlayer.findUnique({
-    where: {
-      communityId_userId: {
-        communityId: communityId,
-        userId: authorizedId,
-      },
-    },
-    select: { role: true },
-  });
-
-  const validRoles = ["owner", "admin", "host"];
-  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
-    throw new AppError(
-      "Unauthorized: Only community owners, admins, or hosts can view available static rosters.",
-      403,
-    );
-  }
-
-  // 2. Verify the session exists (optimized to only select the id column)
+  // 1. Verify the session exists (optimized to only select the id column)
   const sessionExists = await prisma.session.findFirst({
     where: {
       id: sessionId,
@@ -180,6 +178,9 @@ export const getStaticPlayerNotInSession = async (
   if (!sessionExists) {
     throw new AppError("Session not found within this community.", 400);
   }
+
+  // A host manages only the session in which they were assigned.
+  await assertSessionManager(communityId, sessionId, authorizedId);
 
   // Parse pagination with safety clamping (prevents massive payload exploits)
   const page = parseInt(queryFilters.page, 10) || 1;
@@ -941,26 +942,7 @@ export const getRequestedPlayerToJoinSession = async (
   if (!sessionId) throw new AppError("Session ID is required", 400);
   if (!authorizedId) throw new AppError("Authorization ID is required", 400);
 
-  // 1. Authorization check: Ensure the operator belongs to the community and holds admin/host privileges
-  const operatorRole = await prisma.communityPlayer.findUnique({
-    where: {
-      communityId_userId: {
-        communityId: communityId,
-        userId: authorizedId,
-      },
-    },
-    select: { role: true },
-  });
-
-  const validRoles = ["owner", "admin", "host"];
-  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
-    throw new AppError(
-      "Unauthorized: Only community owners, admins, or hosts can view pending session requests.",
-      403,
-    );
-  }
-
-  // 2. Verify the session exists and belongs to the specified community
+  // 1. Verify the session exists and belongs to the specified community
   const sessionExists = await prisma.session.findFirst({
     where: {
       id: sessionId,
@@ -972,7 +954,10 @@ export const getRequestedPlayerToJoinSession = async (
     throw new AppError("Session not found within this community.", 404);
   }
 
-  // 3. Query all SessionPlayer entries for this session where the registration status is 'requested'
+  // A host manages only the session in which they were assigned.
+  await assertSessionManager(communityId, sessionId, authorizedId);
+
+  // 2. Query all SessionPlayer entries for this session where the registration status is 'requested'
   const requestedPlayers = await prisma.sessionPlayer.findMany({
     where: {
       sessionId: sessionId,
