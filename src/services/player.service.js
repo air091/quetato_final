@@ -1265,10 +1265,13 @@ export const assignHost = async (
       );
     }
 
-    // Hosts are accepted guests for this session only; they never acquire a
-    // community-wide role. Admins and owners already have management access.
-    if (targetPlayer.role !== "guest") {
-      throw new AppError("Only community guests can be assigned as hosts", 400);
+    // An approved guest is represented as a regular `player` in this app.
+    // Hosts are session-scoped and do not gain a community-wide role.
+    if (targetPlayer.role !== "player") {
+      throw new AppError(
+        "Only community players can be assigned as session hosts",
+        400,
+      );
     }
 
     const sessionPlayer = await tx.sessionPlayer.upsert({

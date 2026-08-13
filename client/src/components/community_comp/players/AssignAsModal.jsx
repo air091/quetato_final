@@ -258,6 +258,9 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
   );
 };
 
+
+export default AssignAsModal;
+
 /*
 
 {/* Conditional Container 2: Session Table View for Hosts 
@@ -335,5 +338,3 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
           )}
 
 */
-
-export default AssignAsModal;
