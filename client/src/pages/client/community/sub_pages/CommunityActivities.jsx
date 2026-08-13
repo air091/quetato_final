@@ -19,7 +19,7 @@ import EditSessionModal from "../../../../components/community_comp/activities/E
 import { API_URL } from "../../../../contexts/AuthContext";
 
 const CommunityActivities = () => {
-  const { accessToken, fetchWithAuth } = useAuth();
+  const { accessToken, fetchWithAuth, user } = useAuth();
   const context = useOutletContext();
   const communityPlayer = context?.communityPlayer;
 
@@ -167,7 +167,13 @@ const CommunityActivities = () => {
 
   const isManagement =
     communityPlayer?.role === "owner" || communityPlayer?.role === "admin";
-  const canOpenSession = isManagement || communityPlayer?.role === "host";
+  const canOpenSession = (session) =>
+    isManagement ||
+    session?.players?.some(
+      (sessionPlayer) =>
+        sessionPlayer.isHost &&
+        sessionPlayer.sessionPlayer?.communityPlayer?.id === user?.id,
+    );
   const isGuest = !communityPlayer || communityPlayer?.status === "requested";
 
   const totalPages = pagination?.totalPages || 1;
@@ -309,13 +315,13 @@ const CommunityActivities = () => {
                   <div
                     key={session.id}
                     onClick={() => {
-                      if (canOpenSession)
+                      if (canOpenSession(session))
                         navigate(
                           `/community/${communityId}/sessions/${session.id}`,
                         );
                     }}
                     className={`bg-white border border-stone-200/80 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-y-4 transition-all duration-200 group ${
-                      canOpenSession
+                      canOpenSession(session)
                         ? "hover:border-orange-500/30 hover:shadow-md cursor-pointer active:scale-[0.99]"
                         : "cursor-default"
                     }`}
@@ -411,7 +417,7 @@ const CommunityActivities = () => {
                       ) : (
                         <button
                           onClick={() => {
-                            if (canOpenSession) {
+                            if (canOpenSession(session)) {
                               navigate(
                                 `/community/${communityId}/sessions/${session.id}`,
                               );
@@ -426,7 +432,7 @@ const CommunityActivities = () => {
                             isGuest ? "hidden" : ""
                           }`}
                         >
-                          {canOpenSession ? "Open Session" : "Join Session"}
+                          {canOpenSession(session) ? "Open Session" : "Join Session"}
                         </button>
                       )}
                     </div>
@@ -523,13 +529,13 @@ const CommunityActivities = () => {
                         <tr
                           key={session.id}
                           onClick={() => {
-                            if (canOpenSession)
+                            if (canOpenSession(session))
                               navigate(
                                 `/community/${communityId}/sessions/${session.id}`,
                               );
                           }}
                           className={`transition-all duration-150 ${
-                            canOpenSession
+                            canOpenSession(session)
                               ? "hover:bg-orange-50/10 cursor-pointer"
                               : "cursor-default text-stone-500"
                           }`}
@@ -634,7 +640,7 @@ const CommunityActivities = () => {
                               ) : (
                                 <button
                                   onClick={() => {
-                                    if (canOpenSession) {
+                                    if (canOpenSession(session)) {
                                       navigate(
                                         `/community/${communityId}/sessions/${session.id}`,
                                       );
@@ -649,7 +655,7 @@ const CommunityActivities = () => {
                                     isGuest ? "hidden" : ""
                                   }`}
                                 >
-                                  {canOpenSession ? "Open" : "Join"}
+                                  {canOpenSession(session) ? "Open" : "Join"}
                                 </button>
                               )}
                             </div>

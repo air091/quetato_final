@@ -18,7 +18,9 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
   const username =
     player?.username || player?.communityPlayer?.username || "Player";
   const userId = player?.communityPlayer?.id || player?.id;
-  const isGuest = player?.role === "guest";
+  // Accepted community members are stored with the `player` role. Only they
+  // can be assigned a session-scoped host capability.
+  const isEligibleForHost = player?.role === "player";
 
   // Fetching sessions specifically for hosting selection assignments
   useEffect(() => {
@@ -134,22 +136,24 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
             <button
               type="button"
               onClick={() => {
-                if (!isGuest) return;
+                if (!isEligibleForHost) return;
                 setSelectedRole("host");
                 setSelectedSessionId(null);
               }}
-              disabled={!isGuest}
-              className={`flex-1 p-4 rounded-xl border flex flex-col items-center justify-center gap-y-1.5 transition-all cursor-pointer ${
+              disabled={!isEligibleForHost}
+              className={`flex-1 p-4 rounded-xl border flex flex-col items-center justify-center gap-y-1.5 transition-all ${
                 selectedRole === "host"
                   ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm font-semibold"
-                  : "border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100"
+                  : isEligibleForHost
+                    ? "border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 cursor-pointer"
+                    : "border-stone-200 bg-stone-100 text-stone-400 opacity-70 cursor-not-allowed"
               }`}
             >
               <Calendar size={20} />
               <span className="text-xs">Session Host</span>
-              {!isGuest && (
+              {!isEligibleForHost && (
                 <span className="text-[10px] font-normal text-stone-400">
-                  Guests only
+                  Players only
                 </span>
               )}
             </button>

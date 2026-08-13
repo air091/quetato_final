@@ -278,7 +278,7 @@ export const createStaticPlayers = async (
   if (!community) throw new AppError("Community not found", 404);
 
   // 🌟 Switch to an interactive transaction to run authorization checks first
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Get the admin's CommunityPlayer record
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
@@ -390,7 +390,7 @@ export const updateStaticPlayer = async (
   }
 
   // 🌟 Wrap everything in an interactive transaction to handle sequential checks securely
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Get the admin's CommunityPlayer record for authorization
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
@@ -779,7 +779,7 @@ export const kickPlayerInCommunity = async (
     );
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Check if the authorizing user has admin/owner rights
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
@@ -1207,7 +1207,7 @@ export const assignHost = async (
     );
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Authorization check: Both "owner" and "admin" can assign a host role
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
@@ -1309,6 +1309,8 @@ export const assignHost = async (
 
     return { player: targetPlayer, sessionPlayer };
   });
+  await invalidateCommunitySessionsCache(communityId);
+  return result;
 };
 
 export const removeAsHost = async (
@@ -1332,7 +1334,7 @@ export const removeAsHost = async (
     );
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Authorization check: Both "owner" and "admin" can revoke a host role
     const authorizedPlayer = await tx.communityPlayer.findUnique({
       where: {
@@ -1401,4 +1403,6 @@ export const removeAsHost = async (
 
     return { player: targetPlayer, updatedSessionPlayer };
   });
+  await invalidateCommunitySessionsCache(communityId);
+  return result;
 };
