@@ -1,8 +1,22 @@
 import { Handshake, House, Info, UsersRound } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
+export const NOTICE_UPDATE_STORAGE_KEY = "quetato_notice_seen_session_hosts_v1";
+export const NOTICE_UPDATE_SEEN_EVENT = "quetato-notice-update-seen";
+
 const Sidebar = ({ isOpen }) => {
+  const [hasUnreadNotice, setHasUnreadNotice] = useState(
+    () => window.localStorage.getItem(NOTICE_UPDATE_STORAGE_KEY) !== "true",
+  );
+
+  useEffect(() => {
+    const markNoticeAsSeen = () => setHasUnreadNotice(false);
+    window.addEventListener(NOTICE_UPDATE_SEEN_EVENT, markNoticeAsSeen);
+    return () =>
+      window.removeEventListener(NOTICE_UPDATE_SEEN_EVENT, markNoticeAsSeen);
+  }, []);
+
   return (
     <nav
       className={`absolute lg:relative z-50 h-full bg-stone-50 border-r border-stone-200/80 p-2 transition-all duration-300 ease-in-out flex flex-col justify-between selection:bg-orange-500/10 selection:text-orange-950 ${
@@ -155,6 +169,14 @@ const Sidebar = ({ isOpen }) => {
                       : "text-stone-500 group-hover:text-stone-900"
                   }`}
                 />
+                {hasUnreadNotice && (
+                  <span
+                    aria-label="New update"
+                    className={`absolute h-2.5 w-2.5 rounded-full border-2 border-stone-50 bg-red-500 ${
+                      isOpen ? "left-7 top-2" : "right-2 top-1"
+                    }`}
+                  />
+                )}
                 <span
                   className={`text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
                     isOpen
