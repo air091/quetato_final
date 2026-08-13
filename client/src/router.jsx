@@ -26,9 +26,9 @@ import RequestPlayers from "./pages/client/session/sub_pages/RequestPlayers";
 import SessionDashboard from "./pages/client/session/Dashboard";
 import CommunitySettings from "./pages/client/community/sub_pages/CommunitySettings";
 import CommunityCreate from "./pages/client/community/CommunityCreate";
-import AboutUs from "./pages/client/AboutUs";
 import RequestPasswordReset from "./pages/RequestPasswordReset";
 import ResetPassword from "./pages/ResetPassword";
+import Updates from "./pages/client/Updates";
 
 const router = createBrowserRouter([
   {
@@ -64,8 +64,8 @@ const router = createBrowserRouter([
             element: <Home />,
           },
           {
-            path: "about-us",
-            element: <AboutUs />,
+            path: "Updates",
+            element: <Updates />,
           },
         ],
       },
