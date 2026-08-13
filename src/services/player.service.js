@@ -363,6 +363,7 @@ export const updateStaticPlayer = async (
   authorizedId, // 🌟 Added to identify the acting administrator
   newUsername,
   newSkillLevel,
+  sessionId,
 ) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
   if (!userId) throw new AppError("User ID is required", 400);
@@ -406,9 +407,22 @@ export const updateStaticPlayer = async (
       throw new AppError("Forbidden", 403);
     }
 
-    // 2. Enforce allowed administrator roles
-    const allowedRoles = ["admin", "host", "owner"];
-    if (!allowedRoles.includes(authorizedPlayer.role)) {
+    // Owners/admins can update community static players. A host is limited to
+    // static players that belong to the specific session they host.
+    const isCommunityManager = ["admin", "owner"].includes(
+      authorizedPlayer.role,
+    );
+    const hostMembership = sessionId
+      ? await tx.sessionPlayer.findFirst({
+          where: {
+            sessionId,
+            isHost: true,
+            sessionPlayer: { communityId, userId: authorizedId },
+          },
+          select: { id: true },
+        })
+      : null;
+    if (!isCommunityManager && !hostMembership) {
       throw new AppError("Forbidden", 403);
     }
 
@@ -1257,6 +1271,19 @@ export const assignHost = async (
         "Only community players can be assigned as session hosts",
         400,
       );
+    }
+
+    if (hostMembership) {
+      const targetIsInHostedSession = await tx.sessionPlayer.findFirst({
+        where: { sessionId, sessionPlayer: { userId } },
+        select: { id: true },
+      });
+      if (!targetIsInHostedSession) {
+        throw new AppError(
+          "Forbidden: Hosts can update only players in their session",
+          403,
+        );
+      }
     }
 
     const sessionPlayer = await tx.sessionPlayer.upsert({

@@ -196,6 +196,7 @@ const PlayerSettings = ({
           body: JSON.stringify({
             username: username.trim(),
             skillLevel: skillLevel,
+            sessionId,
           }),
         },
       );

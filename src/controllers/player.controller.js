@@ -119,13 +119,14 @@ export const createStaticPlayersController = async (request, response) => {
 export const updateStaticPlayerController = async (request, response) => {
   try {
     const { communityId, userId } = request.params;
-    const { username, skillLevel } = request.body;
+    const { username, skillLevel, sessionId } = request.body;
     const player = await updateStaticPlayer(
       communityId,
       userId,
       request.user.sub,
       username,
       skillLevel,
+      sessionId,
     );
     return response.status(200).json({ success: true, player });
   } catch (error) {
