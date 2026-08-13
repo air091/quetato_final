@@ -133,7 +133,6 @@ enum PlayerRoles {
   guest
   player
   admin
-  host
   owner
 }
 
@@ -169,6 +168,9 @@ model SessionPlayer {
   playerId          String
   gameStatus        GameStatus @default(waiting)
   status            ApplicationStatus @default(requested)
+  // Host is deliberately session-scoped. A guest may host one or many
+  // sessions without gaining community-wide administrative permissions.
+  isHost            Boolean @default(false)
   isHide            Boolean @default(false)
   requestedAt       DateTime?
   acceptedAt        DateTime?

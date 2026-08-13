@@ -28,7 +28,7 @@ export const getAllSessionPlayersController = async (request, response) => {
         request.user.sub,
         queryFilters,
       ),
-      getSessionPlayerAccess(communityId, request.user.sub),
+      getSessionPlayerAccess(communityId, sessionId, request.user.sub),
     ]);
 
     return response.status(200).json({

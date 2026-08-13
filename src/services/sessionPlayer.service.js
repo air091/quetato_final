@@ -7,6 +7,20 @@ import {
   invalidatePublicSessionsCache,
 } from "../libs/redis.js";
 
+const hasSessionManagementAccess = async (communityId, sessionId, userId) => {
+  const member = await prisma.sessionPlayer.findFirst({
+    where: {
+      sessionId,
+      sessionPlayer: { communityId, userId },
+    },
+    select: { isHost: true, sessionPlayer: { select: { role: true } } },
+  });
+  return Boolean(
+    member &&
+      (member.isHost || ["owner", "admin"].includes(member.sessionPlayer.role)),
+  );
+};
+
 export const getAllSessionPlayers = async (
   communityId,
   sessionId,
@@ -35,8 +49,9 @@ export const getAllSessionPlayers = async (
         select: { role: true },
       })
     : null;
-  const managerRoles = ["owner", "admin", "host"];
-  const includeHidden = managerRoles.includes(authorizedPlayer?.role);
+  const includeHidden = authorizedId
+    ? await hasSessionManagementAccess(communityId, sessionId, authorizedId)
+    : false;
 
   // 3. Parse parameters
   const page = parseInt(queryFilters.page, 10) || 1;
@@ -160,25 +175,24 @@ export const getAllSessionPlayers = async (
   };
 };
 
-export const getSessionPlayerAccess = async (communityId, authorizedId) => {
-  if (!communityId || !authorizedId) {
+export const getSessionPlayerAccess = async (communityId, sessionId, authorizedId) => {
+  if (!communityId || !sessionId || !authorizedId) {
     return { currentUserRole: null, canManagePlayers: false };
   }
 
-  const authorizedPlayer = await prisma.communityPlayer.findUnique({
-    where: {
-      communityId_userId: {
-        communityId,
-        userId: authorizedId,
-      },
-    },
-    select: { role: true },
+  const authorizedPlayer = await prisma.sessionPlayer.findFirst({
+    where: { sessionId, sessionPlayer: { communityId, userId: authorizedId } },
+    select: { isHost: true, sessionPlayer: { select: { role: true } } },
   });
 
-  const managerRoles = ["owner", "admin", "host"];
+  const managerRoles = ["owner", "admin"];
   return {
-    currentUserRole: authorizedPlayer?.role || null,
-    canManagePlayers: managerRoles.includes(authorizedPlayer?.role),
+    currentUserRole: authorizedPlayer?.isHost
+      ? "host"
+      : authorizedPlayer?.sessionPlayer.role || null,
+    canManagePlayers:
+      authorizedPlayer?.isHost ||
+      managerRoles.includes(authorizedPlayer?.sessionPlayer.role),
   };
 };
 
@@ -217,8 +231,11 @@ export const acceptPlayer = async (
     }
 
     // Adjusting role tracking to match your valid schema choices
-    const allowedRoles = ["admin", "host", "owner"];
-    if (!allowedRoles.includes(authorizedPlayer.role)) {
+    const allowedRoles = ["admin", "owner"];
+    if (
+      !allowedRoles.includes(authorizedPlayer.role) &&
+      !(await hasSessionManagementAccess(communityId, sessionId, authorizedId))
+    ) {
       throw new AppError("Forbidden", 403);
     }
 
@@ -334,8 +351,12 @@ export const hideAuthorizedPlayerInSession = async (
     select: { id: true, role: true },
   });
 
-  const validRoles = ["owner", "admin", "host"];
-  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+  const validRoles = ["owner", "admin"];
+  if (
+    !operatorRole ||
+    (!validRoles.includes(operatorRole.role) &&
+      !(await hasSessionManagementAccess(communityId, sessionId, authorizedId)))
+  ) {
     throw new AppError(
       "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
       403,
@@ -422,8 +443,12 @@ export const unhideAuthorizedPlayerInSession = async (
     select: { id: true, role: true },
   });
 
-  const validRoles = ["owner", "admin", "host"];
-  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+  const validRoles = ["owner", "admin"];
+  if (
+    !operatorRole ||
+    (!validRoles.includes(operatorRole.role) &&
+      !(await hasSessionManagementAccess(communityId, sessionId, authorizedId)))
+  ) {
     throw new AppError(
       "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
       403,
@@ -502,8 +527,12 @@ export const removePlayerFromSession = async (
     select: { role: true },
   });
 
-  const validRoles = ["owner", "admin", "host"];
-  if (!operatorRole || !validRoles.includes(operatorRole.role)) {
+  const validRoles = ["owner", "admin"];
+  if (
+    !operatorRole ||
+    (!validRoles.includes(operatorRole.role) &&
+      !(await hasSessionManagementAccess(communityId, sessionId, authorizedId)))
+  ) {
     throw new AppError(
       "Unauthorized: Only community owners, admins, or hosts can manage rosters.",
       403,

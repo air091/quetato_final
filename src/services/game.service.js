@@ -92,6 +92,7 @@ export const createMatchCourt = async (
         },
         select: {
           id: true, // Needed for Court 'createdBy' fields
+          isHost: true,
           sessionPlayer: {
             select: { role: true },
           },
@@ -114,7 +115,10 @@ export const createMatchCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (
+      !allowedRoles.includes(authorizingAttendee.sessionPlayer.role) &&
+      !authorizingAttendee.isHost
+    ) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can create a match court",
         403,
@@ -166,6 +170,7 @@ export const updateMatchCourtName = async (
       },
       select: {
         id: true,
+        isHost: true,
         sessionPlayer: { select: { role: true } },
       },
     });
@@ -179,7 +184,7 @@ export const updateMatchCourtName = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can rename courts",
         403,
@@ -237,6 +242,7 @@ export const deleteMatchCourt = async (
       },
       select: {
         id: true,
+        isHost: true,
         sessionPlayer: { select: { role: true } },
       },
     });
@@ -250,7 +256,7 @@ export const deleteMatchCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can delete courts",
         403,
@@ -302,6 +308,7 @@ export const createQueueCourt = async (
         },
         select: {
           id: true, // Needed for Court 'createdBy' fields
+          isHost: true,
           sessionPlayer: {
             select: { role: true },
           },
@@ -324,7 +331,7 @@ export const createQueueCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can create a match court",
         403,
@@ -376,6 +383,7 @@ export const updateQueueCourtName = async (
       },
       select: {
         id: true,
+        isHost: true,
         sessionPlayer: { select: { role: true } },
       },
     });
@@ -389,7 +397,7 @@ export const updateQueueCourtName = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can rename courts",
         403,
@@ -447,6 +455,7 @@ export const deleteQueueCourt = async (
       },
       select: {
         id: true,
+        isHost: true,
         sessionPlayer: { select: { role: true } },
       },
     });
@@ -460,7 +469,7 @@ export const deleteQueueCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can delete courts",
         403,
@@ -513,6 +522,7 @@ export const updateQueueCourtToMatch = async (
           },
           select: {
             id: true,
+            isHost: true,
             sessionPlayer: { select: { role: true } },
           },
         }),
@@ -537,7 +547,7 @@ export const updateQueueCourtToMatch = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can modify court setups",
         403,
@@ -610,7 +620,7 @@ export const assignPlayerToSlot = async (
           sessionId,
           sessionPlayer: { communityId, userId: authorizedId },
         },
-        select: { sessionPlayer: { select: { role: true } } },
+        select: { isHost: true, sessionPlayer: { select: { role: true } } },
       }),
       tx.court.findMany({
         where: { sessionId },
@@ -638,7 +648,7 @@ export const assignPlayerToSlot = async (
       );
     }
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only administrators or hosts can adjust lineups",
         403,
@@ -930,6 +940,7 @@ export const removePlayerFromSlot = async (
       },
       select: {
         id: true,
+        isHost: true,
         sessionPlayer: { select: { role: true } },
       },
     });
@@ -943,7 +954,7 @@ export const removePlayerFromSlot = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can remove players from slots",
         403,
@@ -1034,6 +1045,7 @@ export const transferQueueToMatch = async (
         sessionPlayer: { communityId, userId: authorizedId },
       },
       select: {
+        isHost: true,
         sessionPlayer: { select: { role: true } },
       },
     });
@@ -1046,7 +1058,7 @@ export const transferQueueToMatch = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can manage match lineups",
         403,
@@ -1204,9 +1216,10 @@ export const startMatchCourt = async (
             userId: authorizedId,
           },
         },
-        select: {
-          id: true,
-          sessionPlayer: { select: { role: true } },
+      select: {
+        id: true,
+        isHost: true,
+        sessionPlayer: { select: { role: true } },
         },
       }),
       tx.court.findFirst({
@@ -1230,7 +1243,7 @@ export const startMatchCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can start matches",
         403,
@@ -1330,6 +1343,7 @@ export const pauseMatchCourt = async (
         },
         select: {
           id: true,
+          isHost: true,
           sessionPlayer: { select: { role: true } },
         },
       }),
@@ -1354,7 +1368,7 @@ export const pauseMatchCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can pause matches",
         403,
@@ -1422,6 +1436,7 @@ export const endMatchCourt = async (
         },
         select: {
           id: true,
+          isHost: true,
           sessionPlayer: { select: { role: true } },
         },
       }),
@@ -1446,7 +1461,7 @@ export const endMatchCourt = async (
     }
 
     const allowedRoles = ["admin", "owner", "host"];
-    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role)) {
+    if (!allowedRoles.includes(authorizingAttendee.sessionPlayer.role) && !authorizingAttendee.isHost) {
       throw new AppError(
         "Forbidden: Only admins, owners, or hosts can end matches",
         403,

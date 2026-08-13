@@ -1265,56 +1265,17 @@ export const assignHost = async (
       );
     }
 
-    // 5. Guardrails: Prevent downgrading protected management roles.
-    if (targetPlayer.role === "owner") {
-      throw new AppError(
-        "Forbidden: Cannot modify the community owner's role",
-        403,
-      );
+    // Hosts are accepted guests for this session only; they never acquire a
+    // community-wide role. Admins and owners already have management access.
+    if (targetPlayer.role !== "guest") {
+      throw new AppError("Only community guests can be assigned as hosts", 400);
     }
-
-    if (targetPlayer.role === "admin") {
-      throw new AppError(
-        "Target player is already an admin and has host-level access",
-        400,
-      );
-    }
-
-    // 6. Promote regular players to host, then make sure they are in the
-    // selected session as an accepted participant.
-    const updatedPlayer =
-      targetPlayer.role === "host"
-        ? targetPlayer
-        : await tx.communityPlayer.update({
-            where: {
-              communityId_userId: {
-                communityId,
-                userId,
-              },
-            },
-            data: {
-              role: "host",
-            },
-            select: {
-              id: true,
-              communityId: true,
-              userId: true,
-              role: true,
-              status: true,
-              communityPlayer: {
-                select: {
-                  id: true,
-                  username: true,
-                },
-              },
-            },
-          });
 
     const sessionPlayer = await tx.sessionPlayer.upsert({
       where: {
         sessionId_playerId: {
           sessionId: targetSession.id,
-          playerId: updatedPlayer.id,
+          playerId: targetPlayer.id,
         },
       },
       update: {
@@ -1322,13 +1283,15 @@ export const assignHost = async (
         acceptedBy: authorizedPlayer.id,
         acceptedAt: new Date(),
         isHide: false,
+        isHost: true,
       },
       create: {
         sessionId: targetSession.id,
-        playerId: updatedPlayer.id,
+        playerId: targetPlayer.id,
         status: "accepted",
         acceptedBy: authorizedPlayer.id,
         acceptedAt: new Date(),
+        isHost: true,
       },
       select: {
         id: true,
@@ -1337,10 +1300,11 @@ export const assignHost = async (
         status: true,
         acceptedBy: true,
         acceptedAt: true,
+        isHost: true,
       },
     });
 
-    return { player: updatedPlayer, sessionPlayer };
+    return { player: targetPlayer, sessionPlayer };
   });
 };
 
@@ -1415,53 +1379,23 @@ export const removeAsHost = async (
       throw new AppError("Target player not found in this community", 404);
     }
 
-    // 4. Ensure the target player is actually a host
-    if (targetPlayer.role !== "host") {
-      throw new AppError(
-        `Target player is not a host (Current role: ${targetPlayer.role})`,
-        400,
-      );
-    }
-
-    // 5. Demote the communityPlayer record to a standard "player"
-    const updatedPlayer = await tx.communityPlayer.update({
-      where: {
-        communityId_userId: {
-          communityId,
-          userId,
-        },
-      },
-      data: {
-        role: "player",
-      },
-      select: {
-        id: true,
-        communityId: true,
-        userId: true,
-        role: true,
-        status: true,
-        communityPlayer: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
-    });
-
-    // 6. Optional: Demote their session registration state.
-    // If your `sessionPlayer` schema has a session-level role or status that needs resetting,
-    // we can update it or delete the entry. Here, we'll keep them in the session as a regular accepted player.
+    // 4. Revoke host status from this session only. They remain a guest and
+    // may still host other sessions.
     const updatedSessionPlayer = await tx.sessionPlayer.updateMany({
       where: {
         sessionId: targetSession.id,
-        playerId: updatedPlayer.id,
+        playerId: targetPlayer.id,
+        isHost: true,
       },
       data: {
-        status: "accepted", // Ensuring they remain inside the session roster, just no longer with host privileges
+        isHost: false,
       },
     });
 
-    return { player: updatedPlayer, updatedSessionPlayer };
+    if (updatedSessionPlayer.count === 0) {
+      throw new AppError("Target player is not a host in this session", 400);
+    }
+
+    return { player: targetPlayer, updatedSessionPlayer };
   });
 };

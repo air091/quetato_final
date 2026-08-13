@@ -36,6 +36,7 @@ import {
   acceptPlayerInCommunityController,
   assignAdminController,
   assignHostController,
+  removeAsHostController,
   createStaticPlayersController,
   deleteStaticPlayerController,
   getAllPlayersController,
@@ -159,6 +160,7 @@ router.patch(
 );
 
 router.patch("/:communityId/players/:userId/assign-host", assignHostController);
+router.patch("/:communityId/players/:userId/remove-host", removeAsHostController);
 
 router.delete(
   "/:communityId/players/:userId/static",

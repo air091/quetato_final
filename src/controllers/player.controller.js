@@ -16,6 +16,7 @@ import {
   kickPlayerInCommunity,
   rejectPlayer,
   removeAsAdmin,
+  removeAsHost,
   updateStaticPlayer,
 } from "../services/player.service.js";
 
@@ -371,6 +372,25 @@ export const assignHostController = async (request, response) => {
       message = error.message;
     }
 
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const removeAsHostController = async (request, response) => {
+  try {
+    const { communityId, userId } = request.params;
+    const { sessionId } = request.body;
+    const result = await removeAsHost(
+      communityId,
+      userId,
+      request.user.sub,
+      sessionId,
+    );
+    return response.status(200).json({ success: true, result });
+  } catch (error) {
+    console.error("Remove session host failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode || 400 : 500;
+    const message = error instanceof AppError ? error.message : "Internal server error";
     return response.status(statusCode).json({ success: false, message });
   }
 };

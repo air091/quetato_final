@@ -13,16 +13,15 @@ const toFeeNumber = (value, fieldName) => {
   return fee;
 };
 
-const assertPricingManager = async (communityId, authorizedId) => {
-  const authorizedMember = await prisma.communityPlayer.findUnique({
+const assertPricingManager = async (communityId, sessionId, authorizedId) => {
+  const authorizedMember = await prisma.sessionPlayer.findFirst({
     where: {
-      communityId_userId: {
-        communityId,
-        userId: authorizedId,
-      },
+      sessionId,
+      sessionPlayer: { communityId, userId: authorizedId },
     },
     select: {
-      role: true,
+      isHost: true,
+      sessionPlayer: { select: { role: true } },
     },
   });
 
@@ -30,8 +29,11 @@ const assertPricingManager = async (communityId, authorizedId) => {
     throw new AppError("You are not a member of this community", 403);
   }
 
-  const allowedRoles = ["owner", "admin", "host"];
-  if (!allowedRoles.includes(authorizedMember.role)) {
+  const allowedRoles = ["owner", "admin"];
+  if (
+    !allowedRoles.includes(authorizedMember.sessionPlayer.role) &&
+    !authorizedMember.isHost
+  ) {
     throw new AppError(
       "Unauthorized. Only owners, admins, or hosts can manage pricing.",
       403,
@@ -61,7 +63,7 @@ export const addPricing = async (
   const requestedPerGameFee = toFeeNumber(perGameFee, "Per-game fee");
 
   // 2. Check authorization: User must be an owner, admin, or host in the community
-  await assertPricingManager(communityId, authorizedId);
+  await assertPricingManager(communityId, sessionId, authorizedId);
 
   // 3. Verify that the session actually belongs to this community
   const sessionExists = await prisma.session.findFirst({
@@ -212,7 +214,7 @@ export const markPlayerAsPaid = async (
     );
   }
 
-  await assertPricingManager(communityId, authorizedId);
+  await assertPricingManager(communityId, sessionId, authorizedId);
 
   const targetPlayer = await prisma.sessionPlayer.findFirst({
     where: {
@@ -284,7 +286,7 @@ export const unmarkPlayerAsPaid = async (
     );
   }
 
-  await assertPricingManager(communityId, authorizedId);
+  await assertPricingManager(communityId, sessionId, authorizedId);
 
   const targetPlayer = await prisma.sessionPlayer.findFirst({
     where: {

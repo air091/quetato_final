@@ -20,6 +20,23 @@ const PUBLIC_SESSIONS_CACHE_TTL_SECONDS =
     ? Math.floor(configuredPublicSessionsTtl)
     : 60;
 
+const assertSessionManager = async (communityId, sessionId, userId) => {
+  const manager = await prisma.sessionPlayer.findFirst({
+    where: {
+      sessionId,
+      sessionPlayer: { communityId, userId },
+    },
+    select: { isHost: true, sessionPlayer: { select: { role: true } } },
+  });
+
+  if (
+    !manager ||
+    (!manager.isHost && !["owner", "admin"].includes(manager.sessionPlayer.role))
+  ) {
+    throw new AppError("Forbidden", 403);
+  }
+};
+
 export const getAllPublicSessions = async (page = 1, limit = 10) => {
   page = Math.max(1, Number.parseInt(page, 10) || 1);
   limit = Math.min(50, Math.max(1, Number.parseInt(limit, 10) || 10));
@@ -403,7 +420,7 @@ export const startSession = async (communityId, sessionId, userId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  if (community.ownerId !== userId) throw new AppError("Forbidden", 403);
+  await assertSessionManager(communityId, sessionId, userId);
 
   const session = await prisma.session.update({
     where: { id: sessionId },
@@ -428,7 +445,7 @@ export const endSession = async (communityId, sessionId, userId) => {
 
   if (!community) throw new AppError("Community not found", 404);
 
-  if (community.ownerId !== userId) throw new AppError("Forbidden", 403);
+  await assertSessionManager(communityId, sessionId, userId);
 
   const session = await prisma.session.update({
     where: { id: sessionId },
@@ -509,6 +526,7 @@ export const getSessionDashboard = async (communityId, sessionId) => {
         select: {
           id: true,
           status: true,
+          isHost: true,
           acceptedAt: true,
           // Dive into the CommunityPlayer mapping to get the actual User's profile info
           sessionPlayer: {
