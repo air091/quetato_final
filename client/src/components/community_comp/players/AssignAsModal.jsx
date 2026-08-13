@@ -11,27 +11,42 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
   const [selectedRole, setSelectedRole] = useState(null); // null | 'admin' | 'host'
   const [sessions, setSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [sessionsError, setSessionsError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const username =
     player?.username || player?.communityPlayer?.username || "Player";
   const userId = player?.communityPlayer?.id || player?.id;
+  const isGuest = player?.role === "guest";
 
   // Fetching sessions specifically for hosting selection assignments
   useEffect(() => {
     if (selectedRole === "host" && communityId) {
       const fetchSessions = async () => {
         try {
+          setIsLoadingSessions(true);
+          setSessionsError("");
           const response = await fetchWithAuth(
             `${API_URL}/api/communities/${communityId}/sessions?status=available`,
             { method: "GET" },
           );
           if (response && response.ok) {
             const data = await response.json();
-            if (data.success) setSessions(data.sessions);
+            if (data.success) {
+              setSessions(data.sessions || []);
+            } else {
+              throw new Error(data.message || "Unable to load sessions");
+            }
+          } else {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || "Unable to load sessions");
           }
         } catch (error) {
           console.error("Failed to load sessions for host assignment", error);
+          setSessionsError(error.message || "Unable to load sessions");
+        } finally {
+          setIsLoadingSessions(false);
         }
       };
       fetchSessions();
@@ -118,7 +133,12 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
 
             <button
               type="button"
-              onClick={() => setSelectedRole("host")}
+              onClick={() => {
+                if (!isGuest) return;
+                setSelectedRole("host");
+                setSelectedSessionId(null);
+              }}
+              disabled={!isGuest}
               className={`flex-1 p-4 rounded-xl border flex flex-col items-center justify-center gap-y-1.5 transition-all cursor-pointer ${
                 selectedRole === "host"
                   ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm font-semibold"
@@ -127,6 +147,11 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
             >
               <Calendar size={20} />
               <span className="text-xs">Session Host</span>
+              {!isGuest && (
+                <span className="text-[10px] font-normal text-stone-400">
+                  Guests only
+                </span>
+              )}
             </button>
           </div>
 
@@ -156,11 +181,75 @@ const AssignAsModal = ({ player, onClose, onUpdatePlayerStatus }) => {
             </div>
           )}
 
-          {/* as host */}
+          {/* Session-scoped host assignment */}
           {selectedRole === "host" && (
-            <p className="text-center bg-red-100 p-2 rounded-lg text-[14px]">
-              Under development
-            </p>
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <p className="text-xs text-stone-600 leading-relaxed">
+                <strong>{username}</strong> will remain a community guest and
+                only be able to manage the selected session. They will not be
+                able to edit or delete it.
+              </p>
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                  Select session
+                </label>
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/50">
+                  {isLoadingSessions ? (
+                    <p className="p-5 text-center text-xs text-stone-500">
+                      Loading sessions...
+                    </p>
+                  ) : sessionsError ? (
+                    <p className="p-5 text-center text-xs text-red-600">
+                      {sessionsError}
+                    </p>
+                  ) : sessions.length === 0 ? (
+                    <p className="p-5 text-center text-xs text-stone-500">
+                      No available sessions found.
+                    </p>
+                  ) : (
+                    sessions.map((session) => (
+                      <label
+                        key={session.id}
+                        className={`flex cursor-pointer items-center gap-3 border-b border-stone-200 p-3 last:border-0 hover:bg-stone-100 ${
+                          selectedSessionId === session.id ? "bg-emerald-50" : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="sessionHostSelect"
+                          value={session.id}
+                          checked={selectedSessionId === session.id}
+                          onChange={() => setSelectedSessionId(session.id)}
+                          className="accent-emerald-600"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-semibold text-stone-800">
+                            {session.name}
+                          </span>
+                          <span className="text-[11px] uppercase text-stone-500">
+                            {session.sport}
+                          </span>
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-x-2 border-t border-stone-100 pt-2">
+                <button onClick={onClose} className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-50">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAssign}
+                  disabled={isLoading || !selectedSessionId}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-stone-300"
+                >
+                  {isLoading ? "Assigning..." : "Assign Session Host"}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

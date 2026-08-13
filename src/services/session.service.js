@@ -198,6 +198,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
         players: {
           select: {
             id: true,
+            isHost: true,
             sessionPlayer: {
               select: {
                 id: true,

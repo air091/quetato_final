@@ -179,7 +179,7 @@ const CommunityActivities = () => {
         session?.players
           ?.filter((p) => {
             const role = p?.sessionPlayer?.role;
-            return role === "host" || role === "owner" || role === "admin";
+            return p?.isHost || role === "owner" || role === "admin";
           })
           ?.map((p) => p?.sessionPlayer?.communityPlayer?.username)
           ?.filter(Boolean) || [];
