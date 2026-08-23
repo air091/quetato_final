@@ -437,9 +437,15 @@ const QueueCourtCard = ({
 
       <main
         className={`relative z-20 grid gap-2 ${
-          isVolleyball ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"
+          isVolleyball ? "grid-cols-4" : "grid-cols-2"
         }`}
       >
+        {isVolleyball && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-1/2 z-30 w-0.5 -translate-x-1/2 rounded-full bg-stone-500/70 shadow-sm"
+          />
+        )}
         {positions.map((position) => {
           const slotData = queueCourt?.slots?.find(
             (s) => s.position === position,

@@ -4,12 +4,12 @@ const VOLLEYBALL_SLOT_LAYOUT = [
   { team: "b", number: 4 },
   { team: "b", number: 5 },
   { team: "a", number: 6 },
-  { team: "b", number: 3 },
   { team: "a", number: 3 },
+  { team: "b", number: 3 },
   { team: "b", number: 6 },
   { team: "a", number: 1 },
-  { team: "b", number: 2 },
   { team: "a", number: 2 },
+  { team: "b", number: 2 },
   { team: "b", number: 1 },
 ];
 
