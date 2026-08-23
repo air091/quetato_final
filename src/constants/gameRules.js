@@ -24,8 +24,8 @@ const SPORT_GAME_RULES = {
   volleyball: {
     playersPerTeam: 6,
     positions: Array.from({ length: 12 }, (_, position) => position),
-    maxMatchCourts: 1,
-    maxQueueCourts: 1,
+    maxMatchCourts: null,
+    maxQueueCourts: null,
     teamForPosition: (position) => VOLLEYBALL_SLOT_LAYOUT[position].team,
     slotLabelForPosition: (position) => {
       const slot = VOLLEYBALL_SLOT_LAYOUT[position];

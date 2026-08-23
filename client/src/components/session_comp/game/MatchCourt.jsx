@@ -646,7 +646,7 @@ const MatchCourt = ({
   const positions = gameRules?.positions || [0, 1, 2, 3];
   const slotLabels = gameRules?.slotLabels || [];
   const isVolleyball = gameRules?.playersPerTeam === 6;
-  const canAddCourt = !isVolleyball || countDisplay < 1;
+  const canAddCourt = true;
 
   return (
     <div>
