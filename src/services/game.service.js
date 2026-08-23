@@ -1711,8 +1711,10 @@ export const endMatchCourt = async (
         endedAt,
         ...(targetCourt.session.sport === "volleyball"
           ? {
-              teamAScore: targetCourt.teamAScore,
-              teamBScore: targetCourt.teamBScore,
+              // The final score is already saved in MatchHistory above.
+              // Clear the live court so the next match starts at 0–0.
+              teamAScore: 0,
+              teamBScore: 0,
             }
           : {}),
         updatedBy: authorizingAttendee.id,

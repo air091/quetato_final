@@ -1121,6 +1121,7 @@ const Game = () => {
               ...court,
               status: "idle",
               startedAt: null,
+              ...(finalScores ? { teamAScore: 0, teamBScore: 0 } : {}),
               slots: [], // Empty the court slots immediately matching deleteMany
             };
           });

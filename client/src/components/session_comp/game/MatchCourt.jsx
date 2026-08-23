@@ -66,7 +66,7 @@ const DraggableSlotPlayer = ({
       style={{ ...style, ...overdueStyle }}
       {...listeners}
       {...attributes}
-      className={`player w-full cursor-grab active:cursor-grabbing touch-pan-y flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
+      className={`player w-full cursor-grab active:cursor-grabbing touch-pan-y flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full max-[1320px]:flex-row-reverse ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
@@ -80,18 +80,18 @@ const DraggableSlotPlayer = ({
         `}</style>
       )}
 
-      <div className="flex items-center gap-x-1">
+      <div className="flex items-center gap-x-1 max-[1320px]:gap-x-0.5">
         <PlayerAvatar
           username={username}
           customImageUrl={player?.avatarUrl || player?.sessionPlayer?.avatarUrl}
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-[1320px]:max-w-[46px] max-w-[90px] block max-[1320px]:text-[10px] text-[12px]">
+          <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] max-[1320px]:hidden">
             {username}
           </span>
-          <div className="flex items-center gap-x-1">
-            <span title="Games" className="flex items-center gap-x-1">
+          <div className="flex items-center gap-x-1 max-[1320px]:flex-col max-[1320px]:gap-0 max-[1320px]:items-center">
+            <span title="Games" className="flex items-center gap-x-1 max-[1320px]:gap-0">
               <Gamepad2 size={12} />{" "}
               <span className="text-[10px]">{totalGames}</span>
             </span>
@@ -105,7 +105,7 @@ const DraggableSlotPlayer = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-x-1 relative">
+      <div className="flex items-center gap-x-1 relative max-[1320px]:gap-x-0">
         {timer}
         {canRemovePlayer && (
           <button
