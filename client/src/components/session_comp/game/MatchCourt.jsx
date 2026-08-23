@@ -435,6 +435,7 @@ const MatchCourtCard = ({
   };
 
   const updateScore = (team, delta) => {
+    if (!isStarted) return;
     const scoreKey = team === "a" ? "teamAScore" : "teamBScore";
     const nextScores = {
       ...scores,
@@ -515,10 +516,15 @@ const MatchCourtCard = ({
             )}
           </div>
         </div>
-        {isVolleyball && isStarted && (
+        {isVolleyball && (isStarted || isPaused) && (
           <div className="mt-2 grid w-full grid-cols-2 gap-3 rounded-lg bg-stone-950/80 p-2">
             {[{ team: "a", label: "Team A", score: scores.teamAScore }, { team: "b", label: "Team B", score: scores.teamBScore }].map(({ team, label, score }) => (
-              <div key={team} className="grid grid-cols-[32px_1fr_32px] items-center gap-1 text-center">
+              <div
+                key={team}
+                className={`grid grid-cols-[32px_1fr_32px] items-center gap-1 text-center ${
+                  isStarted ? "" : "pointer-events-none opacity-45"
+                }`}
+              >
                 <button onClick={() => updateScore(team, -1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">−</button>
                 <div>
                   <div className="text-3xl font-black leading-none">{score ?? 0}</div>

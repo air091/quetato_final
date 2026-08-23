@@ -29,7 +29,7 @@ const SPORT_GAME_RULES = {
     teamForPosition: (position) => VOLLEYBALL_SLOT_LAYOUT[position].team,
     slotLabelForPosition: (position) => {
       const slot = VOLLEYBALL_SLOT_LAYOUT[position];
-      return `Player ${slot.team.toUpperCase()}-${slot.number}`;
+      return `${slot.team.toUpperCase()}${slot.number}`;
     },
   },
 };
