@@ -211,6 +211,8 @@ model Court {
   name                String
   status              CourtStatus @default(idle)
   type                CourtType
+  teamAScore          Int @default(0)
+  teamBScore          Int @default(0)
   startedAt           DateTime?
   endedAt             DateTime?
   createdBy           String
@@ -252,6 +254,8 @@ model MatchHistory {
   courtId             String?
   courtName           String?
   winningTeam         Team
+  teamAScore          Int?
+  teamBScore          Int?
   startedAt           DateTime
   endedAt             DateTime @default(now())
   session             Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)

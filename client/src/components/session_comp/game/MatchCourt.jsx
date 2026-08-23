@@ -159,6 +159,7 @@ const CourtSlot = ({
   sessionId,
   isCourtPaused, // 🌟 Received context parameter
   courtStatus,
+  slotLabel,
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(
@@ -295,7 +296,7 @@ const CourtSlot = ({
       }`}
     >
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
-        Player {position % 2 === 0 ? "A" : "B"}-{Math.floor(position / 2) + 1}
+        {slotLabel || `Player ${position % 2 === 0 ? "A" : "B"}-${Math.floor(position / 2) + 1}`}
       </span>
 
       {hasPlayer && (
@@ -378,6 +379,7 @@ const MatchCourtCard = ({
   sessionId,
   positions,
   isVolleyball,
+  slotLabels,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
@@ -422,6 +424,23 @@ const MatchCourtCard = ({
       );
     } finally {
       setIsPausing(false);
+    }
+  };
+
+  const updateScore = async (team, delta) => {
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${matchCourt.id}/score`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ team, delta }),
+        },
+      );
+      if (!response.ok) throw new Error("Could not update score");
+      onRefreshData?.();
+    } catch (error) {
+      console.error("Volleyball score update failed:", error);
     }
   };
 
@@ -495,6 +514,34 @@ const MatchCourtCard = ({
             )}
           </div>
         </div>
+        {isVolleyball && isStarted && (
+          <div className="mt-2 grid w-full grid-cols-2 gap-3 rounded-lg bg-stone-950/80 p-2">
+            {[{ team: "a", label: "Team A", score: matchCourt.teamAScore }, { team: "b", label: "Team B", score: matchCourt.teamBScore }].map(({ team, label, score }) => (
+              <div key={team} className="grid grid-cols-[32px_1fr_32px] items-center gap-1 text-center">
+                <button onClick={() => updateScore(team, -1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">−</button>
+                <div>
+                  <div className="text-3xl font-black leading-none">{score ?? 0}</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/70">{label}</div>
+                </div>
+                <button onClick={() => updateScore(team, 1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">+</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {isVolleyball ? (
+          <button
+            disabled={!isMatchLive}
+            title="End volleyball game using the live score"
+            onClick={() => onEndMatchCourt?.(matchCourt.id)}
+            className={`mt-2 w-full rounded-full py-1 text-[14px] font-semibold transition-all ${
+              isMatchLive
+                ? "cursor-pointer bg-stone-950 text-white hover:bg-stone-800"
+                : "cursor-not-allowed bg-stone-700/50 text-stone-300"
+            }`}
+          >
+            End Game
+          </button>
+        ) : (
         <div className="flex w-full gap-x-2 mt-1">
           <button
             disabled={!isMatchLive}
@@ -521,6 +568,7 @@ const MatchCourtCard = ({
             Team B
           </button>
         </div>
+        )}
       </header>
 
       <main
@@ -557,6 +605,7 @@ const MatchCourtCard = ({
               sessionId={sessionId}
               isCourtPaused={isPaused || matchCourt.status === "idle"}
               courtStatus={matchCourt.status}
+              slotLabel={slotLabels.find((slot) => slot.position === position)?.label}
             />
           );
         })}
@@ -582,6 +631,7 @@ const MatchCourt = ({
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
   const positions = gameRules?.positions || [0, 1, 2, 3];
+  const slotLabels = gameRules?.slotLabels || [];
   const isVolleyball = gameRules?.playersPerTeam === 6;
   const canAddCourt = !isVolleyball || countDisplay < 1;
 
@@ -618,6 +668,7 @@ const MatchCourt = ({
             sessionId={sessionId}
             positions={positions}
             isVolleyball={isVolleyball}
+            slotLabels={slotLabels}
           />
         ))}
       </div>

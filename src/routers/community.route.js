@@ -31,6 +31,7 @@ import {
   updateMatchCourtNameController,
   updateQueueCourtNameController,
   updateSessionController,
+  updateVolleyballScoreController,
 } from "../controllers/session.controller.js";
 import {
   acceptPlayerInCommunityController,
@@ -304,6 +305,11 @@ router.patch(
 router.patch(
   "/:communityId/sessions/:sessionId/courts/:courtId/end",
   endMatchCourtController,
+);
+
+router.patch(
+  "/:communityId/sessions/:sessionId/courts/:courtId/score",
+  updateVolleyballScoreController,
 );
 
 // HISTORY

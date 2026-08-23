@@ -1364,6 +1364,9 @@ export const startMatchCourt = async (
         data: {
           status: "started",
           startedAt: newStartedAt,
+          ...(targetCourt.status === "idle" && session.sport === "volleyball"
+            ? { teamAScore: 0, teamBScore: 0 }
+            : {}),
           updatedBy: authorizingAttendee.id,
         },
         include: { slots: true },
@@ -1380,6 +1383,63 @@ export const startMatchCourt = async (
     ]);
 
     return updatedCourt;
+  });
+};
+
+export const updateVolleyballScore = async (
+  communityId,
+  sessionId,
+  courtId,
+  team,
+  delta,
+  authorizedId,
+) => {
+  if (!communityId || !sessionId || !courtId || !authorizedId) {
+    throw new AppError(
+      "Community ID, Session ID, Court ID, and Authorized ID are required",
+      400,
+    );
+  }
+  if (!["a", "b"].includes(team) || ![-1, 1].includes(delta)) {
+    throw new AppError("Team and score change must be valid", 400);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const [authorizingAttendee, targetCourt] = await Promise.all([
+      tx.sessionPlayer.findFirst({
+        where: {
+          sessionId,
+          sessionPlayer: { communityId, userId: authorizedId },
+        },
+        select: { isHost: true, sessionPlayer: { select: { role: true } } },
+      }),
+      tx.court.findFirst({
+        where: { id: courtId, sessionId, type: "match" },
+        include: { session: { select: { sport: true } } },
+      }),
+    ]);
+
+    if (!authorizingAttendee) throw new AppError("Forbidden", 403);
+    if (
+      !authorizingAttendee.isHost &&
+      !["owner", "admin"].includes(authorizingAttendee.sessionPlayer.role)
+    ) {
+      throw new AppError("Forbidden", 403);
+    }
+    if (!targetCourt) throw new AppError("Match court not found in this session", 404);
+    if (targetCourt.session.sport !== "volleyball") {
+      throw new AppError("Live scoring is only available for volleyball", 400);
+    }
+    if (targetCourt.status !== "started") {
+      throw new AppError("A match must be live before its score can change", 400);
+    }
+
+    const scoreField = team === "a" ? "teamAScore" : "teamBScore";
+    const nextScore = Math.max(0, targetCourt[scoreField] + delta);
+    return tx.court.update({
+      where: { id: courtId },
+      data: { [scoreField]: nextScore },
+    });
   });
 };
 
@@ -1481,14 +1541,6 @@ export const endMatchCourt = async (
     );
   }
 
-  const normalizedWinningTeam = winningTeam.toLowerCase();
-  if (!["a", "b"].includes(normalizedWinningTeam)) {
-    throw new AppError(
-      "A valid winning team ('a' or 'b') must be specified",
-      400,
-    );
-  }
-
   return await prisma.$transaction(async (tx) => {
     // 1. Fetch authorization context and target match court concurrently
     const [authorizingAttendee, targetCourt] = await Promise.all([
@@ -1512,9 +1564,7 @@ export const endMatchCourt = async (
           sessionId: sessionId,
           type: "match",
         },
-        include: {
-          slots: true,
-        },
+        include: { slots: true, session: { select: { sport: true } } },
       }),
     ]);
 
@@ -1560,6 +1610,12 @@ export const endMatchCourt = async (
           courtId: courtId,
           courtName: targetCourt.name,
           winningTeam: normalizedWinningTeam,
+          ...(targetCourt.session.sport === "volleyball"
+            ? {
+                teamAScore: targetCourt.teamAScore,
+                teamBScore: targetCourt.teamBScore,
+              }
+            : {}),
           startedAt: targetCourt.startedAt || new Date(),
           matchHistoryPlayer: {
             create: currentSlots.map((slot) => ({
@@ -1616,6 +1672,18 @@ export const endMatchCourt = async (
           });
         }),
       );
+    }
+
+    let normalizedWinningTeam = winningTeam?.toLowerCase();
+    if (targetCourt.session.sport === "volleyball") {
+      if (targetCourt.teamAScore === targetCourt.teamBScore) {
+        throw new AppError("Volleyball scores are tied; continue the game to determine a winner", 400);
+      }
+      normalizedWinningTeam =
+        targetCourt.teamAScore > targetCourt.teamBScore ? "a" : "b";
+    }
+    if (!["a", "b"].includes(normalizedWinningTeam)) {
+      throw new AppError("A valid winning team ('a' or 'b') must be specified", 400);
     }
 
     // 7. Revert court container status back to idle

@@ -70,6 +70,10 @@ const getGameRules = (sessionData) =>
   sessionData?.queueCourts?.gameRules ||
   DEFAULT_GAME_RULES;
 
+const getTeamForPosition = (gameRules, position) =>
+  gameRules?.slotLabels?.find((slot) => slot.position === position)?.team ||
+  (position % 2 === 0 ? "a" : "b");
+
 const getSlotStatus = (court, courtType) =>
   (court?.type || courtType) === "match" &&
   (court?.status === "started" || court?.status === "paused")
@@ -112,6 +116,7 @@ const createOptimisticSlot = ({
   baseSlot,
   courtId,
   position,
+  gameRules,
   sessionPlayerId,
   sessionPlayer,
   queuedAt,
@@ -120,7 +125,7 @@ const createOptimisticSlot = ({
   id: baseSlot?.id || `opt-${courtId}-${position}-${sessionPlayerId}`,
   courtId,
   position,
-  team: position % 2 === 0 ? "a" : "b",
+  team: getTeamForPosition(gameRules, position),
   sessionPlayerId,
   sessionPlayer,
   queuedAt: queuedAt ?? baseSlot?.queuedAt,
@@ -167,6 +172,7 @@ const applyOptimisticSlotAssignment = (
   sessionData,
   { targetType, courtId, position, player, sessionPlayerId, timestamp },
 ) => {
+  const gameRules = getGameRules(sessionData);
   const targetCourtLocation = findCourtLocation(sessionData, courtId);
   const targetCourt = targetCourtLocation?.court;
   const activeMatchLocation = findSlotLocation(
@@ -257,6 +263,7 @@ const applyOptimisticSlotAssignment = (
               baseSlot: sourceLocation?.slot || occupiedLocation?.slot,
               courtId,
               position,
+              gameRules,
               sessionPlayerId,
               sessionPlayer: targetSlotPlayer,
               queuedAt: targetType === "queue" ? timestamp : null,
@@ -270,6 +277,7 @@ const applyOptimisticSlotAssignment = (
               baseSlot: occupiedLocation.slot,
               courtId: sourceLocation.court.id,
               position: sourceLocation.slot.position,
+              gameRules,
               sessionPlayerId: occupiedPlayerId,
               sessionPlayer: occupiedSourceSlotPlayer,
               queuedAt: sourceLocation.slot.queuedAt,
@@ -561,6 +569,7 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
           baseSlot: null,
           courtId: court.id,
           position: openPositions[index],
+          gameRules,
           sessionPlayerId,
           sessionPlayer: createOptimisticSlotPlayer(
             sourcePlayer,
@@ -631,7 +640,7 @@ const getProjectedCourtRelationshipPlayers = (
     projectedSessionData,
     courtId,
   )?.court;
-  const targetTeam = position % 2 === 0 ? "a" : "b";
+  const targetTeam = getTeamForPosition(getGameRules(sessionData), position);
 
   return (projectedCourt?.slots || [])
     .filter((slot) => resolveSlotSessionPlayerId(slot))
@@ -644,7 +653,8 @@ const getProjectedCourtRelationshipPlayers = (
           (candidatePlayer) =>
             resolveSessionPlayerId(candidatePlayer) === relatedSessionPlayerId,
         );
-      const relatedTeam = slot.team || (slot.position % 2 === 0 ? "a" : "b");
+      const relatedTeam =
+        slot.team || getTeamForPosition(getGameRules(sessionData), slot.position);
 
       return {
         sessionPlayerId: relatedSessionPlayerId,
@@ -1075,8 +1085,9 @@ const Game = () => {
       // Accept winningTeam argument.
       if (!communityId || !sessionId || !courtId) return;
 
-      // Ensure a team selection is valid before sending
-      if (!winningTeam || !["a", "b"].includes(winningTeam.toLowerCase())) {
+      // Badminton needs a selected winner. Volleyball derives it from the
+      // persisted live score on the server.
+      if (winningTeam && !["a", "b"].includes(winningTeam.toLowerCase())) {
         alert(
           "Please select a valid winning team ('a' or 'b') to end the match.",
         );
@@ -1157,7 +1168,9 @@ const Game = () => {
         const response = await fetchWithAuth(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ winningTeam: winningTeam.toLowerCase() }),
+          body: JSON.stringify(
+            winningTeam ? { winningTeam: winningTeam.toLowerCase() } : {},
+          ),
         });
 
         if (!response.ok) {

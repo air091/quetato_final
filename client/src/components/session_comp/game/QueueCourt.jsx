@@ -157,6 +157,7 @@ const CourtSlot = ({
   communityId,
   sessionId,
   isVolleyball,
+  slotLabel,
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(
@@ -292,7 +293,7 @@ const CourtSlot = ({
           isVolleyball ? "text-stone-500/60" : "text-white/40"
         }`}
       >
-        Player {position % 2 === 0 ? "A" : "B"}-{Math.floor(position / 2) + 1}
+        {slotLabel || `Player ${position % 2 === 0 ? "A" : "B"}-${Math.floor(position / 2) + 1}`}
       </span>
 
       {hasPlayer && (
@@ -371,6 +372,7 @@ const QueueCourtCard = ({
   sessionId,
   positions,
   isVolleyball,
+  slotLabels,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -466,6 +468,7 @@ const QueueCourtCard = ({
               communityId={communityId}
               sessionId={sessionId}
               isVolleyball={isVolleyball}
+              slotLabel={slotLabels.find((slot) => slot.position === position)?.label}
             />
           );
         })}
@@ -490,6 +493,7 @@ const QueueCourt = ({
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
   const positions = gameRules?.positions || [0, 1, 2, 3];
+  const slotLabels = gameRules?.slotLabels || [];
   const isVolleyball = gameRules?.playersPerTeam === 6;
   const canAddCourt = !isVolleyball || countDisplay < 1;
 
@@ -524,6 +528,7 @@ const QueueCourt = ({
             sessionId={sessionId}
             positions={positions}
             isVolleyball={isVolleyball}
+            slotLabels={slotLabels}
           />
         ))}
       </div>

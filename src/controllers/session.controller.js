@@ -26,6 +26,7 @@ import {
   updateMatchCourtName,
   updateQueueCourtName,
   updateQueueCourtToMatch,
+  updateVolleyballScore,
 } from "../services/game.service.js";
 
 export const getAllPublicSessionsController = async (request, response) => {
@@ -677,5 +678,27 @@ export const endMatchCourtController = async (request, response) => {
     return response
       .status(statusCode)
       .json({ success: false, message: errMessage });
+  }
+};
+
+export const updateVolleyballScoreController = async (request, response) => {
+  try {
+    const { communityId, sessionId, courtId } = request.params;
+    const { team, delta } = request.body;
+    const court = await updateVolleyballScore(
+      communityId,
+      sessionId,
+      courtId,
+      team,
+      Number(delta),
+      request.user.sub,
+    );
+    return response.status(200).json({ success: true, court });
+  } catch (error) {
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    return response.status(statusCode).json({
+      success: false,
+      message: error instanceof AppError ? error.message : "Internal server error",
+    });
   }
 };
