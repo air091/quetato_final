@@ -1595,6 +1595,21 @@ export const endMatchCourt = async (
       );
     }
 
+    let normalizedWinningTeam = winningTeam?.toLowerCase();
+    if (targetCourt.session.sport === "volleyball") {
+      if (targetCourt.teamAScore === targetCourt.teamBScore) {
+        throw new AppError(
+          "Volleyball scores are tied; continue the game to determine a winner",
+          400,
+        );
+      }
+      normalizedWinningTeam =
+        targetCourt.teamAScore > targetCourt.teamBScore ? "a" : "b";
+    }
+    if (!["a", "b"].includes(normalizedWinningTeam)) {
+      throw new AppError("A valid winning team ('a' or 'b') must be specified", 400);
+    }
+
     // 3. Extract player snapshot items sitting on this court
     const currentSlots = targetCourt.slots || [];
     const playerIdsInMatch = currentSlots
@@ -1672,18 +1687,6 @@ export const endMatchCourt = async (
           });
         }),
       );
-    }
-
-    let normalizedWinningTeam = winningTeam?.toLowerCase();
-    if (targetCourt.session.sport === "volleyball") {
-      if (targetCourt.teamAScore === targetCourt.teamBScore) {
-        throw new AppError("Volleyball scores are tied; continue the game to determine a winner", 400);
-      }
-      normalizedWinningTeam =
-        targetCourt.teamAScore > targetCourt.teamBScore ? "a" : "b";
-    }
-    if (!["a", "b"].includes(normalizedWinningTeam)) {
-      throw new AppError("A valid winning team ('a' or 'b') must be specified", 400);
     }
 
     // 7. Revert court container status back to idle
