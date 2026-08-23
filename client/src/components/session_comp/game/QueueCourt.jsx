@@ -62,7 +62,7 @@ const DraggableSlotPlayer = ({
       style={{ ...style, ...overdueStyle }}
       {...listeners}
       {...attributes}
-      className={`player w-full cursor-grab active:cursor-grabbing touch-pan-y flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full max-[1320px]:flex-row-reverse ${bgTheme} ${
+      className={`player w-full cursor-grab active:cursor-grabbing touch-pan-y flex items-center justify-between p-1 rounded-md border text-sm font-medium select-none text-gray-800 shadow-xs h-full ${bgTheme} ${
         isDragging ? "border-blue-500 shadow-md" : ""
       }`}
     >
