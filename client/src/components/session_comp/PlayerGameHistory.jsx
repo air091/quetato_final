@@ -541,7 +541,7 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
                                   : "text-stone-400"
                               }`}
                             >
-                              Team A {match.winningTeam === "a" && "🏆"}
+                              Team A {match.teamAScore != null && `(${match.teamAScore})`} {match.winningTeam === "a" && "🏆"}
                             </span>
                             <div className="flex flex-wrap gap-x-1 text-stone-700 font-medium text-[11px]">
                               {match.teamA.map((tPlayer, idx) => (
@@ -569,7 +569,7 @@ const PlayerGameHistory = ({ player, onClose, onGamesTransferred }) => {
                                   : "text-stone-400"
                               }`}
                             >
-                              Team B {match.winningTeam === "b" && "🏆"}
+                              Team B {match.teamBScore != null && `(${match.teamBScore})`} {match.winningTeam === "b" && "🏆"}
                             </span>
                             <div className="flex flex-wrap gap-x-1 text-stone-700 font-medium text-[11px]">
                               {match.teamB.map((tPlayer, idx) => (
