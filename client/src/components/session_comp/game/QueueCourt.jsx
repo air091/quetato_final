@@ -77,18 +77,18 @@ const DraggableSlotPlayer = ({
         `}</style>
       )}
 
-      <div className="flex items-center gap-x-2 max-[1320px]:gap-x-0.5">
+      <div className="flex items-center gap-x-2 @max-[247px]:gap-x-0.5">
         <PlayerAvatar
           username={username}
           customImageUrl={player?.avatarUrl}
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] max-[1320px]:hidden">
+          <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] @max-[247px]:hidden">
             {username}
           </span>
-          <div className="flex items-center gap-x-1 max-[1320px]:flex-col max-[1320px]:gap-0 max-[1320px]:items-center">
-            <span title="Games" className="flex items-center gap-x-1 max-[1320px]:gap-0">
+          <div className="flex items-center gap-x-1 @max-[247px]:flex-col @max-[247px]:gap-0 @max-[247px]:items-center">
+            <span title="Games" className="flex items-center gap-x-1 @max-[247px]:gap-0">
               <Gamepad2 size={12} />
               <span className="text-[10px]">{totalGames}</span>
             </span>
@@ -102,7 +102,7 @@ const DraggableSlotPlayer = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-x-1 relative max-[1320px]:gap-x-0">
+      <div className="flex items-center gap-x-1 relative @max-[247px]:gap-x-0">
         {timer}
         <button
           title={`Remove ${username} from slot`}
@@ -282,7 +282,7 @@ const CourtSlot = ({
   return (
     <div
       ref={setNodeRef}
-      className={`border-2 border-dashed rounded h-[49px] flex items-center justify-center transition-all p-1 overflow-hidden relative ${
+      className={`border-2 border-dashed rounded h-[49px] flex items-center justify-center transition-all p-1 overflow-hidden relative [container-type:inline-size] ${
         isOver
           ? "border-green-400 bg-green-500/20 scale-[1.02]"
           : "border-white/30 bg-transparent"
@@ -323,7 +323,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-[1320px]:max-w-[46px] max-w-[90px] block max-[1320px]:text-[10px] text-[12px]">
+                  <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] @max-[247px]:hidden">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
