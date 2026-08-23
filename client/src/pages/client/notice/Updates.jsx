@@ -1,6 +1,31 @@
-import { CalendarCheck, ShieldCheck, Users } from "lucide-react";
+import {
+  CalendarCheck,
+  Grid3X3,
+  PlusCircle,
+  RotateCcw,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
 const updates = [
+  {
+    icon: Grid3X3,
+    title: "Volleyball courts match the real rotation",
+    description:
+      "Volleyball slots now follow the 5–6–1 and 4–3–2 court formation, with a center line clearly separating the teams and compact player cards for narrow slots.",
+  },
+  {
+    icon: PlusCircle,
+    title: "Add more volleyball courts",
+    description:
+      "Playing and queued volleyball courts can now be added as needed, using the same clear court controls as other sports.",
+  },
+  {
+    icon: RotateCcw,
+    title: "Scores reset for the next volleyball match",
+    description:
+      "Ending a volleyball game saves its final score to match history and resets the live court score to 0–0 for the next match.",
+  },
   {
     icon: CalendarCheck,
     title: "Session hosts are here",
