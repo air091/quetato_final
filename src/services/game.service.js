@@ -1533,6 +1533,7 @@ export const endMatchCourt = async (
   courtId,
   authorizedId,
   winningTeam, // Expecting "a" or "b" (matches your lowercase Team enum format)
+  finalScores,
 ) => {
   if (!communityId || !sessionId || !courtId || !authorizedId) {
     throw new AppError(
@@ -1597,14 +1598,26 @@ export const endMatchCourt = async (
 
     let normalizedWinningTeam = winningTeam?.toLowerCase();
     if (targetCourt.session.sport === "volleyball") {
-      if (targetCourt.teamAScore === targetCourt.teamBScore) {
+      const teamAScore = Number(finalScores?.teamAScore);
+      const teamBScore = Number(finalScores?.teamBScore);
+      if (
+        !Number.isInteger(teamAScore) ||
+        !Number.isInteger(teamBScore) ||
+        teamAScore < 0 ||
+        teamBScore < 0
+      ) {
+        throw new AppError("Final volleyball scores are required", 400);
+      }
+      if (teamAScore === teamBScore) {
         throw new AppError(
           "Volleyball scores are tied; continue the game to determine a winner",
           400,
         );
       }
       normalizedWinningTeam =
-        targetCourt.teamAScore > targetCourt.teamBScore ? "a" : "b";
+        teamAScore > teamBScore ? "a" : "b";
+      targetCourt.teamAScore = teamAScore;
+      targetCourt.teamBScore = teamBScore;
     }
     if (!["a", "b"].includes(normalizedWinningTeam)) {
       throw new AppError("A valid winning team ('a' or 'b') must be specified", 400);
@@ -1696,6 +1709,12 @@ export const endMatchCourt = async (
         status: "idle",
         startedAt: null,
         endedAt,
+        ...(targetCourt.session.sport === "volleyball"
+          ? {
+              teamAScore: targetCourt.teamAScore,
+              teamBScore: targetCourt.teamBScore,
+            }
+          : {}),
         updatedBy: authorizingAttendee.id,
       },
       include: {

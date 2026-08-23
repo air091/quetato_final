@@ -651,7 +651,7 @@ export const pauseMatchCourtController = async (request, response) => {
 export const endMatchCourtController = async (request, response) => {
   try {
     const { communityId, sessionId, courtId } = request.params;
-    const { winningTeam } = request.body;
+    const { winningTeam, teamAScore, teamBScore } = request.body;
 
     const result = await endMatchCourt(
       communityId,
@@ -659,6 +659,7 @@ export const endMatchCourtController = async (request, response) => {
       courtId,
       request.user.sub,
       winningTeam,
+      { teamAScore, teamBScore },
     );
 
     return response.status(200).json({

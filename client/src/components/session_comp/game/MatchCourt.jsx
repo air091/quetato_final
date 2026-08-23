@@ -434,38 +434,15 @@ const MatchCourtCard = ({
     }
   };
 
-  const updateScore = async (team, delta) => {
+  const updateScore = (team, delta) => {
     const scoreKey = team === "a" ? "teamAScore" : "teamBScore";
-    const previousScores = { ...scores, startedAt: matchCourt.startedAt };
     const nextScores = {
-      ...previousScores,
+      ...scores,
       startedAt: matchCourt.startedAt,
-      [scoreKey]: Math.max(0, previousScores[scoreKey] + delta),
+      [scoreKey]: Math.max(0, scores[scoreKey] + delta),
     };
-    if (nextScores[scoreKey] === previousScores[scoreKey]) return;
+    if (nextScores[scoreKey] === scores[scoreKey]) return;
     setOptimisticScores(nextScores);
-
-    try {
-      const response = await fetchWithAuth(
-        `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${matchCourt.id}/score`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ team, delta }),
-        },
-      );
-      if (!response.ok) throw new Error("Could not update score");
-      const data = await response.json();
-      setOptimisticScores({
-        teamAScore: data.court.teamAScore,
-        teamBScore: data.court.teamBScore,
-        startedAt: matchCourt.startedAt,
-      });
-      onRefreshData?.();
-    } catch (error) {
-      setOptimisticScores(previousScores);
-      console.error("Volleyball score update failed:", error);
-    }
   };
 
   return (
@@ -556,7 +533,7 @@ const MatchCourtCard = ({
           <button
             disabled={!isMatchLive}
             title="End volleyball game using the live score"
-            onClick={() => onEndMatchCourt?.(matchCourt.id)}
+            onClick={() => onEndMatchCourt?.(matchCourt.id, null, scores)}
             className={`mt-2 w-full rounded-full py-1 text-[14px] font-semibold transition-all ${
               isMatchLive
                 ? "cursor-pointer bg-stone-950 text-white hover:bg-stone-800"

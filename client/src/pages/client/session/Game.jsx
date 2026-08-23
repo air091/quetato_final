@@ -1081,7 +1081,7 @@ const Game = () => {
   );
 
   const handleEndMatchCourt = useCallback(
-    async (courtId, winningTeam) => {
+    async (courtId, winningTeam, finalScores) => {
       // Accept winningTeam argument.
       if (!communityId || !sessionId || !courtId) return;
 
@@ -1169,7 +1169,15 @@ const Game = () => {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
-            winningTeam ? { winningTeam: winningTeam.toLowerCase() } : {},
+            {
+              ...(winningTeam ? { winningTeam: winningTeam.toLowerCase() } : {}),
+              ...(finalScores
+                ? {
+                    teamAScore: finalScores.teamAScore,
+                    teamBScore: finalScores.teamBScore,
+                  }
+                : {}),
+            },
           ),
         });
 
