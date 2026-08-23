@@ -1,8 +1,8 @@
 import { Handshake, House, Info, UsersRound } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
-export const NOTICE_UPDATE_STORAGE_KEY = "quetato_notice_seen_session_hosts_v1";
+export const NOTICE_UPDATE_STORAGE_KEY = "quetato_notice_seen_volleyball_courts_v1";
 export const NOTICE_UPDATE_SEEN_EVENT = "quetato-notice-update-seen";
 
 const Sidebar = ({ isOpen }) => {

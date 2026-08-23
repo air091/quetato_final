@@ -7,7 +7,7 @@ import {
   Users,
 } from "lucide-react";
 
-const updates = [
+const newUpdates = [
   {
     icon: Grid3X3,
     title: "Volleyball courts match the real rotation",
@@ -26,6 +26,9 @@ const updates = [
     description:
       "Ending a volleyball game saves its final score to match history and resets the live court score to 0–0 for the next match.",
   },
+];
+
+const pastUpdates = [
   {
     icon: CalendarCheck,
     title: "Session hosts are here",
@@ -46,6 +49,24 @@ const updates = [
   },
 ];
 
+const UpdateCards = ({ updates }) =>
+  updates.map(({ icon: Icon, title, description }) => (
+    <article
+      key={title}
+      className="flex gap-3.5 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm shadow-stone-100/50"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-100/60 bg-orange-50 text-orange-500">
+        <Icon size={17} />
+      </div>
+      <div className="min-w-0 pt-0.5">
+        <h2 className="text-sm font-bold text-stone-900">{title}</h2>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-stone-400">
+          {description}
+        </p>
+      </div>
+    </article>
+  ));
+
 export default function Updates() {
   return (
     <main className="mx-auto mt-8 w-full max-w-[720px] px-4 pb-6 selection:bg-orange-500/10 selection:text-orange-950">
@@ -53,28 +74,22 @@ export default function Updates() {
         <h1 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-400">
           Updates
         </h1>
-        <p className="mt-1 text-sm font-bold text-stone-900">
-          Better session management
-        </p>
       </div>
 
       <div className="flex flex-col gap-y-3.5">
-        {updates.map(({ icon: Icon, title, description }) => (
-          <article
-            key={title}
-            className="flex gap-3.5 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm shadow-stone-100/50"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-100/60 bg-orange-50 text-orange-500">
-              <Icon size={17} />
-            </div>
-            <div className="min-w-0 pt-0.5">
-              <h2 className="text-sm font-bold text-stone-900">{title}</h2>
-              <p className="mt-1 text-xs font-medium leading-relaxed text-stone-400">
-                {description}
-              </p>
-            </div>
-          </article>
-        ))}
+        <p className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-orange-500">
+          New in this release
+        </p>
+        <UpdateCards updates={newUpdates} />
+
+        <div className="flex items-center gap-3 pt-3">
+          <div className="h-px flex-1 bg-stone-200" />
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-stone-400">
+            Past updates
+          </p>
+          <div className="h-px flex-1 bg-stone-200" />
+        </div>
+        <UpdateCards updates={pastUpdates} />
       </div>
     </main>
   );
