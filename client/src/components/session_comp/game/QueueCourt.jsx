@@ -77,18 +77,18 @@ const DraggableSlotPlayer = ({
         `}</style>
       )}
 
-      <div className="flex items-center gap-x-2 @max-[247px]:gap-x-0.5">
+      <div className="flex items-center gap-x-2 @max-[164px]:gap-x-0.5">
         <PlayerAvatar
           username={username}
           customImageUrl={player?.avatarUrl}
           size="sm"
         />
         <div>
-          <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] @max-[247px]:hidden">
+          <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] @max-[164px]:hidden">
             {username}
           </span>
-          <div className="flex items-center gap-x-1 @max-[247px]:flex-col @max-[247px]:gap-0 @max-[247px]:items-center">
-            <span title="Games" className="flex items-center gap-x-1 @max-[247px]:gap-0">
+          <div className="flex items-center gap-x-1 @max-[164px]:flex-col @max-[164px]:gap-0 @max-[164px]:items-center">
+            <span title="Games" className="flex items-center gap-x-1 @max-[164px]:gap-0">
               <Gamepad2 size={12} />
               <span className="text-[10px]">{totalGames}</span>
             </span>
@@ -102,7 +102,7 @@ const DraggableSlotPlayer = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-x-1 relative @max-[247px]:gap-x-0">
+      <div className="flex items-center gap-x-1 relative @max-[164px]:gap-x-0">
         {timer}
         <button
           title={`Remove ${username} from slot`}
@@ -323,7 +323,7 @@ const CourtSlot = ({
                   size="sm"
                 />
                 <div>
-                  <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] @max-[247px]:hidden">
+                  <span className="truncate text-black font-semibold max-w-[90px] block text-[12px] @max-[164px]:hidden">
                     {username}
                   </span>
                   <div className="flex items-center gap-x-1">
