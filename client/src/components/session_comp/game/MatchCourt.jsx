@@ -660,7 +660,7 @@ const MatchCourt = ({
             className="cursor-pointer flex items-center gap-x-1 bg-blue-900 hover:bg-blue-800 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
           >
             <Plus size={14} />
-            <span>{isVolleyball ? "Add Playing Court" : "Add Court"}</span>
+            <span>Add Playing Court</span>
           </button>
         )}
       </div>

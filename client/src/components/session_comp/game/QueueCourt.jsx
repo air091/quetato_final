@@ -289,9 +289,7 @@ const CourtSlot = ({
       }`}
     >
       <span
-        className={`absolute text-[10px] tracking-wider font-mono pointer-events-none ${
-          isVolleyball ? "text-stone-500/60" : "text-white/40"
-        }`}
+        className="absolute text-[10px] tracking-wider font-mono pointer-events-none text-white/40"
       >
         {slotLabel || `Player ${position % 2 === 0 ? "A" : "B"}-${Math.floor(position / 2) + 1}`}
       </span>
@@ -388,15 +386,11 @@ const QueueCourtCard = ({
 
   return (
     <div
-      className={`relative p-2 rounded-md ${isVolleyball ? "bg-slate-200" : "bg-stone-800/95"} shadow-sm transition-all ${
+      className={`relative p-2 rounded-md bg-stone-800/95 shadow-sm transition-all ${
         isSettingsOpen ? "z-40" : "z-10"
       }`}
     >
-      <header
-        className={`relative z-30 flex flex-col items-center justify-between mb-2 ${
-          isVolleyball ? "text-stone-700" : "text-white"
-        }`}
-      >
+      <header className="relative z-30 flex flex-col items-center justify-between mb-2 text-white">
         <div className="flex items-center justify-between w-full">
           <span className="text-[14px] font-semibold">{queueCourt?.name}</span>
           <div className="flex items-center gap-x-1 relative">
@@ -443,7 +437,7 @@ const QueueCourtCard = ({
         {isVolleyball && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-1/2 z-30 w-0.5 -translate-x-1/2 rounded-full bg-stone-500/70 shadow-sm"
+            className="pointer-events-none absolute inset-y-0 left-1/2 z-30 w-0.5 -translate-x-1/2 rounded-full bg-white/80 shadow-sm"
           />
         )}
         {positions.map((position) => {
@@ -515,7 +509,7 @@ const QueueCourt = ({
             className="cursor-pointer flex items-center gap-x-1 bg-stone-800 hover:bg-stone-700 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
           >
             <Plus size={14} />
-            <span>{isVolleyball ? "Add Queued Court" : "Add Queue"}</span>
+            <span>Add Queued Court</span>
           </button>
         )}
       </div>
