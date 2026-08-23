@@ -131,6 +131,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
 
   const {
     status,
+    sport,
     sortBy,
     order = "asc",
     search,
@@ -149,6 +150,7 @@ export const getAllSessions = async (communityId, filters = {}) => {
     `community:${encodeURIComponent(communityId)}`,
     `v:${version}`,
     `status:${status || "all"}`,
+    `sport:${sport || "all"}`,
     `sort:${sortBy || "name"}`,
     `order:${sortOrder}`,
     `search:${encodeURIComponent(normalizedSearch)}`,
@@ -166,6 +168,17 @@ export const getAllSessions = async (communityId, filters = {}) => {
 
   if (status) {
     whereClause.isAvailable = status === "available";
+  }
+
+  if (sport) {
+    const normalizedSport = sport.trim().toLowerCase();
+    if (!Object.values(Sports).includes(normalizedSport)) {
+      throw new AppError(
+        `Sport must be one of: ${Object.values(Sports).join(", ")}`,
+        400,
+      );
+    }
+    whereClause.sport = normalizedSport;
   }
 
   if (normalizedSearch) {

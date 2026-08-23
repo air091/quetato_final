@@ -54,10 +54,11 @@ export const getAllPublicSessionsController = async (request, response) => {
 export const getAllSessionsController = async (request, response) => {
   try {
     const { communityId } = request.params;
-    const { status, sortBy, order, search, page, limit } = request.query;
+    const { status, sport, sortBy, order, search, page, limit } = request.query;
 
     const result = await getAllSessions(communityId, {
       status,
+      sport,
       sortBy,
       order,
       search,

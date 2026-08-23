@@ -1,13 +1,14 @@
-import React from "react";
-import { useAuth } from "../../hooks/useAuth";
 import PlayerAvatar from "../PlayerAvatar";
-import {
-  formatCommunityDate,
-  formatElapsedTime,
-} from "../../utils/dateFormatter";
+import { formatCommunityDate } from "../../utils/dateFormatter";
 
 const ActivityCard = ({ session }) => {
-  const { user } = useAuth();
+  const sportLabel = session?.sport
+    ? `${session.sport.charAt(0).toUpperCase()}${session.sport.slice(1)}`
+    : "Sport";
+  const sportBadgeClass =
+    session?.sport === "volleyball"
+      ? "bg-violet-50/80 text-violet-700 border-violet-100/60"
+      : "bg-orange-50/80 text-orange-600 border-orange-100/60";
   // Enhanced date formatter matching "Friday Q June 19, 2026"
   const formatDate = (date) => {
     if (!date) return null;
@@ -70,6 +71,13 @@ const ActivityCard = ({ session }) => {
 
           {/* Session badges */}
           <div className="flex items-center gap-2 mt-6 flex-wrap">
+            {/* Sport Badge */}
+            <span
+              className={`rounded-full px-3 py-1 text-[11px] font-bold border ${sportBadgeClass}`}
+            >
+              {sportLabel}
+            </span>
+
             {/* Player count Badge (Highlighted Accent) */}
             <span className="rounded-full px-3 py-1 text-[11px] font-bold bg-orange-50/80 text-orange-600 border border-orange-100/60">
               Players: {session._count.players ?? 0}

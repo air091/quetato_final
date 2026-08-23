@@ -35,6 +35,7 @@ const CommunityActivities = () => {
   const [selectedSession, setSelectedSession] = useState(null);
 
   const [status, setStatus] = useState("");
+  const [sport, setSport] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [order, setOrder] = useState("asc");
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,7 +59,7 @@ const CommunityActivities = () => {
   // Reset to page 1 whenever filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [status, debouncedSearch, sortBy, order]);
+  }, [status, sport, debouncedSearch, sortBy, order]);
 
   const getAllSessions = useCallback(async () => {
     try {
@@ -70,6 +71,7 @@ const CommunityActivities = () => {
       });
 
       if (status) queryParams.append("status", status);
+      if (sport) queryParams.append("sport", sport);
       if (debouncedSearch.trim()) {
         queryParams.append("search", debouncedSearch.trim());
       }
@@ -100,6 +102,7 @@ const CommunityActivities = () => {
     sortBy,
     order,
     status,
+    sport,
     debouncedSearch,
     currentPage,
     fetchWithAuth,
@@ -267,6 +270,16 @@ const CommunityActivities = () => {
             >
               <option value="">All Statuses</option>
               <option value="available">Available Only</option>
+            </select>
+
+            <select
+              value={sport}
+              onChange={(e) => setSport(e.target.value)}
+              className="w-full sm:w-auto bg-stone-50/50 border border-stone-200 px-3 py-2.5 sm:py-1.5 text-xs font-bold text-stone-700 cursor-pointer rounded-xl outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all sm:h-[38px] min-w-[130px]"
+            >
+              <option value="">All Sports</option>
+              <option value="badminton">Badminton</option>
+              <option value="volleyball">Volleyball</option>
             </select>
 
             <div className="relative flex items-center w-full sm:max-w-[240px]">
