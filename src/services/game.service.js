@@ -92,7 +92,7 @@ export const createMatchCourt = async (
 
   return await prisma.$transaction(async (tx) => {
     // 1. Concurrent Check: Verify player credentials and get count of ONLY 'match' type courts
-    const [authorizingAttendee, matchCourtCount] = await Promise.all([
+    const [authorizingAttendee, session, matchCourtCount] = await Promise.all([
       tx.sessionPlayer.findFirst({
         where: {
           sessionId: sessionId,
@@ -109,6 +109,10 @@ export const createMatchCourt = async (
           },
         },
       }),
+      tx.session.findUnique({
+        where: { id: sessionId },
+        select: { sport: true },
+      }),
       tx.court.count({
         where: {
           sessionId: sessionId,
@@ -116,6 +120,15 @@ export const createMatchCourt = async (
         },
       }),
     ]);
+
+    if (!session) throw new AppError("Session not found", 404);
+    const gameRules = getSportGameRules(session.sport);
+    if (
+      gameRules.maxMatchCourts !== null &&
+      matchCourtCount >= gameRules.maxMatchCourts
+    ) {
+      throw new AppError("Volleyball sessions can only have one Match Court", 409);
+    }
 
     // 2. Auth Guards
     if (!authorizingAttendee) {
@@ -139,7 +152,9 @@ export const createMatchCourt = async (
     // 3. Dynamic Sequential Naming (e.g., "Match 1", "Match 2")
     const finalName = name?.trim()
       ? cleanName
-      : `${cleanName} ${matchCourtCount + 1}`;
+      : session.sport === "volleyball"
+        ? "Playing Court"
+        : `${cleanName} ${matchCourtCount + 1}`;
 
     // 4. Create and return the Court with hardcoded 'match' type
     return await tx.court.create({
@@ -308,7 +323,7 @@ export const createQueueCourt = async (
 
   return await prisma.$transaction(async (tx) => {
     // 1. Concurrent Check: Verify player credentials and get count of ONLY 'match' type courts
-    const [authorizingAttendee, queueCourtCount] = await Promise.all([
+    const [authorizingAttendee, session, queueCourtCount] = await Promise.all([
       tx.sessionPlayer.findFirst({
         where: {
           sessionId: sessionId,
@@ -325,6 +340,10 @@ export const createQueueCourt = async (
           },
         },
       }),
+      tx.session.findUnique({
+        where: { id: sessionId },
+        select: { sport: true },
+      }),
       tx.court.count({
         where: {
           sessionId: sessionId,
@@ -332,6 +351,15 @@ export const createQueueCourt = async (
         },
       }),
     ]);
+
+    if (!session) throw new AppError("Session not found", 404);
+    const gameRules = getSportGameRules(session.sport);
+    if (
+      gameRules.maxQueueCourts !== null &&
+      queueCourtCount >= gameRules.maxQueueCourts
+    ) {
+      throw new AppError("Volleyball sessions can only have one Queue Court", 409);
+    }
 
     // 2. Auth Guards
     if (!authorizingAttendee) {
@@ -352,7 +380,9 @@ export const createQueueCourt = async (
     // 3. Dynamic Sequential Naming (e.g., "Queue 1", "Queue 2")
     const finalName = name?.trim()
       ? cleanName
-      : `${cleanName} ${queueCourtCount + 1}`;
+      : session.sport === "volleyball"
+        ? "Queued Court"
+        : `${cleanName} ${queueCourtCount + 1}`;
 
     // 4. Create and return the Court with hardcoded 'Queue' type
     return await tx.court.create({

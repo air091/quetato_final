@@ -377,6 +377,7 @@ const MatchCourtCard = ({
   communityId,
   sessionId,
   positions,
+  isVolleyball,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
@@ -426,7 +427,7 @@ const MatchCourtCard = ({
 
   return (
     <div
-      className={`relative p-2 rounded-md bg-blue-900/90 shadow-sm transition-all ${
+      className={`relative p-2 rounded-md ${isVolleyball ? "bg-orange-700/95" : "bg-blue-900/90"} shadow-sm transition-all ${
         isSettingsOpen ? "z-40" : "z-10"
       }`}
     >
@@ -522,7 +523,11 @@ const MatchCourtCard = ({
         </div>
       </header>
 
-      <main className="relative z-20 grid grid-cols-2 gap-2">
+      <main
+        className={`relative z-20 grid gap-2 ${
+          isVolleyball ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"
+        }`}
+      >
         {positions.map((position) => {
           const slotData = matchCourt?.slots?.find(
             (s) => s.position === position,
@@ -577,21 +582,27 @@ const MatchCourt = ({
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
   const positions = gameRules?.positions || [0, 1, 2, 3];
+  const isVolleyball = gameRules?.playersPerTeam === 6;
+  const canAddCourt = !isVolleyball || countDisplay < 1;
 
   return (
     <div>
       <div className=" mb-2">
-        <h4 className="font-semibold text-gray-700">Match ({countDisplay})</h4>
-        <button
-          onClick={onAddCourt}
-          className="cursor-pointer flex items-center gap-x-1 bg-blue-900 hover:bg-blue-800 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
-        >
-          <Plus size={14} />
-          <span>Add Court</span>
-        </button>
+        <h4 className="font-semibold text-gray-700">
+          {isVolleyball ? "Playing Court" : "Match"} ({countDisplay})
+        </h4>
+        {canAddCourt && (
+          <button
+            onClick={onAddCourt}
+            className="cursor-pointer flex items-center gap-x-1 bg-blue-900 hover:bg-blue-800 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
+          >
+            <Plus size={14} />
+            <span>{isVolleyball ? "Add Playing Court" : "Add Court"}</span>
+          </button>
+        )}
       </div>
       {/* 🌟 Updated responsive classes to stack at 1120px and below */}
-      <div className="grid min-[1200px]:grid-cols-2 grid-cols-1 gap-3">
+      <div className={`grid grid-cols-1 gap-3 ${isVolleyball ? "" : "min-[1200px]:grid-cols-2"}`}>
         {courtsList.map((matchCourt) => (
           <MatchCourtCard
             key={matchCourt.id}
@@ -606,6 +617,7 @@ const MatchCourt = ({
             communityId={communityId}
             sessionId={sessionId}
             positions={positions}
+            isVolleyball={isVolleyball}
           />
         ))}
       </div>

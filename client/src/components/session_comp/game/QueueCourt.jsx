@@ -156,6 +156,7 @@ const CourtSlot = ({
   onRefreshData,
   communityId,
   sessionId,
+  isVolleyball,
 }) => {
   const { fetchWithAuth } = useAuth();
   const [totalGames, setTotalGames] = useState(
@@ -286,7 +287,11 @@ const CourtSlot = ({
           : "border-white/30 bg-transparent"
       }`}
     >
-      <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
+      <span
+        className={`absolute text-[10px] tracking-wider font-mono pointer-events-none ${
+          isVolleyball ? "text-stone-500/60" : "text-white/40"
+        }`}
+      >
         Player {position % 2 === 0 ? "A" : "B"}-{Math.floor(position / 2) + 1}
       </span>
 
@@ -365,6 +370,7 @@ const QueueCourtCard = ({
   communityId,
   sessionId,
   positions,
+  isVolleyball,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -380,11 +386,15 @@ const QueueCourtCard = ({
 
   return (
     <div
-      className={`relative p-2 rounded-md bg-stone-800/95 shadow-sm transition-all ${
+      className={`relative p-2 rounded-md ${isVolleyball ? "bg-slate-200" : "bg-stone-800/95"} shadow-sm transition-all ${
         isSettingsOpen ? "z-40" : "z-10"
       }`}
     >
-      <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
+      <header
+        className={`relative z-30 flex flex-col items-center justify-between mb-2 ${
+          isVolleyball ? "text-stone-700" : "text-white"
+        }`}
+      >
         <div className="flex items-center justify-between w-full">
           <span className="text-[14px] font-semibold">{queueCourt?.name}</span>
           <div className="flex items-center gap-x-1 relative">
@@ -423,7 +433,11 @@ const QueueCourtCard = ({
         </div>
       </header>
 
-      <main className="relative z-20 grid grid-cols-2 gap-2">
+      <main
+        className={`relative z-20 grid gap-2 ${
+          isVolleyball ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"
+        }`}
+      >
         {positions.map((position) => {
           const slotData = queueCourt?.slots?.find(
             (s) => s.position === position,
@@ -451,6 +465,7 @@ const QueueCourtCard = ({
               onRefreshData={onRefreshData}
               communityId={communityId}
               sessionId={sessionId}
+              isVolleyball={isVolleyball}
             />
           );
         })}
@@ -475,20 +490,26 @@ const QueueCourt = ({
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
   const positions = gameRules?.positions || [0, 1, 2, 3];
+  const isVolleyball = gameRules?.playersPerTeam === 6;
+  const canAddCourt = !isVolleyball || countDisplay < 1;
 
   return (
     <div>
       <div className="mb-2">
-        <h4 className="font-semibold text-gray-700">Queues ({countDisplay})</h4>
-        <button
-          onClick={onAddCourt}
-          className="cursor-pointer flex items-center gap-x-1 bg-stone-800 hover:bg-stone-700 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
-        >
-          <Plus size={14} />
-          <span>Add Queue</span>
-        </button>
+        <h4 className="font-semibold text-gray-700">
+          {isVolleyball ? "Queued Court" : "Queues"} ({countDisplay})
+        </h4>
+        {canAddCourt && (
+          <button
+            onClick={onAddCourt}
+            className="cursor-pointer flex items-center gap-x-1 bg-stone-800 hover:bg-stone-700 text-white text-xs font-medium py-1 px-2.5 rounded-md transition-colors"
+          >
+            <Plus size={14} />
+            <span>{isVolleyball ? "Add Queued Court" : "Add Queue"}</span>
+          </button>
+        )}
       </div>
-      <div className="grid min-[1200px]:grid-cols-2 grid-cols-1 gap-3">
+      <div className={`grid grid-cols-1 gap-3 ${isVolleyball ? "" : "min-[1200px]:grid-cols-2"}`}>
         {courtsList.map((queueCourt) => (
           <QueueCourtCard
             key={queueCourt.id}
@@ -502,6 +523,7 @@ const QueueCourt = ({
             communityId={communityId}
             sessionId={sessionId}
             positions={positions}
+            isVolleyball={isVolleyball}
           />
         ))}
       </div>

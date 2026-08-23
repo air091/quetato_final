@@ -1221,13 +1221,15 @@ const Game = () => {
     const targetType = dropTarget.courtType;
     const courtId = dropTarget.courtId;
     const position = Number(dropTarget.position);
+    const allowedPositions =
+      getGameRules(latestSessionDataRef.current).positions ||
+      DEFAULT_GAME_RULES.positions;
 
     if (
       !["match", "queue"].includes(targetType) ||
       !courtId ||
       !Number.isInteger(position) ||
-      position < 0 ||
-      position > 3
+      !allowedPositions.includes(position)
     ) {
       console.error("Invalid court slot drop target", {
         overId: over.id,
