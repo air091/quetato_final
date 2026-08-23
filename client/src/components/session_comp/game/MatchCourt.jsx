@@ -383,6 +383,7 @@ const MatchCourtCard = ({
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
+  const [optimisticScores, setOptimisticScores] = useState(null);
   const buttonRef = useRef(null);
   const { fetchWithAuth } = useAuth();
 
@@ -404,6 +405,12 @@ const MatchCourtCard = ({
     hasTeamBPlayer &&
     (matchCourt.status === "idle" || isPaused);
   const isMatchLive = isStarted; // 🌟 Only active/started games can select a winner
+  const scores = optimisticScores?.startedAt === matchCourt.startedAt
+    ? optimisticScores
+    : {
+    teamAScore: matchCourt.teamAScore || 0,
+    teamBScore: matchCourt.teamBScore || 0,
+  };
 
   // 🌟 Dynamic integration loop with your PATCH route handler
   const handlePauseToggle = async () => {
@@ -428,6 +435,16 @@ const MatchCourtCard = ({
   };
 
   const updateScore = async (team, delta) => {
+    const scoreKey = team === "a" ? "teamAScore" : "teamBScore";
+    const previousScores = { ...scores, startedAt: matchCourt.startedAt };
+    const nextScores = {
+      ...previousScores,
+      startedAt: matchCourt.startedAt,
+      [scoreKey]: Math.max(0, previousScores[scoreKey] + delta),
+    };
+    if (nextScores[scoreKey] === previousScores[scoreKey]) return;
+    setOptimisticScores(nextScores);
+
     try {
       const response = await fetchWithAuth(
         `${API_URL}/api/communities/${communityId}/sessions/${sessionId}/courts/${matchCourt.id}/score`,
@@ -438,8 +455,15 @@ const MatchCourtCard = ({
         },
       );
       if (!response.ok) throw new Error("Could not update score");
+      const data = await response.json();
+      setOptimisticScores({
+        teamAScore: data.court.teamAScore,
+        teamBScore: data.court.teamBScore,
+        startedAt: matchCourt.startedAt,
+      });
       onRefreshData?.();
     } catch (error) {
+      setOptimisticScores(previousScores);
       console.error("Volleyball score update failed:", error);
     }
   };
@@ -516,7 +540,7 @@ const MatchCourtCard = ({
         </div>
         {isVolleyball && isStarted && (
           <div className="mt-2 grid w-full grid-cols-2 gap-3 rounded-lg bg-stone-950/80 p-2">
-            {[{ team: "a", label: "Team A", score: matchCourt.teamAScore }, { team: "b", label: "Team B", score: matchCourt.teamBScore }].map(({ team, label, score }) => (
+            {[{ team: "a", label: "Team A", score: scores.teamAScore }, { team: "b", label: "Team B", score: scores.teamBScore }].map(({ team, label, score }) => (
               <div key={team} className="grid grid-cols-[32px_1fr_32px] items-center gap-1 text-center">
                 <button onClick={() => updateScore(team, -1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">−</button>
                 <div>
