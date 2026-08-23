@@ -185,11 +185,16 @@ const EditSessionModal = ({
                   name="sport"
                   id="sport"
                   value={sessionData.sport}
-                  onChange={handleOnChange}
-                  className="block px-3 py-2 text-sm border border-stone-200 w-full cursor-pointer rounded-xl bg-stone-50/50 focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all text-stone-800 font-bold"
+                  disabled
+                  title="Sport is set when the session is created"
+                  className="block px-3 py-2 text-sm border border-stone-200 w-full cursor-not-allowed rounded-xl bg-stone-100 text-stone-600 font-bold"
                 >
                   <option value="badminton">Badminton</option>
+                  <option value="volleyball">Volleyball</option>
                 </select>
+                <p className="mt-1 text-[11px] text-stone-500">
+                  Sport is set when the session is created.
+                </p>
               </div>
             </div>
 

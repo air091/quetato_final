@@ -147,6 +147,7 @@ const AddSessionModal = ({
                   className="block px-3 py-2 text-sm border border-stone-200 w-full cursor-pointer rounded-xl bg-stone-50/50 focus:bg-white focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all text-stone-800 font-bold"
                 >
                   <option value="badminton">Badminton</option>
+                  <option value="volleyball">Volleyball</option>
                 </select>
               </div>
             </div>

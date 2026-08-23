@@ -295,7 +295,7 @@ const CourtSlot = ({
       }`}
     >
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
-        Player {position % 2 === 0 ? "A" : "B"}-{position <= 1 ? "1" : "2"}
+        Player {position % 2 === 0 ? "A" : "B"}-{Math.floor(position / 2) + 1}
       </span>
 
       {hasPlayer && (
@@ -376,6 +376,7 @@ const MatchCourtCard = ({
   onRefreshData,
   communityId,
   sessionId,
+  positions,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
@@ -384,8 +385,12 @@ const MatchCourtCard = ({
 
   const occupiedSlots =
     matchCourt.slots?.filter((slot) => slot.sessionPlayerId) || [];
-  const hasTeamAPlayer = occupiedSlots.some((slot) => slot.position % 2 === 0);
-  const hasTeamBPlayer = occupiedSlots.some((slot) => slot.position % 2 === 1);
+  const hasTeamAPlayer = occupiedSlots.some(
+    (slot) => (slot.team || (slot.position % 2 === 0 ? "a" : "b")) === "a",
+  );
+  const hasTeamBPlayer = occupiedSlots.some(
+    (slot) => (slot.team || (slot.position % 2 === 0 ? "a" : "b")) === "b",
+  );
 
   // 🌟 Logic modifications to handle granular sub-states
   const isPaused = matchCourt.status === "paused";
@@ -518,7 +523,7 @@ const MatchCourtCard = ({
       </header>
 
       <main className="relative z-20 grid grid-cols-2 gap-2">
-        {[0, 1, 2, 3].map((position) => {
+        {positions.map((position) => {
           const slotData = matchCourt?.slots?.find(
             (s) => s.position === position,
           );
@@ -567,9 +572,11 @@ const MatchCourt = ({
   onRefreshData,
   communityId,
   sessionId,
+  gameRules,
 }) => {
   const courtsList = matchCourts?.courts || [];
   const countDisplay = matchCourts?.counts?.match || 0;
+  const positions = gameRules?.positions || [0, 1, 2, 3];
 
   return (
     <div>
@@ -598,6 +605,7 @@ const MatchCourt = ({
             onRefreshData={onRefreshData}
             communityId={communityId}
             sessionId={sessionId}
+            positions={positions}
           />
         ))}
       </div>

@@ -6,18 +6,25 @@ import { API_URL } from "./AuthContext";
 
 const API_BASE_URL = `${API_URL}/api/communities`;
 
-const emptyCourtState = { courts: [], counts: {} };
+const emptyCourtState = { courts: [], counts: {}, gameRules: null, sport: null };
 
 const normalizeCourtsPayload = (payload) => {
   const courts = payload?.courts || payload?.data || [];
 
   if (Array.isArray(courts)) {
-    return { courts, counts: payload?.counts || {} };
+    return {
+      courts,
+      counts: payload?.counts || {},
+      sport: payload?.sport || null,
+      gameRules: payload?.gameRules || null,
+    };
   }
 
   return {
     courts: Array.isArray(courts?.courts) ? courts.courts : [],
     counts: courts?.counts || payload?.counts || {},
+    sport: courts?.sport || payload?.sport || null,
+    gameRules: courts?.gameRules || payload?.gameRules || null,
   };
 };
 
@@ -257,6 +264,7 @@ export const SessionProvider = ({ children }) => {
       communityId,
       sessionId,
       sessionData,
+      setSessionData,
       visibleSessionPlayers,
       currentUserRole,
       canManagePlayers,

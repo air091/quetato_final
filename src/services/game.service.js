@@ -1,5 +1,6 @@
 import { AppError } from "../libs/errorHandle.js";
 import { prisma } from "../libs/prisma.js";
+import { getSportGameRules, getSportGameRulesPayload } from "../constants/gameRules.js";
 
 const shouldResetPlayerTimer = (currentStatus, nextStatus) =>
   (currentStatus !== "playing" && nextStatus === "playing") ||
@@ -20,7 +21,11 @@ export const getAllCourts = async (sessionId, type) => {
     }
 
     // 2. Fetch the records and aggregate the type counts simultaneously
-    const [courts, countAggregations] = await Promise.all([
+    const [session, courts, countAggregations] = await Promise.all([
+      tx.session.findUnique({
+        where: { id: sessionId },
+        select: { sport: true },
+      }),
       tx.court.findMany({
         where: whereClause,
         include: {
@@ -45,6 +50,10 @@ export const getAllCourts = async (sessionId, type) => {
       }),
     ]);
 
+    if (!session) {
+      throw new AppError("Session not found", 404);
+    }
+
     // 3. Map database aggregation array into a clean key-value stats object
     const counts = {
       all: 0,
@@ -62,6 +71,8 @@ export const getAllCourts = async (sessionId, type) => {
     return {
       courts,
       counts,
+      sport: session.sport,
+      gameRules: getSportGameRulesPayload(session.sport),
     };
   });
 };
@@ -582,7 +593,7 @@ export const assignPlayerToSlot = async (
   sessionId,
   targetCourtId,
   sessionPlayerId,
-  targetPosition, // Expects 0, 1, 2, or 3
+  targetPosition,
   authorizedId,
 ) => {
   if (
@@ -598,19 +609,11 @@ export const assignPlayerToSlot = async (
     );
   }
 
-  if (
-    !Number.isInteger(targetPosition) ||
-    ![0, 1, 2, 3].includes(targetPosition)
-  ) {
-    throw new AppError("Invalid slot position. Must be between 0 and 3.", 400);
-  }
-
-  const targetTeam = targetPosition % 2 === 0 ? "a" : "b";
-
   return await prisma.$transaction(async (tx) => {
     // 1. Fetch entire context concurrently
     const [
       authorizingAttendee,
+      session,
       allSessionCourts,
       allActiveSlots,
       playerExistsInSession,
@@ -621,6 +624,10 @@ export const assignPlayerToSlot = async (
           sessionPlayer: { communityId, userId: authorizedId },
         },
         select: { isHost: true, sessionPlayer: { select: { role: true } } },
+      }),
+      tx.session.findUnique({
+        where: { id: sessionId },
+        select: { sport: true },
       }),
       tx.court.findMany({
         where: { sessionId },
@@ -639,6 +646,19 @@ export const assignPlayerToSlot = async (
         select: { id: true, status: true, acceptedAt: true, gameStatus: true },
       }),
     ]);
+
+    if (!session) {
+      throw new AppError("Session not found", 404);
+    }
+
+    const gameRules = getSportGameRules(session.sport);
+    if (!Number.isInteger(targetPosition) || !gameRules.positions.includes(targetPosition)) {
+      throw new AppError(
+        `Invalid ${session.sport} slot position. Must be between 0 and ${gameRules.positions.at(-1)}.`,
+        400,
+      );
+    }
+    const targetTeam = gameRules.teamForPosition(targetPosition);
 
     // 2. Core Security & Authorization Guards
     if (!authorizingAttendee) {
@@ -1065,8 +1085,12 @@ export const transferQueueToMatch = async (
       );
     }
 
-    // 2. Fetch the specifically selected Queue Court and all match courts concurrently
-    const [queueCourt, matchCourts] = await Promise.all([
+    // 2. Fetch the session rules, selected Queue Court, and match courts concurrently
+    const [session, queueCourt, matchCourts] = await Promise.all([
+      tx.session.findUnique({
+        where: { id: sessionId },
+        select: { sport: true },
+      }),
       tx.court.findFirst({
         where: { id: queueCourtId, sessionId: sessionId, type: "queue" }, // 👈 Verifies it belongs to this session and is a queue
         include: {
@@ -1081,6 +1105,11 @@ export const transferQueueToMatch = async (
         orderBy: { createdAt: "asc" },
       }),
     ]);
+
+    if (!session) {
+      throw new AppError("Session not found", 404);
+    }
+    const gameRules = getSportGameRules(session.sport);
 
     // 3. Validation Guards
     if (!queueCourt) {
@@ -1099,7 +1128,7 @@ export const transferQueueToMatch = async (
 
     // 4. Find the first available Match Court that hasn't started and has open slots
     const availableMatchCourt = matchCourts.find(
-      (c) => c.startedAt === null && c.slots.length < 4,
+      (c) => c.startedAt === null && c.slots.length < gameRules.positions.length,
     );
 
     if (!availableMatchCourt) {
@@ -1132,10 +1161,9 @@ export const transferQueueToMatch = async (
       );
     }
 
-    // 5. Calculate open match layout positions (0, 1, 2, 3)
+    // 5. Calculate open match layout positions for the session's sport.
     const occupiedPositions = availableMatchCourt.slots.map((s) => s.position);
-    const allPositions = [0, 1, 2, 3];
-    const openPositions = allPositions.filter(
+    const openPositions = gameRules.positions.filter(
       (pos) => !occupiedPositions.includes(pos),
     );
 
@@ -1157,7 +1185,7 @@ export const transferQueueToMatch = async (
     for (let i = 0; i < spotsToFillCount; i++) {
       const sourceSlot = queueSlotsToMove[i];
       const targetPosition = openPositions[i];
-      const targetTeam = targetPosition % 2 === 0 ? "a" : "b";
+      const targetTeam = gameRules.teamForPosition(targetPosition);
 
       // Step A: Evict player from the specific Queue Court slot
       await tx.courtSlot.delete({
@@ -1207,7 +1235,7 @@ export const startMatchCourt = async (
 
   return await prisma.$transaction(async (tx) => {
     // 1. Fetch user authorization context and the target match court concurrently
-    const [authorizingAttendee, targetCourt] = await Promise.all([
+    const [authorizingAttendee, session, targetCourt] = await Promise.all([
       tx.sessionPlayer.findFirst({
         where: {
           sessionId: sessionId,
@@ -1221,6 +1249,10 @@ export const startMatchCourt = async (
         isHost: true,
         sessionPlayer: { select: { role: true } },
         },
+      }),
+      tx.session.findUnique({
+        where: { id: sessionId },
+        select: { sport: true },
       }),
       tx.court.findFirst({
         where: {
@@ -1253,6 +1285,9 @@ export const startMatchCourt = async (
     if (!targetCourt) {
       throw new AppError("Match court not found in this session", 404);
     }
+    if (!session) {
+      throw new AppError("Session not found", 404);
+    }
 
     // 3. 🌟 UPDATED GAME STATE GUARDS
     // Allow starting if status is 'idle' OR 'paused'. Block if it's already 'started' or 'ended'.
@@ -1264,15 +1299,16 @@ export const startMatchCourt = async (
       );
     }
 
-    // 4. Calculate occupied teams based on position integers
+    // 4. Each sport uses the same two-team model; rely on the stored team
+    // assignment so its position layout can vary by sport.
     const occupiedSlots = targetCourt.slots.filter(
       (slot) => slot.sessionPlayerId,
     );
     const hasTeamAPlayer = occupiedSlots.some(
-      (slot) => slot.position % 2 === 0,
+      (slot) => slot.team === "a",
     );
     const hasTeamBPlayer = occupiedSlots.some(
-      (slot) => slot.position % 2 === 1,
+      (slot) => slot.team === "b",
     );
 
     if (!hasTeamAPlayer || !hasTeamBPlayer) {

@@ -287,7 +287,7 @@ const CourtSlot = ({
       }`}
     >
       <span className="absolute text-[10px] text-white/40 tracking-wider font-mono pointer-events-none">
-        Player {position % 2 === 0 ? "A" : "B"}-{position <= 1 ? "1" : "2"}
+        Player {position % 2 === 0 ? "A" : "B"}-{Math.floor(position / 2) + 1}
       </span>
 
       {hasPlayer && (
@@ -364,6 +364,7 @@ const QueueCourtCard = ({
   onRefreshData,
   communityId,
   sessionId,
+  positions,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -423,7 +424,7 @@ const QueueCourtCard = ({
       </header>
 
       <main className="relative z-20 grid grid-cols-2 gap-2">
-        {[0, 1, 2, 3].map((position) => {
+        {positions.map((position) => {
           const slotData = queueCourt?.slots?.find(
             (s) => s.position === position,
           );
@@ -469,9 +470,11 @@ const QueueCourt = ({
   onRefreshData,
   communityId,
   sessionId,
+  gameRules,
 }) => {
   const courtsList = queueCourts?.courts || [];
   const countDisplay = queueCourts?.counts?.queue || 0;
+  const positions = gameRules?.positions || [0, 1, 2, 3];
 
   return (
     <div>
@@ -498,6 +501,7 @@ const QueueCourt = ({
             onRefreshData={onRefreshData}
             communityId={communityId}
             sessionId={sessionId}
+            positions={positions}
           />
         ))}
       </div>

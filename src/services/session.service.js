@@ -20,6 +20,22 @@ const PUBLIC_SESSIONS_CACHE_TTL_SECONDS =
     ? Math.floor(configuredPublicSessionsTtl)
     : 60;
 
+const normalizeSport = (sport) => {
+  if (typeof sport !== "string") {
+    throw new AppError("Sport is required", 400);
+  }
+
+  const normalizedSport = sport.trim().toLowerCase();
+  if (!Object.values(Sports).includes(normalizedSport)) {
+    throw new AppError(
+      `Sport must be one of: ${Object.values(Sports).join(", ")}`,
+      400,
+    );
+  }
+
+  return normalizedSport;
+};
+
 const assertSessionManager = async (communityId, sessionId, userId) => {
   const manager = await prisma.sessionPlayer.findFirst({
     where: {
@@ -265,6 +281,7 @@ export const createSession = async (
   authorizedId,
 ) => {
   if (!communityId) throw new AppError("Community ID is required", 400);
+  const normalizedSport = normalizeSport(sport);
 
   // Fallback defaults for description and location
   const cleanDescription =
@@ -315,7 +332,7 @@ export const createSession = async (
       data: {
         communityId,
         name: cleanName,
-        sport,
+        sport: normalizedSport,
         description: cleanDescription,
         location: cleanLocation,
         startAt: startAt ? new Date(startAt) : null,

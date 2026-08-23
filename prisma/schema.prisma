@@ -94,6 +94,7 @@ model Community {
 
 enum Sports {
   badminton
+  volleyball
 }
 
 model Session {

@@ -59,6 +59,17 @@ const getPlayerUsername = (player) =>
 
 const formatTimes = (count) => `${count} ${count === 1 ? "time" : "times"}`;
 
+const DEFAULT_GAME_RULES = {
+  playersPerTeam: 2,
+  playersPerCourt: 4,
+  positions: [0, 1, 2, 3],
+};
+
+const getGameRules = (sessionData) =>
+  sessionData?.matchCourts?.gameRules ||
+  sessionData?.queueCourts?.gameRules ||
+  DEFAULT_GAME_RULES;
+
 const getSlotStatus = (court, courtType) =>
   (court?.type || courtType) === "match" &&
   (court?.status === "started" || court?.status === "paused")
@@ -476,6 +487,8 @@ const applyOptimisticSlotRemoval = (
 };
 
 const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
+  const gameRules = getGameRules(sessionData);
+  const positions = gameRules.positions || DEFAULT_GAME_RULES.positions;
   const queueCourt = sessionData.queueCourts?.courts?.find(
     (court) => court.id === queueCourtId,
   );
@@ -509,7 +522,7 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
       resolveSlotSessionPlayerId(slot),
     );
 
-    return court.startedAt === null && occupiedSlots.length < 4;
+    return court.startedAt === null && occupiedSlots.length < positions.length;
   });
 
   if (!targetMatchCourt) {
@@ -519,7 +532,7 @@ const buildOptimisticQueueTransfer = (sessionData, queueCourtId, timestamp) => {
   const occupiedPositions = (targetMatchCourt.slots || [])
     .filter((slot) => resolveSlotSessionPlayerId(slot))
     .map((slot) => slot.position);
-  const openPositions = [0, 1, 2, 3].filter(
+  const openPositions = positions.filter(
     (position) => !occupiedPositions.includes(position),
   );
   const transferSlots = queueSlotsToMove.slice(0, openPositions.length);
@@ -1629,6 +1642,7 @@ const Game = () => {
             onRefreshData={() => fetchDashboardContext(true)}
             communityId={communityId}
             sessionId={sessionId}
+            gameRules={getGameRules(sessionData)}
           />
           <QueueCourt
             queueCourts={sessionData.queueCourts}
@@ -1641,6 +1655,7 @@ const Game = () => {
             onRefreshData={() => fetchDashboardContext(true)}
             communityId={communityId}
             sessionId={sessionId}
+            gameRules={getGameRules(sessionData)}
           />
         </div>
       </div>
