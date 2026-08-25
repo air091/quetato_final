@@ -384,6 +384,9 @@ const MatchCourtCard = ({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [optimisticScores, setOptimisticScores] = useState(null);
+  const [setsToWin, setSetsToWin] = useState(matchCourt.setsToWin ?? null);
+  const [isSetsModalOpen, setIsSetsModalOpen] = useState(false);
+  const [draftSetsToWin, setDraftSetsToWin] = useState(2);
   const buttonRef = useRef(null);
   const { fetchWithAuth } = useAuth();
 
@@ -404,12 +407,30 @@ const MatchCourtCard = ({
     hasTeamAPlayer &&
     hasTeamBPlayer &&
     (matchCourt.status === "idle" || isPaused);
+  const canStartSelectedGame = canStartGame && (!isVolleyball || setsToWin);
   const isMatchLive = isStarted; // 🌟 Only active/started games can select a winner
   const scores = optimisticScores?.startedAt === matchCourt.startedAt
     ? optimisticScores
     : {
     teamAScore: matchCourt.teamAScore || 0,
     teamBScore: matchCourt.teamBScore || 0,
+  };
+  const hasSetWinner = setsToWin && (
+    scores.teamAScore >= setsToWin || scores.teamBScore >= setsToWin
+  );
+
+  const openSetsModal = () => {
+    if (matchCourt.status !== "idle") return;
+    setDraftSetsToWin(setsToWin || 2);
+    setIsSetsModalOpen(true);
+  };
+
+  const saveSetsToWin = (event) => {
+    event.preventDefault();
+    const selectedSets = Math.floor(Number(draftSetsToWin));
+    if (!Number.isFinite(selectedSets) || selectedSets < 1) return;
+    setSetsToWin(selectedSets);
+    setIsSetsModalOpen(false);
   };
 
   // 🌟 Dynamic integration loop with your PATCH route handler
@@ -454,10 +475,62 @@ const MatchCourtCard = ({
     >
       <header className="relative z-30 flex flex-col items-center justify-between text-white mb-2">
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-x-2">
+          <div className="relative flex items-center gap-x-2">
             <span className="text-[14px] font-semibold">
               {matchCourt?.name}
             </span>
+            {isVolleyball && (
+              <>
+                <button
+                  type="button"
+                  disabled={matchCourt.status !== "idle"}
+                  onClick={openSetsModal}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors ${
+                    matchCourt.status !== "idle"
+                      ? "cursor-not-allowed bg-white/10 text-white/50"
+                      : "cursor-pointer bg-stone-950/60 text-white hover:bg-stone-950"
+                  }`}
+                >
+                  {setsToWin
+                    ? `First to ${setsToWin} ${setsToWin === 1 ? "set" : "sets"}`
+                    : "Sets to win"}
+                </button>
+                {isSetsModalOpen && (
+                  <form
+                    onSubmit={saveSetsToWin}
+                    className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl border border-stone-200 bg-white p-3 text-stone-800 shadow-xl"
+                  >
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                      Sets to win
+                      <input
+                        autoFocus
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={draftSetsToWin}
+                        onChange={(event) => setDraftSetsToWin(event.target.value)}
+                        className="mt-2 w-full rounded-lg border border-stone-300 px-2 py-1.5 text-sm font-bold outline-none focus:border-orange-500"
+                      />
+                    </label>
+                    <div className="mt-3 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsSetsModalOpen(false)}
+                        className="rounded-md px-2 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="rounded-md bg-orange-600 px-2 py-1 text-xs font-bold text-white hover:bg-orange-700"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </>
+            )}
             {/* 🌟 New Live Label indicator */}
             {isStarted && (
               <span className="text-[10px] bg-emerald-500 text-black px-1.5 rounded-full font-bold uppercase animate-pulse">
@@ -485,8 +558,18 @@ const MatchCourtCard = ({
             {/* 🌟 Resume/Start Game Trigger */}
             {canStartGame && (
               <button
-                onClick={() => onStartMatchCourt?.(matchCourt.id)}
-                className="cursor-pointer flex items-center gap-x-1 bg-stone-800 hover:text-stone-50 text-stone-300 text-[12px] py-0.5 px-2 rounded-full transition-colors"
+                disabled={!canStartSelectedGame}
+                onClick={() => onStartMatchCourt?.(matchCourt.id, setsToWin)}
+                title={
+                  !canStartSelectedGame
+                    ? "Choose the sets to win before starting"
+                    : undefined
+                }
+                className={`flex items-center gap-x-1 text-[12px] py-0.5 px-2 rounded-full transition-colors ${
+                  canStartSelectedGame
+                    ? "cursor-pointer bg-stone-800 text-stone-300 hover:text-stone-50"
+                    : "cursor-not-allowed bg-stone-700/50 text-stone-400"
+                }`}
               >
                 <Play size={10} /> {isPaused ? "Resume game" : "Start game"}
               </button>
@@ -528,7 +611,7 @@ const MatchCourtCard = ({
                 <button onClick={() => updateScore(team, -1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">−</button>
                 <div>
                   <div className="text-3xl font-black leading-none">{score ?? 0}</div>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/70">{label}</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/70">{label} sets</div>
                 </div>
                 <button onClick={() => updateScore(team, 1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">+</button>
               </div>
@@ -537,16 +620,26 @@ const MatchCourtCard = ({
         )}
         {isVolleyball ? (
           <button
-            disabled={!isMatchLive}
-            title="End volleyball game using the live score"
+            disabled={!isMatchLive || !hasSetWinner}
+            title={
+              hasSetWinner
+                ? "End volleyball game using the completed set score"
+                : setsToWin
+                  ? `First team to ${setsToWin} ${setsToWin === 1 ? "set" : "sets"} wins`
+                  : "Choose the sets to win before ending the game"
+            }
             onClick={() => onEndMatchCourt?.(matchCourt.id, null, scores)}
             className={`mt-2 w-full rounded-full py-1 text-[14px] font-semibold transition-all ${
-              isMatchLive
+              isMatchLive && hasSetWinner
                 ? "cursor-pointer bg-stone-950 text-white hover:bg-stone-800"
                 : "cursor-not-allowed bg-stone-700/50 text-stone-300"
             }`}
           >
-            End Game
+            {hasSetWinner
+              ? "End Game"
+              : setsToWin
+                ? `First to ${setsToWin} ${setsToWin === 1 ? "Set" : "Sets"}`
+                : "Choose Sets to Win"}
           </button>
         ) : (
         <div className="flex w-full gap-x-2 mt-1">

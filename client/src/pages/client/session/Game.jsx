@@ -974,7 +974,7 @@ const Game = () => {
   };
 
   const handleStartMatchCourt = useCallback(
-    async (courtId) => {
+    async (courtId, setsToWin) => {
       if (!communityId || !sessionId || !courtId) return;
 
       // Save previous state for rollbacks on failure
@@ -1001,6 +1001,7 @@ const Game = () => {
               ...court,
               status: "started",
               startedAt,
+              ...(setsToWin ? { setsToWin } : {}),
               slots: (court.slots || []).map((slot) => ({
                 ...slot,
                 sessionPlayer: slot.sessionPlayer
@@ -1053,6 +1054,7 @@ const Game = () => {
         const response = await fetchWithAuth(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(setsToWin ? { setsToWin } : {}),
         });
 
         if (!response.ok) {
@@ -1122,6 +1124,7 @@ const Game = () => {
               status: "idle",
               startedAt: null,
               ...(finalScores ? { teamAScore: 0, teamBScore: 0 } : {}),
+              ...(finalScores ? { setsToWin: null } : {}),
               slots: [], // Empty the court slots immediately matching deleteMany
             };
           });

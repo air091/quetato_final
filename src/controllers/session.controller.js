@@ -589,12 +589,14 @@ export const transferQueueToMatchController = async (request, response) => {
 export const startMatchCourtController = async (request, response) => {
   try {
     const { communityId, sessionId, courtId } = request.params;
+    const { setsToWin } = request.body || {};
 
     const result = await startMatchCourt(
       communityId,
       sessionId,
       courtId,
       request.user.sub,
+      setsToWin,
     );
 
     return response.status(200).json({

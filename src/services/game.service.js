@@ -1255,6 +1255,7 @@ export const startMatchCourt = async (
   sessionId,
   courtId,
   authorizedId,
+  setsToWin,
 ) => {
   if (!communityId || !sessionId || !courtId || !authorizedId) {
     throw new AppError(
@@ -1319,6 +1320,19 @@ export const startMatchCourt = async (
       throw new AppError("Session not found", 404);
     }
 
+    const selectedSetsToWin = Number(setsToWin ?? targetCourt.setsToWin);
+    if (
+      session.sport === "volleyball" &&
+      (!Number.isInteger(selectedSetsToWin) ||
+        selectedSetsToWin < 1 ||
+        selectedSetsToWin > 99)
+    ) {
+      throw new AppError(
+        "Volleyball matches require a whole-number sets-to-win target between 1 and 99",
+        400,
+      );
+    }
+
     // 3. 🌟 UPDATED GAME STATE GUARDS
     // Allow starting if status is 'idle' OR 'paused'. Block if it's already 'started' or 'ended'.
     const allowedStatuses = ["idle", "paused"];
@@ -1365,7 +1379,11 @@ export const startMatchCourt = async (
           status: "started",
           startedAt: newStartedAt,
           ...(targetCourt.status === "idle" && session.sport === "volleyball"
-            ? { teamAScore: 0, teamBScore: 0 }
+            ? {
+                teamAScore: 0,
+                teamBScore: 0,
+                setsToWin: selectedSetsToWin,
+              }
             : {}),
           updatedBy: authorizingAttendee.id,
         },
@@ -1614,8 +1632,22 @@ export const endMatchCourt = async (
           400,
         );
       }
+      if (!targetCourt.setsToWin) {
+        throw new AppError(
+          "This volleyball match does not have a sets-to-win target",
+          400,
+        );
+      }
       normalizedWinningTeam =
         teamAScore > teamBScore ? "a" : "b";
+      const winningScore =
+        normalizedWinningTeam === "a" ? teamAScore : teamBScore;
+      if (winningScore < targetCourt.setsToWin) {
+        throw new AppError(
+          `A team must win ${targetCourt.setsToWin} sets before the match can end`,
+          400,
+        );
+      }
       targetCourt.teamAScore = teamAScore;
       targetCourt.teamBScore = teamBScore;
     }
@@ -1642,6 +1674,7 @@ export const endMatchCourt = async (
             ? {
                 teamAScore: targetCourt.teamAScore,
                 teamBScore: targetCourt.teamBScore,
+                setsToWin: targetCourt.setsToWin,
               }
             : {}),
           startedAt: targetCourt.startedAt || new Date(),
@@ -1715,6 +1748,7 @@ export const endMatchCourt = async (
               // Clear the live court so the next match starts at 0–0.
               teamAScore: 0,
               teamBScore: 0,
+              setsToWin: null,
             }
           : {}),
         updatedBy: authorizingAttendee.id,
