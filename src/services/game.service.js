@@ -1385,6 +1385,7 @@ export const startMatchCourt = async (
                 teamASets: 0,
                 teamBSets: 0,
                 setsToWin: selectedSetsToWin,
+                sidesSwapped: false,
               }
             : {}),
           updatedBy: authorizingAttendee.id,
@@ -1658,6 +1659,7 @@ export const endMatchCourt = async (
             teamBScore: 0,
             teamASets: nextTeamASets,
             teamBSets: nextTeamBSets,
+            sidesSwapped: !targetCourt.sidesSwapped,
             updatedBy: authorizingAttendee.id,
           },
           include: { slots: true },
@@ -1767,6 +1769,7 @@ export const endMatchCourt = async (
               teamASets: 0,
               teamBSets: 0,
               setsToWin: null,
+              sidesSwapped: false,
             }
           : {}),
         updatedBy: authorizingAttendee.id,

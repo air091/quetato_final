@@ -1145,6 +1145,7 @@ const Game = () => {
                   (court.teamASets || 0) + (setWinner === "a" ? 1 : 0),
                 teamBSets:
                   (court.teamBSets || 0) + (setWinner === "b" ? 1 : 0),
+                sidesSwapped: !court.sidesSwapped,
               };
             });
 
@@ -1163,6 +1164,7 @@ const Game = () => {
               ...(finalScores ? { teamAScore: 0, teamBScore: 0 } : {}),
               ...(finalScores ? { teamASets: 0, teamBSets: 0 } : {}),
               ...(finalScores ? { setsToWin: null } : {}),
+              ...(finalScores ? { sidesSwapped: false } : {}),
               slots: [], // Empty the court slots immediately matching deleteMany
             };
           });

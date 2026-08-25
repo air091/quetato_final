@@ -486,6 +486,15 @@ const MatchCourtCard = ({
     }
   };
 
+  const displayedPositions =
+    isVolleyball && matchCourt.sidesSwapped
+      ? positions.flatMap((_, index) => {
+          const rowStart = Math.floor(index / 4) * 4;
+          const column = index % 4;
+          return rowStart + (column < 2 ? column + 2 : column - 2);
+        })
+      : positions;
+
   return (
     <div
       className={`relative p-2 rounded-md ${isVolleyball ? "bg-orange-700/95" : "bg-blue-900/90"} shadow-sm transition-all ${
@@ -702,7 +711,7 @@ const MatchCourtCard = ({
             className="pointer-events-none absolute inset-y-0 left-1/2 z-30 w-0.5 -translate-x-1/2 rounded-full bg-white/80 shadow-sm"
           />
         )}
-        {positions.map((position) => {
+        {displayedPositions.map((position) => {
           const slotData = matchCourt?.slots?.find(
             (s) => s.position === position,
           );

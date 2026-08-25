@@ -216,6 +216,7 @@ model Court {
   teamASets           Int @default(0)
   teamBSets           Int @default(0)
   setsToWin           Int?
+  sidesSwapped        Boolean @default(false)
   startedAt           DateTime?
   endedAt             DateTime?
   createdBy           String
