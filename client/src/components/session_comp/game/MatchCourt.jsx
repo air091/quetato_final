@@ -16,6 +16,12 @@ import PlayerAvatar from "../../PlayerAvatar";
 import { useAuth } from "../../../hooks/useAuth";
 import { API_URL } from "../../../contexts/AuthContext";
 
+const formatOrdinal = (value) => {
+  const lastTwoDigits = value % 100;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) return `${value}th`;
+  return `${value}${["th", "st", "nd", "rd"][value % 10] || "th"}`;
+};
+
 const DraggableSlotPlayer = ({
   username,
   timer,
@@ -415,9 +421,11 @@ const MatchCourtCard = ({
     teamAScore: matchCourt.teamAScore || 0,
     teamBScore: matchCourt.teamBScore || 0,
   };
-  const hasSetWinner = setsToWin && (
-    scores.teamAScore >= setsToWin || scores.teamBScore >= setsToWin
-  );
+  const hasSetWinner = scores.teamAScore !== scores.teamBScore;
+  const currentSetNumber =
+    (matchCourt.teamASets || 0) + (matchCourt.teamBSets || 0) + 1;
+  const endSetLabel =
+    setsToWin > 1 ? `End ${formatOrdinal(currentSetNumber)} Set` : "End Game";
 
   const openSetsModal = () => {
     if (matchCourt.status !== "idle") return;
@@ -465,6 +473,17 @@ const MatchCourtCard = ({
     };
     if (nextScores[scoreKey] === scores[scoreKey]) return;
     setOptimisticScores(nextScores);
+  };
+
+  const handleEndVolleyballSet = async () => {
+    const didEndSet = await onEndMatchCourt?.(matchCourt.id, null, scores);
+    if (didEndSet) {
+      setOptimisticScores({
+        startedAt: matchCourt.startedAt,
+        teamAScore: 0,
+        teamBScore: 0,
+      });
+    }
   };
 
   return (
@@ -600,7 +619,11 @@ const MatchCourtCard = ({
           </div>
         </div>
         {isVolleyball && (isStarted || isPaused) && (
-          <div className="mt-2 grid w-full grid-cols-2 gap-3 rounded-lg bg-stone-950/80 p-2">
+          <div className="mt-2 w-full rounded-lg bg-stone-950/80 p-2">
+            <div className="mb-2 text-center text-[10px] font-bold uppercase tracking-wider text-white/70">
+              Sets: Team A {matchCourt.teamASets || 0} · Team B {matchCourt.teamBSets || 0}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
             {[{ team: "a", label: "Team A", score: scores.teamAScore }, { team: "b", label: "Team B", score: scores.teamBScore }].map(({ team, label, score }) => (
               <div
                 key={team}
@@ -611,11 +634,12 @@ const MatchCourtCard = ({
                 <button onClick={() => updateScore(team, -1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">−</button>
                 <div>
                   <div className="text-3xl font-black leading-none">{score ?? 0}</div>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/70">{label} sets</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/70">{label} points</div>
                 </div>
                 <button onClick={() => updateScore(team, 1)} className="rounded bg-white/10 py-1 text-lg hover:bg-white/20">+</button>
               </div>
             ))}
+            </div>
           </div>
         )}
         {isVolleyball ? (
@@ -623,23 +647,19 @@ const MatchCourtCard = ({
             disabled={!isMatchLive || !hasSetWinner}
             title={
               hasSetWinner
-                ? "End volleyball game using the completed set score"
+                ? "End the current volleyball set"
                 : setsToWin
-                  ? `First team to ${setsToWin} ${setsToWin === 1 ? "set" : "sets"} wins`
+                  ? "The current set must have a winner before it can end"
                   : "Choose the sets to win before ending the game"
             }
-            onClick={() => onEndMatchCourt?.(matchCourt.id, null, scores)}
+            onClick={handleEndVolleyballSet}
             className={`mt-2 w-full rounded-full py-1 text-[14px] font-semibold transition-all ${
               isMatchLive && hasSetWinner
                 ? "cursor-pointer bg-stone-950 text-white hover:bg-stone-800"
                 : "cursor-not-allowed bg-stone-700/50 text-stone-300"
             }`}
           >
-            {hasSetWinner
-              ? "End Game"
-              : setsToWin
-                ? `First to ${setsToWin} ${setsToWin === 1 ? "Set" : "Sets"}`
-                : "Choose Sets to Win"}
+            {hasSetWinner ? endSetLabel : "Finish Current Set"}
           </button>
         ) : (
         <div className="flex w-full gap-x-2 mt-1">

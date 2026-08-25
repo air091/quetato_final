@@ -1098,6 +1098,21 @@ const Game = () => {
 
       // Save previous state for rollbacks on failure
       const previousSessionData = structuredClone(sessionData);
+      const targetCourt = sessionData?.matchCourts?.courts?.find(
+        (court) => court.id === courtId,
+      );
+      const currentSetWinner = finalScores
+        ? finalScores.teamAScore > finalScores.teamBScore
+          ? "a"
+          : finalScores.teamBScore > finalScores.teamAScore
+            ? "b"
+            : null
+        : null;
+      const volleyballMatchComplete =
+        Boolean(targetCourt?.setsToWin && currentSetWinner) &&
+        (currentSetWinner === "a"
+          ? (targetCourt.teamASets || 0) + 1
+          : (targetCourt.teamBSets || 0) + 1) >= targetCourt.setsToWin;
 
       try {
         // 1. Optimistic UI update: Instantly move court status back to "idle",
@@ -1117,6 +1132,28 @@ const Game = () => {
               .filter(Boolean);
           }
 
+          if (finalScores && !volleyballMatchComplete) {
+            const setWinner =
+              finalScores.teamAScore > finalScores.teamBScore ? "a" : "b";
+            const updatedCourts = prev.matchCourts.courts.map((court) => {
+              if (court.id !== courtId) return court;
+              return {
+                ...court,
+                teamAScore: 0,
+                teamBScore: 0,
+                teamASets:
+                  (court.teamASets || 0) + (setWinner === "a" ? 1 : 0),
+                teamBSets:
+                  (court.teamBSets || 0) + (setWinner === "b" ? 1 : 0),
+              };
+            });
+
+            return {
+              ...prev,
+              matchCourts: { ...prev.matchCourts, courts: updatedCourts },
+            };
+          }
+
           const updatedCourts = prev.matchCourts.courts.map((court) => {
             if (court.id !== courtId) return court;
             return {
@@ -1124,6 +1161,7 @@ const Game = () => {
               status: "idle",
               startedAt: null,
               ...(finalScores ? { teamAScore: 0, teamBScore: 0 } : {}),
+              ...(finalScores ? { teamASets: 0, teamBSets: 0 } : {}),
               ...(finalScores ? { setsToWin: null } : {}),
               slots: [], // Empty the court slots immediately matching deleteMany
             };
@@ -1192,10 +1230,12 @@ const Game = () => {
 
         // 3. Sync completely with the server database state
         await fetchDashboardContext(true);
+        return true;
       } catch (error) {
         console.error("Match teardown failure:", error);
         alert(error.message || "Could not end the match.");
         setSessionData(previousSessionData); // Rollback state on network error
+        return false;
       }
     },
     [

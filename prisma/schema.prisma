@@ -213,6 +213,8 @@ model Court {
   type                CourtType
   teamAScore          Int @default(0)
   teamBScore          Int @default(0)
+  teamASets           Int @default(0)
+  teamBSets           Int @default(0)
   setsToWin           Int?
   startedAt           DateTime?
   endedAt             DateTime?

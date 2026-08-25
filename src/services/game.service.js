@@ -1382,6 +1382,8 @@ export const startMatchCourt = async (
             ? {
                 teamAScore: 0,
                 teamBScore: 0,
+                teamASets: 0,
+                teamBSets: 0,
                 setsToWin: selectedSetsToWin,
               }
             : {}),
@@ -1640,16 +1642,30 @@ export const endMatchCourt = async (
       }
       normalizedWinningTeam =
         teamAScore > teamBScore ? "a" : "b";
-      const winningScore =
-        normalizedWinningTeam === "a" ? teamAScore : teamBScore;
-      if (winningScore < targetCourt.setsToWin) {
-        throw new AppError(
-          `A team must win ${targetCourt.setsToWin} sets before the match can end`,
-          400,
-        );
+      const nextTeamASets =
+        targetCourt.teamASets + (normalizedWinningTeam === "a" ? 1 : 0);
+      const nextTeamBSets =
+        targetCourt.teamBSets + (normalizedWinningTeam === "b" ? 1 : 0);
+      const isMatchComplete =
+        nextTeamASets >= targetCourt.setsToWin ||
+        nextTeamBSets >= targetCourt.setsToWin;
+
+      if (!isMatchComplete) {
+        return tx.court.update({
+          where: { id: courtId },
+          data: {
+            teamAScore: 0,
+            teamBScore: 0,
+            teamASets: nextTeamASets,
+            teamBSets: nextTeamBSets,
+            updatedBy: authorizingAttendee.id,
+          },
+          include: { slots: true },
+        });
       }
-      targetCourt.teamAScore = teamAScore;
-      targetCourt.teamBScore = teamBScore;
+
+      targetCourt.teamAScore = nextTeamASets;
+      targetCourt.teamBScore = nextTeamBSets;
     }
     if (!["a", "b"].includes(normalizedWinningTeam)) {
       throw new AppError("A valid winning team ('a' or 'b') must be specified", 400);
@@ -1748,6 +1764,8 @@ export const endMatchCourt = async (
               // Clear the live court so the next match starts at 0–0.
               teamAScore: 0,
               teamBScore: 0,
+              teamASets: 0,
+              teamBSets: 0,
               setsToWin: null,
             }
           : {}),
