@@ -9,6 +9,12 @@ import {
 
 const newUpdates = [
   {
+    icon: RotateCcw,
+    title: "Multi-set volleyball matches",
+    description:
+      "Choose how many sets are needed to win. Each completed set resets the current points and switches the teams to opposite court sides; the court ends only after a team reaches the target.",
+  },
+  {
     icon: Grid3X3,
     title: "Volleyball courts match the real rotation",
     description:
