@@ -422,6 +422,15 @@ const MatchCourtCard = ({
     teamBScore: matchCourt.teamBScore || 0,
   };
   const hasSetWinner = scores.teamAScore !== scores.teamBScore;
+  const teamsByCourtSide = matchCourt.sidesSwapped
+    ? [
+        { team: "b", label: "Team B", score: scores.teamBScore, sets: matchCourt.teamBSets || 0 },
+        { team: "a", label: "Team A", score: scores.teamAScore, sets: matchCourt.teamASets || 0 },
+      ]
+    : [
+        { team: "a", label: "Team A", score: scores.teamAScore, sets: matchCourt.teamASets || 0 },
+        { team: "b", label: "Team B", score: scores.teamBScore, sets: matchCourt.teamBSets || 0 },
+      ];
   const currentSetNumber =
     (matchCourt.teamASets || 0) + (matchCourt.teamBSets || 0) + 1;
   const endSetLabel =
@@ -630,10 +639,10 @@ const MatchCourtCard = ({
         {isVolleyball && (isStarted || isPaused) && (
           <div className="mt-2 w-full rounded-lg bg-stone-950/80 p-2">
             <div className="mb-2 text-center text-[10px] font-bold uppercase tracking-wider text-white/70">
-              Sets: Team A {matchCourt.teamASets || 0} · Team B {matchCourt.teamBSets || 0}
+              Sets: {teamsByCourtSide[0].label} {teamsByCourtSide[0].sets} / {teamsByCourtSide[1].label} {teamsByCourtSide[1].sets}
             </div>
             <div className="grid grid-cols-2 gap-3">
-            {[{ team: "a", label: "Team A", score: scores.teamAScore }, { team: "b", label: "Team B", score: scores.teamBScore }].map(({ team, label, score }) => (
+            {teamsByCourtSide.map(({ team, label, score }) => (
               <div
                 key={team}
                 className={`grid grid-cols-[32px_1fr_32px] items-center gap-1 text-center ${
