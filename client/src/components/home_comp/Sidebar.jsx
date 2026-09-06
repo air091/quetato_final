@@ -2,7 +2,8 @@ import { Handshake, House, Info, UsersRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
-export const NOTICE_UPDATE_STORAGE_KEY = "quetato_notice_seen_volleyball_sets_v1";
+// Bump this version whenever a new release note should be unread for everyone.
+export const NOTICE_UPDATE_STORAGE_KEY = "quetato_notice_seen_profile_management_v1";
 export const NOTICE_UPDATE_SEEN_EVENT = "quetato-notice-update-seen";
 
 const Sidebar = ({ isOpen }) => {
