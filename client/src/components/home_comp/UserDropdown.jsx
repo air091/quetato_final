@@ -1,7 +1,7 @@
-import React from "react";
 import { useAuth } from "../../hooks/useAuth";
 import PlayerAvatar from "../PlayerAvatar";
-import { LogOut } from "lucide-react"; // Consistent with your Sidebar imports
+import { LogOut, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const UserDropdown = () => {
   const { user, logout } = useAuth();
@@ -23,6 +23,13 @@ const UserDropdown = () => {
 
       {/* ⚙️ Dropdown Navigation Action Item */}
       <div className="p-1">
+        <Link
+          to="/profile"
+          className="flex items-center gap-x-2 w-full px-2.5 py-1.5 text-left text-xs font-semibold text-stone-600 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+        >
+          <UserRound size={14} className="shrink-0 text-stone-400" />
+          <span>Profile settings</span>
+        </Link>
         <button
           onClick={logout}
           className="flex items-center gap-x-2 w-full px-2.5 py-1.5 text-left text-xs font-semibold text-stone-600 hover:text-red-650 hover:bg-red-50 rounded transition-colors cursor-pointer"

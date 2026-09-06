@@ -9,6 +9,7 @@ import {
   requestPasswordResetController,
   resetPasswordController,
   validateResetTokenController,
+  updateProfileController,
 } from "../controllers/auth.controller.js";
 import rateLimit from "express-rate-limit";
 
@@ -25,6 +26,7 @@ const resetPasswordLimiter = rateLimit({
 });
 
 router.get("/profile", authMiddleware, profileController);
+router.patch("/profile", authMiddleware, updateProfileController);
 
 router.post("/login", loginController);
 router.post("/register", registerController);

@@ -65,6 +65,7 @@ export const register = async (payload) => {
       id: true,
       username: true,
       email: true,
+      skillLevel: true,
       skillLevel: true, // Optional: return skill level in return payload if needed
     },
   });
@@ -269,6 +270,36 @@ export const profile = async (userId) => {
 
   if (!user) throw new AppError("No user found", 404);
   return user;
+};
+
+export const updateProfile = async (userId, payload) => {
+  if (!userId) throw new AppError("User ID is required", 401);
+  const { username, skillLevel, currentPassword, newPassword } = payload;
+  const data = {};
+  const skillLevels = ["LB", "BEG", "HB", "LI", "INT", "UI", "ADV", "EXP"];
+
+  if (username !== undefined) {
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) throw new AppError("Username is required", 400);
+    data.username = trimmedUsername;
+  }
+  if (skillLevel !== undefined) {
+    if (!skillLevels.includes(skillLevel)) throw new AppError("Invalid skill level", 400);
+    data.skillLevel = skillLevel;
+  }
+  if (newPassword !== undefined && newPassword !== "") {
+    if (!currentPassword) throw new AppError("Current password is required", 400);
+    if (newPassword.length < 8) throw new AppError("New password must be at least 8 characters", 400);
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { password: true } });
+    if (!user) throw new AppError("No user found", 404);
+    if (!(await bcrypt.compare(currentPassword, user.password))) throw new AppError("Current password is incorrect", 400);
+    data.password = await bcrypt.hash(newPassword, 10);
+  }
+  if (Object.keys(data).length === 0) throw new AppError("No changes were provided", 400);
+  return prisma.user.update({
+    where: { id: userId }, data,
+    select: { id: true, username: true, email: true, skillLevel: true },
+  });
 };
 
 export const refresh = async (payload) => {

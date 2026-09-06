@@ -9,6 +9,7 @@ import {
   requestPasswordReset,
   resetPassword,
   validateResetToken,
+  updateProfile,
 } from "../services/auth.service.js";
 import { AppError } from "../libs/errorHandle.js";
 
@@ -129,6 +130,18 @@ export const profileController = async (request, response) => {
     return response
       .status(statusCode)
       .json({ success: false, message: errMessage });
+  }
+};
+
+export const updateProfileController = async (request, response) => {
+  try {
+    const user = await updateProfile(request.user.sub, request.body);
+    return response.status(200).json({ success: true, message: "Profile updated successfully", user });
+  } catch (error) {
+    console.error("Profile update failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof AppError ? error.message : "Server internal error";
+    return response.status(statusCode).json({ success: false, message });
   }
 };
 

@@ -359,6 +359,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (profileData) => {
+    const response = await fetchWithAuth(`${AUTH_URL}/profile`, {
+      method: "PATCH",
+      body: JSON.stringify(profileData),
+    });
+    const data = await response?.json().catch(() => ({}));
+    if (!response?.ok || !data.success) throw new Error(data.message || "Failed to update profile");
+    storeUser(data.user);
+    setUser(data.user);
+    return data.user;
+  };
+
   // 9. Validate Reset Token
   const validateResetToken = async (token) => {
     try {
@@ -389,6 +401,7 @@ export const AuthProvider = ({ children }) => {
     fetchWithAuth,
     requestPasswordReset, // NEW
     resetPassword, // NEW
+    updateProfile,
     validateResetToken, // NEW
   };
 
