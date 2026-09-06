@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, UserRound } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Pencil, Trash2, UserRound } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
 const skillLevels = [["LB", "Low Beginner (LB)"], ["BEG", "Beginner (BEG)"], ["HB", "High Beginner (HB)"], ["LI", "Low Intermediate (LI)"], ["INT", "Intermediate (INT)"], ["UI", "Upper Intermediate (UI)"], ["ADV", "Advanced (ADV)"], ["EXP", "Expert (EXP)"]];
@@ -8,7 +8,7 @@ const inputClass = "w-full rounded-xl border border-stone-200 bg-stone-50/50 px-
 const actionClass = "rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-orange-300";
 
 export default function Profile() {
-  const { user, updateProfile, addSportToProfile } = useAuth();
+  const { user, updateProfile, addSportToProfile, updateSportOnProfile, deleteSportFromProfile } = useAuth();
   const [username, setUsername] = useState(user?.username || "");
   const [skillLevel, setSkillLevel] = useState(user?.skillLevel || "LB");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -19,12 +19,16 @@ export default function Profile() {
   const [status, setStatus] = useState(null);
   const [saving, setSaving] = useState(false);
   const [addingSport, setAddingSport] = useState(false);
+  const [editingSportId, setEditingSportId] = useState(null);
   const [sport, setSport] = useState("badminton");
   const [sportSkillLevel, setSportSkillLevel] = useState("LB");
   const cancel = () => { setUsername(user?.username || ""); setSkillLevel(user?.skillLevel || "LB"); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setStatus(null); setEditing(null); };
   const startEditing = (section) => { setStatus(null); setEditing(section); };
   const availableSports = ["badminton", "volleyball"].filter((value) => !user?.sports?.some((userSport) => userSport.sport === value));
-  const beginAddingSport = () => { setStatus(null); setSport(availableSports[0]); setAddingSport(true); };
+  const editableSports = ["badminton", "volleyball"].filter((value) => value === sport || !user?.sports?.some((userSport) => userSport.sport === value));
+  const beginAddingSport = () => { setStatus(null); setEditingSportId(null); setSport(availableSports[0]); setSportSkillLevel("LB"); setAddingSport(true); };
+  const beginEditingSport = (userSport) => { setStatus(null); setAddingSport(false); setEditingSportId(userSport.id); setSport(userSport.sport); setSportSkillLevel(userSport.skillLevel); };
+  const cancelSportEditor = () => { setAddingSport(false); setEditingSportId(null); };
   const submit = async (event) => {
     event.preventDefault(); setStatus(null);
     if (editing === "password" && newPassword !== confirmPassword) return setStatus({ error: true, message: "New passwords do not match." });
@@ -45,6 +49,25 @@ export default function Profile() {
     } catch (error) { setStatus({ error: true, message: error.message || "Could not add sport." }); }
     finally { setSaving(false); }
   };
+  const updateSport = async () => {
+    setStatus(null); setSaving(true);
+    try {
+      await updateSportOnProfile(editingSportId, { sport, skillLevel: sportSkillLevel });
+      setEditingSportId(null);
+      setStatus({ message: "Sport updated on your profile." });
+    } catch (error) { setStatus({ error: true, message: error.message || "Could not update sport." }); }
+    finally { setSaving(false); }
+  };
+  const deleteSport = async (userSport) => {
+    if (!window.confirm(`Remove ${userSport.sport} from your profile?`)) return;
+    setStatus(null); setSaving(true);
+    try {
+      await deleteSportFromProfile(userSport.id);
+      if (editingSportId === userSport.id) setEditingSportId(null);
+      setStatus({ message: "Sport removed from your profile." });
+    } catch (error) { setStatus({ error: true, message: error.message || "Could not remove sport." }); }
+    finally { setSaving(false); }
+  };
   const skillLabel = skillLevels.find(([value]) => value === (user?.skillLevel || skillLevel))?.[1] || skillLevel;
 
   return <div className="mx-auto w-full max-w-2xl px-4 py-7 sm:px-6 lg:px-8">
@@ -54,10 +77,10 @@ export default function Profile() {
         {editing === "details" ? <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="profile-username" className={labelClass}>Username</label><input id="profile-username" value={username} onChange={(e) => setUsername(e.target.value)} required maxLength={60} className={inputClass} /></div><div><label htmlFor="profile-skill" className={labelClass}>Skill level</label><select id="profile-skill" value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} className={`${inputClass} cursor-pointer`}>{skillLevels.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></div></div> : <div className="grid gap-4 sm:grid-cols-2"><div><span className={labelClass}>Username</span><p className="text-sm font-semibold text-stone-700">{user?.username}</p></div><div><span className={labelClass}>Skill level</span><p className="text-sm font-semibold text-stone-700">{skillLabel}</p></div></div>}
         <div><span className={labelClass}>Email address</span><div className="rounded-xl border border-stone-100 bg-stone-50 px-3.5 py-2.5 text-xs font-medium text-stone-500">{user?.email}</div></div>{editing === "details" && <Actions cancel={cancel} saving={saving} label="Save profile" />}
       </section>
-      <section className="space-y-4 border-t border-stone-100 bg-stone-50/40 p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-bold text-stone-800">Sports</h3><p className="mt-1 text-xs text-stone-500">Your sports and current skill levels.</p></div>{availableSports.length > 0 && !addingSport && <button type="button" onClick={beginAddingSport} className="shrink-0 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600">Add sport</button>}</div>
-        {user?.sports?.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{user.sports.map((userSport) => <div key={userSport.id} className="rounded-xl border border-stone-200 bg-white px-3.5 py-3"><p className="text-sm font-bold capitalize text-stone-800">{userSport.sport}</p><p className="mt-0.5 text-xs text-stone-500">{skillLevels.find(([value]) => value === userSport.skillLevel)?.[1]}</p></div>)}</div>}
-        {addingSport && <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="profile-sport" className={labelClass}>Sport</label><select id="profile-sport" value={sport} onChange={(event) => setSport(event.target.value)} className={`${inputClass} cursor-pointer`}>{availableSports.map((value) => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select></div><div><label htmlFor="sport-skill" className={labelClass}>Skill level</label><select id="sport-skill" value={sportSkillLevel} onChange={(event) => setSportSkillLevel(event.target.value)} className={`${inputClass} cursor-pointer`}>{skillLevels.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></div><div className="sm:col-span-2 flex justify-end gap-2"><button type="button" onClick={() => setAddingSport(false)} className="rounded-xl px-4 py-2.5 text-xs font-bold text-stone-500 hover:bg-stone-100">Cancel</button><button type="button" onClick={addSport} disabled={saving} className={actionClass}>{saving && <Loader2 size={15} className="mr-2 inline animate-spin" />}Add sport</button></div></div>}
-        {user?.sports?.length > 0 && availableSports.length === 0 && <p className="text-xs text-stone-500">All available sports have been added to your profile.</p>}
+      <section className="space-y-4 border-t border-stone-100 bg-stone-50/40 p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-bold text-stone-800">Sports</h3><p className="mt-1 text-xs text-stone-500">Your sports and current skill levels.</p></div>{availableSports.length > 0 && !addingSport && !editingSportId && <button type="button" onClick={beginAddingSport} className="shrink-0 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600">Add sport</button>}</div>
+        {user?.sports?.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{user.sports.map((userSport) => <div key={userSport.id} className="rounded-xl border border-stone-200 bg-white px-3.5 py-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold capitalize text-stone-800">{userSport.sport}</p><p className="mt-0.5 text-xs text-stone-500">{skillLevels.find(([value]) => value === userSport.skillLevel)?.[1]}</p></div><div className="flex gap-1"><button type="button" onClick={() => beginEditingSport(userSport)} disabled={saving} className="rounded-lg p-1.5 text-stone-400 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed" aria-label={`Edit ${userSport.sport}`}><Pencil size={15} /></button><button type="button" onClick={() => deleteSport(userSport)} disabled={saving} className="rounded-lg p-1.5 text-stone-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed" aria-label={`Delete ${userSport.sport}`}><Trash2 size={15} /></button></div></div></div>)}</div>}
+        {(addingSport || editingSportId) && <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="profile-sport" className={labelClass}>Sport</label><select id="profile-sport" value={sport} onChange={(event) => setSport(event.target.value)} className={`${inputClass} cursor-pointer`}>{(editingSportId ? editableSports : availableSports).map((value) => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select></div><div><label htmlFor="sport-skill" className={labelClass}>Skill level</label><select id="sport-skill" value={sportSkillLevel} onChange={(event) => setSportSkillLevel(event.target.value)} className={`${inputClass} cursor-pointer`}>{skillLevels.map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></div><div className="sm:col-span-2 flex justify-end gap-2"><button type="button" onClick={cancelSportEditor} className="rounded-xl px-4 py-2.5 text-xs font-bold text-stone-500 hover:bg-stone-100">Cancel</button><button type="button" onClick={editingSportId ? updateSport : addSport} disabled={saving} className={actionClass}>{saving && <Loader2 size={15} className="mr-2 inline animate-spin" />}{editingSportId ? "Save sport" : "Add sport"}</button></div></div>}
+        {user?.sports?.length > 0 && availableSports.length === 0 && !editingSportId && <p className="text-xs text-stone-500">All available sports have been added to your profile.</p>}
       </section>
       <section className="space-y-4 border-t border-stone-100 bg-stone-50/40 p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-bold text-stone-800">Password</h3><p className="mt-1 text-xs text-stone-500">Keep your account secure with a strong password.</p></div>{editing !== "password" && <button type="button" onClick={() => startEditing("password")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600">Change password</button>}</div>
         {editing === "password" && <><div className="grid gap-4 sm:grid-cols-2"><PasswordInput id="current-password" label="Current password" value={currentPassword} onChange={setCurrentPassword} type={showPasswords ? "text" : "password"} /><PasswordInput id="new-password" label="New password" value={newPassword} onChange={setNewPassword} type={showPasswords ? "text" : "password"} minLength={8} /></div><div className="sm:max-w-[calc(50%-0.5rem)]"><label htmlFor="confirm-password" className={labelClass}>Confirm new password</label><div className="relative"><input id="confirm-password" type={showPasswords ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={`${inputClass} pr-10`} /><button type="button" onClick={() => setShowPasswords((shown) => !shown)} className="absolute inset-y-0 right-0 px-3 text-stone-400 hover:text-stone-700" aria-label={showPasswords ? "Hide passwords" : "Show passwords"}>{showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></div><Actions cancel={cancel} saving={saving} label="Change password" /></>}

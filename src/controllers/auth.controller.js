@@ -11,6 +11,8 @@ import {
   validateResetToken,
   updateProfile,
   addSportToProfile,
+  updateSportOnProfile,
+  deleteSportFromProfile,
 } from "../services/auth.service.js";
 import { AppError } from "../libs/errorHandle.js";
 
@@ -152,6 +154,34 @@ export const addSportToProfileController = async (request, response) => {
     return response.status(201).json({ success: true, message: "Sport added successfully", user });
   } catch (error) {
     console.error("Add sport failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof AppError ? error.message : "Server internal error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const updateSportOnProfileController = async (request, response) => {
+  try {
+    const user = await updateSportOnProfile(
+      request.user.sub,
+      request.params.sportId,
+      request.body,
+    );
+    return response.status(200).json({ success: true, message: "Sport updated successfully", user });
+  } catch (error) {
+    console.error("Update sport failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof AppError ? error.message : "Server internal error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const deleteSportFromProfileController = async (request, response) => {
+  try {
+    const user = await deleteSportFromProfile(request.user.sub, request.params.sportId);
+    return response.status(200).json({ success: true, message: "Sport deleted successfully", user });
+  } catch (error) {
+    console.error("Delete sport failed", error);
     const statusCode = error instanceof AppError ? error.statusCode : 500;
     const message = error instanceof AppError ? error.message : "Server internal error";
     return response.status(statusCode).json({ success: false, message });

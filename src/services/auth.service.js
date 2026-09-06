@@ -315,6 +315,39 @@ export const addSportToProfile = async (userId, { sport, skillLevel }) => {
   return profile(userId);
 };
 
+export const updateSportOnProfile = async (userId, sportId, { sport, skillLevel }) => {
+  if (!userId) throw new AppError("User ID is required", 401);
+  if (!sportId) throw new AppError("Sport ID is required", 400);
+  if (!['badminton', 'volleyball'].includes(sport)) throw new AppError("Invalid sport", 400);
+  if (!['LB', 'BEG', 'HB', 'LI', 'INT', 'UI', 'ADV', 'EXP'].includes(skillLevel)) throw new AppError("Invalid skill level", 400);
+
+  const userSport = await prisma.userSport.findFirst({
+    where: { id: sportId, userId },
+    select: { id: true, sport: true },
+  });
+  if (!userSport) throw new AppError("Sport not found", 404);
+
+  if (sport !== userSport.sport) {
+    const duplicate = await prisma.userSport.findUnique({
+      where: { userId_sport: { userId, sport } },
+      select: { id: true },
+    });
+    if (duplicate) throw new AppError("This sport is already on your profile", 409);
+  }
+
+  await prisma.userSport.update({ where: { id: sportId }, data: { sport, skillLevel } });
+  return profile(userId);
+};
+
+export const deleteSportFromProfile = async (userId, sportId) => {
+  if (!userId) throw new AppError("User ID is required", 401);
+  if (!sportId) throw new AppError("Sport ID is required", 400);
+
+  const deleted = await prisma.userSport.deleteMany({ where: { id: sportId, userId } });
+  if (deleted.count === 0) throw new AppError("Sport not found", 404);
+  return profile(userId);
+};
+
 export const refresh = async (payload) => {
   if (!payload.token) throw new AppError("No token", 401);
 

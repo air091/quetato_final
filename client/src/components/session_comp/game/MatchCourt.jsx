@@ -538,7 +538,7 @@ const MatchCourtCard = ({
                     className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl border border-stone-200 bg-white p-3 text-stone-800 shadow-xl"
                   >
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-500">
-                      Sets to win
+                      Add sets to win to start the game
                       <input
                         autoFocus
                         type="number"

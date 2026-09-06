@@ -383,6 +383,27 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
+  const updateSportOnProfile = async (sportId, sportData) => {
+    const response = await fetchWithAuth(`${AUTH_URL}/profile/sports/${sportId}`, {
+      method: "PATCH",
+      body: JSON.stringify(sportData),
+    });
+    const data = await response?.json().catch(() => ({}));
+    if (!response?.ok || !data.success) throw new Error(data.message || "Failed to update sport");
+    storeUser(data.user);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const deleteSportFromProfile = async (sportId) => {
+    const response = await fetchWithAuth(`${AUTH_URL}/profile/sports/${sportId}`, { method: "DELETE" });
+    const data = await response?.json().catch(() => ({}));
+    if (!response?.ok || !data.success) throw new Error(data.message || "Failed to delete sport");
+    storeUser(data.user);
+    setUser(data.user);
+    return data.user;
+  };
+
   // 9. Validate Reset Token
   const validateResetToken = async (token) => {
     try {
@@ -415,6 +436,8 @@ export const AuthProvider = ({ children }) => {
     resetPassword, // NEW
     updateProfile,
     addSportToProfile,
+    updateSportOnProfile,
+    deleteSportFromProfile,
     validateResetToken, // NEW
   };
 
