@@ -4,10 +4,20 @@ import {
   PlusCircle,
   RotateCcw,
   ShieldCheck,
+  UserRound,
   Users,
 } from "lucide-react";
 
 const newUpdates = [
+  {
+    icon: UserRound,
+    title: "Profile settings and sport management",
+    description:
+      "Manage your player details, account security, and sport skill levels from the new Profile page. You can now add, edit, or remove sports from your profile.",
+  },
+];
+
+const pastUpdates = [
   {
     icon: RotateCcw,
     title: "Multi-set volleyball matches",
@@ -32,9 +42,6 @@ const newUpdates = [
     description:
       "Ending a volleyball game saves its final score to match history and resets the live court score to 0–0 for the next match.",
   },
-];
-
-const pastUpdates = [
   {
     icon: CalendarCheck,
     title: "Session hosts are here",
