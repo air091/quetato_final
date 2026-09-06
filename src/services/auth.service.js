@@ -66,7 +66,6 @@ export const register = async (payload) => {
       username: true,
       email: true,
       skillLevel: true,
-      skillLevel: true, // Optional: return skill level in return payload if needed
     },
   });
 
@@ -265,6 +264,8 @@ export const profile = async (userId) => {
       id: true,
       username: true,
       email: true,
+      skillLevel: true,
+      sports: { select: { id: true, sport: true, skillLevel: true } },
     },
   });
 
@@ -296,10 +297,22 @@ export const updateProfile = async (userId, payload) => {
     data.password = await bcrypt.hash(newPassword, 10);
   }
   if (Object.keys(data).length === 0) throw new AppError("No changes were provided", 400);
-  return prisma.user.update({
+  await prisma.user.update({
     where: { id: userId }, data,
-    select: { id: true, username: true, email: true, skillLevel: true },
   });
+  return profile(userId);
+};
+
+export const addSportToProfile = async (userId, { sport, skillLevel }) => {
+  if (!userId) throw new AppError("User ID is required", 401);
+  if (!["badminton", "volleyball"].includes(sport)) throw new AppError("Invalid sport", 400);
+  if (!["LB", "BEG", "HB", "LI", "INT", "UI", "ADV", "EXP"].includes(skillLevel)) throw new AppError("Invalid skill level", 400);
+
+  const existing = await prisma.userSport.findUnique({ where: { userId_sport: { userId, sport } } });
+  if (existing) throw new AppError("This sport is already on your profile", 409);
+
+  await prisma.userSport.create({ data: { userId, sport, skillLevel } });
+  return profile(userId);
 };
 
 export const refresh = async (payload) => {

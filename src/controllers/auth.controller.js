@@ -10,6 +10,7 @@ import {
   resetPassword,
   validateResetToken,
   updateProfile,
+  addSportToProfile,
 } from "../services/auth.service.js";
 import { AppError } from "../libs/errorHandle.js";
 
@@ -139,6 +140,18 @@ export const updateProfileController = async (request, response) => {
     return response.status(200).json({ success: true, message: "Profile updated successfully", user });
   } catch (error) {
     console.error("Profile update failed", error);
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof AppError ? error.message : "Server internal error";
+    return response.status(statusCode).json({ success: false, message });
+  }
+};
+
+export const addSportToProfileController = async (request, response) => {
+  try {
+    const user = await addSportToProfile(request.user.sub, request.body);
+    return response.status(201).json({ success: true, message: "Sport added successfully", user });
+  } catch (error) {
+    console.error("Add sport failed", error);
     const statusCode = error instanceof AppError ? error.statusCode : 500;
     const message = error instanceof AppError ? error.message : "Server internal error";
     return response.status(statusCode).json({ success: false, message });

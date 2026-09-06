@@ -371,6 +371,18 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
+  const addSportToProfile = async (sportData) => {
+    const response = await fetchWithAuth(`${AUTH_URL}/profile/sports`, {
+      method: "POST",
+      body: JSON.stringify(sportData),
+    });
+    const data = await response?.json().catch(() => ({}));
+    if (!response?.ok || !data.success) throw new Error(data.message || "Failed to add sport");
+    storeUser(data.user);
+    setUser(data.user);
+    return data.user;
+  };
+
   // 9. Validate Reset Token
   const validateResetToken = async (token) => {
     try {
@@ -402,6 +414,7 @@ export const AuthProvider = ({ children }) => {
     requestPasswordReset, // NEW
     resetPassword, // NEW
     updateProfile,
+    addSportToProfile,
     validateResetToken, // NEW
   };
 

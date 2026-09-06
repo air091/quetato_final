@@ -45,6 +45,7 @@ model User {
   createdSessions Session[] @relation("creator")
   updatedSessions Session[] @relation("updater")
   players         CommunityPlayer[]
+  sports          UserSport[]
 }
 
 model PasswordReset {
@@ -153,6 +154,19 @@ model CommunityPlayer {
   manualPoints      ManualPoint[]
 
   @@unique([communityId, userId])
+  @@index([userId])
+}
+
+model UserSport {
+  id          String     @id @default(cuid())
+  userId      String
+  sport       Sports
+  skillLevel  SkillLevel
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sport])
   @@index([userId])
 }
 
